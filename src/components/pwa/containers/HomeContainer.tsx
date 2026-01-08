@@ -2,8 +2,8 @@
  * ============================================================
  * HomeContainer.tsx - Container INDEPENDENTE para HOME
  * ============================================================
- * Versão: 5.2.0-debug - 2026-01-08
- * DEBUG: Logs extensivos para identificar falha no autoplay
+ * Versão: 5.3.0 - 2026-01-08
+ * CORREÇÃO: Autoplay usa useRef para evitar re-render cancelar o setTimeout
  * ============================================================
  */
 
@@ -29,7 +29,6 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   // Estados locais
   const [greeting, setGreeting] = useState<string>("");
   const [isGreetingReady, setIsGreetingReady] = useState(false);
-  const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,99 +37,28 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   const frequencyAnimationRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasPlayedAutoplayRef = useRef(false); // ✅ useRef ao invés de useState
 
   // ============================================================
-  // FUNÇÃO SPEAK INLINE (sem depender do hook)
+  // FUNÇÃO SPEAK DIRETA (sem hook externo)
   // ============================================================
   const speakDirect = useCallback(async (text: string) => {
     if (!text.trim()) {
-      console.error("[HOME-DEBUG] ❌ Texto vazio!");
+      console.error("[HOME] ❌ Texto vazio!");
       return;
     }
 
-    console.log("[HOME-DEBUG] 🎤 Iniciando TTS para:", text.substring(0, 50));
+    console.log("[HOME] 🎤 Iniciando TTS...");
     setIsLoading(true);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      // URLs do Supabase
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gmflpmcepempcygdrayv.supabase.co";
+      const supabaseKey =
+        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZmxwbWNlcGVtcGN5Z2RyYXl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI1NzYyMDAsImV4cCI6MjA0ODE1MjIwMH0.K3sJfvYBVqCg8-FgWxZyEfRkjNfwvuLdP_sGqwe6Ryc";
 
-      console.log("[HOME-DEBUG] 🔑 URL definida:", !!supabaseUrl);
-      console.log("[HOME-DEBUG] 🔑 Key definida:", !!supabaseKey);
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.error("[HOME-DEBUG] ❌ Variáveis de ambiente não definidas!");
-        // Fallback: usar URL hardcoded para teste
-        const fallbackUrl = "https://gmflpmcepempcygdrayv.supabase.co";
-        const fallbackKey =
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZmxwbWNlcGVtcGN5Z2RyYXl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI1NzYyMDAsImV4cCI6MjA0ODE1MjIwMH0.K3sJfvYBVqCg8-FgWxZyEfRkjNfwvuLdP_sGqwe6Ryc";
-
-        console.log("[HOME-DEBUG] 🔄 Usando fallback...");
-
-        const response = await fetch(`${fallbackUrl}/functions/v1/text-to-speech`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: fallbackKey,
-            Authorization: `Bearer ${fallbackKey}`,
-          },
-          body: JSON.stringify({ text, voice: "fernando" }),
-        });
-
-        console.log("[HOME-DEBUG] 📡 Response status:", response.status);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const audioBlob = await response.blob();
-        console.log("[HOME-DEBUG] 📦 Blob size:", audioBlob.size);
-
-        const audioUrl = URL.createObjectURL(audioBlob);
-        console.log("[HOME-DEBUG] 🔗 Audio URL criada");
-
-        // Criar e tocar áudio diretamente
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = "";
-        }
-
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-
-        audio.onplay = () => {
-          console.log("[HOME-DEBUG] ▶️ Áudio começou a tocar!");
-          setIsPlaying(true);
-          setIsLoading(false);
-        };
-
-        audio.onended = () => {
-          console.log("[HOME-DEBUG] ⏹️ Áudio terminou");
-          setIsPlaying(false);
-          setProgress(0);
-        };
-
-        audio.onerror = (e) => {
-          console.error("[HOME-DEBUG] ❌ Erro no áudio:", e);
-          setIsPlaying(false);
-          setIsLoading(false);
-        };
-
-        audio.ontimeupdate = () => {
-          if (audio.duration) {
-            setProgress((audio.currentTime / audio.duration) * 100);
-          }
-        };
-
-        console.log("[HOME-DEBUG] 🎵 Chamando audio.play()...");
-        await audio.play();
-        console.log("[HOME-DEBUG] ✅ audio.play() executado com sucesso!");
-
-        return;
-      }
-
-      // Caminho normal com variáveis de ambiente
-      console.log("[HOME-DEBUG] 📡 Fazendo fetch para TTS...");
+      console.log("[HOME] 📡 Fazendo fetch para TTS...");
 
       const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
         method: "POST",
@@ -142,20 +70,18 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         body: JSON.stringify({ text, voice: "fernando" }),
       });
 
-      console.log("[HOME-DEBUG] 📡 Response status:", response.status);
+      console.log("[HOME] 📡 Response status:", response.status);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const audioBlob = await response.blob();
-      console.log("[HOME-DEBUG] 📦 Blob size:", audioBlob.size);
+      console.log("[HOME] 📦 Blob size:", audioBlob.size);
 
       const audioUrl = URL.createObjectURL(audioBlob);
-      console.log("[HOME-DEBUG] 🔗 Audio URL criada");
 
-      // Criar e tocar áudio diretamente
+      // Limpar áudio anterior
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
@@ -165,19 +91,19 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
       audioRef.current = audio;
 
       audio.onplay = () => {
-        console.log("[HOME-DEBUG] ▶️ Áudio começou a tocar!");
+        console.log("[HOME] ▶️ Áudio tocando!");
         setIsPlaying(true);
         setIsLoading(false);
       };
 
       audio.onended = () => {
-        console.log("[HOME-DEBUG] ⏹️ Áudio terminou");
+        console.log("[HOME] ⏹️ Áudio terminou");
         setIsPlaying(false);
         setProgress(0);
       };
 
       audio.onerror = (e) => {
-        console.error("[HOME-DEBUG] ❌ Erro no áudio:", e);
+        console.error("[HOME] ❌ Erro no áudio:", e);
         setIsPlaying(false);
         setIsLoading(false);
       };
@@ -188,11 +114,11 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         }
       };
 
-      console.log("[HOME-DEBUG] 🎵 Chamando audio.play()...");
+      console.log("[HOME] 🎵 Chamando audio.play()...");
       await audio.play();
-      console.log("[HOME-DEBUG] ✅ audio.play() executado com sucesso!");
+      console.log("[HOME] ✅ Áudio iniciado com sucesso!");
     } catch (err) {
-      console.error("[HOME-DEBUG] ❌ Erro no TTS:", err);
+      console.error("[HOME] ❌ Erro no TTS:", err);
       setIsLoading(false);
     }
   }, []);
@@ -212,17 +138,11 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   useEffect(() => {
     mountedRef.current = true;
 
-    if (isConfigLoading) {
-      console.log("[HOME-DEBUG] ⏳ Aguardando config...");
-      return;
-    }
-    if (!deviceId || deviceId === "") {
-      console.log("[HOME-DEBUG] ⏳ Aguardando deviceId...");
-      return;
-    }
+    if (isConfigLoading) return;
+    if (!deviceId || deviceId === "") return;
 
     const fetchHomeGreeting = async () => {
-      console.log("[HOME-DEBUG] 🔍 Buscando saudação...");
+      console.log("[HOME] 🔍 Buscando saudação...");
 
       try {
         const { data, error } = await supabase.functions.invoke("generate-contextual-greeting", {
@@ -235,29 +155,29 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         if (!mountedRef.current) return;
 
         if (error) {
-          console.warn("[HOME-DEBUG] ⚠️ Erro ao buscar saudação:", error);
-          const fallbackGreeting =
+          console.warn("[HOME] ⚠️ Erro:", error);
+          const fallback =
             config.welcomeText?.replace("[name]", userName || "") ||
             "Olá! Eu sou o KnowYOU, seu assistente de voz. Escolha um módulo abaixo para começar.";
-          setGreeting(fallbackGreeting);
+          setGreeting(fallback);
         } else if (data?.greeting) {
-          console.log("[HOME-DEBUG] ✅ Saudação recebida:", data.greeting.substring(0, 50));
+          console.log("[HOME] ✅ Saudação recebida");
           setGreeting(data.greeting);
         } else {
-          const fallbackGreeting =
+          const fallback =
             config.welcomeText?.replace("[name]", userName || "") ||
             "Olá! Eu sou o KnowYOU, seu assistente de voz. Escolha um módulo abaixo para começar.";
-          setGreeting(fallbackGreeting);
+          setGreeting(fallback);
         }
       } catch (err) {
-        console.error("[HOME-DEBUG] ❌ Exceção:", err);
+        console.error("[HOME] ❌ Exceção:", err);
         if (mountedRef.current) {
           setGreeting("Olá! Eu sou o KnowYOU, seu assistente de voz.");
         }
       } finally {
         if (mountedRef.current) {
           setIsGreetingReady(true);
-          console.log("[HOME-DEBUG] ✅ Greeting pronto!");
+          console.log("[HOME] ✅ Greeting pronto!");
         }
       }
     };
@@ -270,34 +190,28 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   }, [isConfigLoading, deviceId, userName, config.welcomeText]);
 
   // ============================================================
-  // ETAPA 2: AUTOPLAY
+  // ETAPA 2: AUTOPLAY (usando useRef para não re-renderizar)
   // ============================================================
   useEffect(() => {
-    if (!isGreetingReady) {
-      console.log("[HOME-DEBUG] ⏳ Greeting não está pronto");
-      return;
-    }
-    if (hasPlayedAutoplay) {
-      console.log("[HOME-DEBUG] ⏳ Já executou autoplay");
-      return;
-    }
-    if (!greeting) {
-      console.log("[HOME-DEBUG] ⏳ Greeting vazio");
+    // Verificar condições
+    if (!isGreetingReady || !greeting || hasPlayedAutoplayRef.current) {
       return;
     }
 
-    console.log("[HOME-DEBUG] 🚀 Executando autoplay em 500ms...");
-    setHasPlayedAutoplay(true);
+    // Marcar como executado IMEDIATAMENTE (usando ref, não causa re-render)
+    hasPlayedAutoplayRef.current = true;
+    console.log("[HOME] 🚀 Iniciando autoplay...");
 
+    // Executar após pequeno delay
     const timer = setTimeout(() => {
       if (mountedRef.current) {
-        console.log("[HOME-DEBUG] 🎯 Chamando speakDirect()...");
+        console.log("[HOME] 🎯 Executando speakDirect()...");
         speakDirect(greeting);
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [isGreetingReady, hasPlayedAutoplay, greeting, speakDirect]);
+  }, [isGreetingReady, greeting, speakDirect]);
 
   // ============================================================
   // ATUALIZAR PLAYER STATE
@@ -329,7 +243,6 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   // ============================================================
   const handleReplay = useCallback(() => {
     if (greeting) {
-      console.log("[HOME-DEBUG] 🔄 Replay solicitado");
       speakDirect(greeting);
     }
   }, [greeting, speakDirect]);
