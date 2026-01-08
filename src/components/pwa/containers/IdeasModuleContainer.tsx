@@ -155,28 +155,28 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
   // ============================================================
-  // CLEANUP AO DESMONTAR
+  // CLEANUP AO DESMONTAR - array vazio, usar getState()
   // ============================================================
   useEffect(() => {
     return () => {
-      audioManager.stopAllAndCleanup();
+      useAudioManager.getState().stopAllAndCleanup();
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [audioManager]);
+  }, []);
 
   // ============================================================
-  // CAPTURAR FREQUÊNCIAS DO TTS
+  // CAPTURAR FREQUÊNCIAS DO TTS - usar apenas isPlaying
   // ============================================================
   useEffect(() => {
-    if (!isPlaying) {
+    if (!audioManager.isPlaying) {
       setFrequencyData([]);
       return;
     }
 
     const updateFrequency = () => {
-      const data = audioManager.getFrequencyData();
+      const data = useAudioManager.getState().getFrequencyData();
       if (data.length > 0) {
         setFrequencyData(data);
       }
@@ -191,7 +191,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         animationRef.current = null;
       }
     };
-  }, [isPlaying, audioManager]);
+  }, [audioManager.isPlaying]);
 
   // ============================================================
   // HANDLER PARA CAPTURA DE ÁUDIO
@@ -276,7 +276,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
   }, [isPlaying, stop, speak, greeting]);
 
   const handleBack = useCallback(async () => {
-    audioManager.stopAllAndCleanup();
+    useAudioManager.getState().stopAllAndCleanup();
 
     if (messages.length >= 2 && deviceFingerprint) {
       try {
@@ -296,7 +296,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
     }
 
     onBack();
-  }, [audioManager, messages, deviceFingerprint, onBack]);
+  }, [messages, deviceFingerprint, onBack]);
 
   const visualizerState = isRecording
     ? "recording"
