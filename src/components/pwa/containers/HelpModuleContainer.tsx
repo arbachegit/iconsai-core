@@ -1,127 +1,119 @@
 /**
  * ============================================================
- * HelpModuleContainer.tsx - Container INDEPENDENTE para Ajuda
+ * HealthModuleContainer.tsx - v5.1.0
  * ============================================================
- * Versão: 5.0.0 - 2026-01-08
+ * Container INDEPENDENTE do módulo Saúde
+ * CORREÇÃO: Removido audioManager das dependências de useEffect
  * ============================================================
  */
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { HelpCircle, ArrowLeft, History } from "lucide-react";
+import { Heart, ArrowLeft, History } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
 const MODULE_CONFIG = {
-  type: "help" as const,
-  name: "Ajuda",
-  color: "#3B82F6",
-  bgColor: "bg-blue-500/20",
-  defaultWelcome: "Olá! Posso te explicar como usar cada módulo do KnowYOU. O que você precisa de ajuda?",
+  name: "Saúde",
+  icon: Heart,
+  color: "#F43F5E",
+  bgColor: "bg-rose-500/20",
+  moduleType: "health" as const,
+  defaultWelcome: "Olá! Sou sua assistente de saúde. Como posso ajudar você hoje?",
 };
 
-interface HelpModuleContainerProps {
+interface HealthModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
+  deviceId: string;
 }
 
-export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack, onHistoryClick }) => {
+export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { userName, deviceFingerprint } = usePWAVoiceStore();
+  const { config: pwaConfig } = useConfigPWA();
+  const { userName } = usePWAVoiceStore();
 
-  const [greeting, setGreeting] = useState<string>("");
+  const [greeting, setGreeting] = useState<string | null>(null);
   const [isGreetingReady, setIsGreetingReady] = useState(false);
   const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
-
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
-  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
   const animationRef = useRef<number | null>(null);
-  const mountedRef = useRef(true);
 
-  // BUSCAR CONTEXTO
+  // ETAPA 1: Buscar greeting
   useEffect(() => {
-    mountedRef.current = true;
+    if (isGreetingReady) return;
 
-    const fetchModuleContext = async () => {
-      console.log(`[Help] Iniciando busca de contexto...`);
-
+    const fetchGreeting = async () => {
       try {
+        console.log("[HealthContainer] Buscando saudação contextual...");
+
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
-            deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
-            moduleType: MODULE_CONFIG.type,
+            deviceId,
+            moduleType: MODULE_CONFIG.moduleType,
             action: "getGreeting",
           },
         });
 
-        if (!mountedRef.current) return;
-
-        if (error || !data?.greeting) {
-          const fallbackGreeting = MODULE_CONFIG.defaultWelcome.replace("[name]", userName || "");
-          setGreeting(fallbackGreeting);
-        } else {
+        if (error) {
+          console.warn("[HealthContainer] Erro:", error);
+          setGreeting(MODULE_CONFIG.defaultWelcome);
+        } else if (data?.greeting) {
+          console.log("[HealthContainer] Saudação contextual recebida");
           setGreeting(data.greeting);
+        } else {
+          const configWelcome = (pwaConfig as any)?.healthWelcomeText;
+          setGreeting(configWelcome?.replace("[name]", userName || "") || MODULE_CONFIG.defaultWelcome);
         }
       } catch (err) {
-        if (mountedRef.current) {
-          const fallbackGreeting = MODULE_CONFIG.defaultWelcome.replace("[name]", userName || "");
-          setGreeting(fallbackGreeting);
-        }
+        console.warn("[HealthContainer] Exceção:", err);
+        setGreeting(MODULE_CONFIG.defaultWelcome);
       } finally {
-        if (mountedRef.current) {
-          setIsGreetingReady(true);
-        }
+        setIsGreetingReady(true);
       }
     };
 
-    fetchModuleContext();
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [deviceFingerprint, userName]);
+    fetchGreeting();
+  }, [deviceId, pwaConfig, userName, isGreetingReady]);
 
-  // AUTOPLAY GARANTIDO
+  // ETAPA 2: Autoplay
   useEffect(() => {
     if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
 
-    console.log("[Help] Executando autoplay");
+    console.log("[HealthContainer] Executando autoplay");
     setHasPlayedAutoplay(true);
 
-    const timer = setTimeout(() => {
-      if (mountedRef.current) {
-        speak(greeting, MODULE_CONFIG.type).catch(console.warn);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
+    speak(greeting, MODULE_CONFIG.moduleType).catch((err) => {
+      console.warn("[HealthContainer] Autoplay bloqueado:", err);
+    });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // CLEANUP - array vazio, usar getState()
+  // ✅ FREQUÊNCIAS - Só audioManager.isPlaying
   useEffect(() => {
-    return () => {
-      useAudioManager.getState().stopAllAndCleanup();
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, []);
+    const isAudioPlaying = audioManager.isPlaying;
 
-  // FREQUÊNCIAS - usar apenas isPlaying como dependência
-  useEffect(() => {
-    if (!audioManager.isPlaying) {
+    if (!isAudioPlaying) {
       setFrequencyData([]);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       return;
     }
 
     const updateFrequency = () => {
-      const data = useAudioManager.getState().getFrequencyData();
+      const data = audioManager.getFrequencyData();
       if (data.length > 0) setFrequencyData(data);
       animationRef.current = requestAnimationFrame(updateFrequency);
     };
@@ -132,75 +124,116 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
     };
   }, [audioManager.isPlaying]);
 
-  // ÁUDIO CAPTURE
-  const handleAudioCapture = useCallback(
-    async (audioBlob: Blob) => {
-      setIsProcessing(true);
+  // ✅ CLEANUP - Array vazio
+  useEffect(() => {
+    return () => {
+      useAudioManager.getState().stopAllAndCleanup();
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
 
+  // ✅ HANDLE BACK - Removido audioManager das dependências
+  const handleBack = useCallback(async () => {
+    useAudioManager.getState().stopAllAndCleanup();
+
+    if (messages.length >= 2) {
       try {
-        if (!audioBlob || audioBlob.size < 1000) throw new Error("AUDIO_TOO_SHORT");
-
-        const arrayBuffer = await audioBlob.arrayBuffer();
-        const base64 = btoa(new Uint8Array(arrayBuffer).reduce((d, b) => d + String.fromCharCode(b), ""));
-
-        let mimeType = audioBlob.type || (/iPad|iPhone|iPod/.test(navigator.userAgent) ? "audio/mp4" : "audio/webm");
-
-        const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
-          body: { audio: base64, mimeType },
-        });
-
-        if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
-        const userText = sttData?.text;
-        if (!userText?.trim()) throw new Error("STT_EMPTY");
-
-        setMessages((prev) => [...prev, { role: "user", content: userText }]);
-
-        const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
+        console.log("[HealthContainer] Salvando resumo...");
+        await supabase.functions.invoke("generate-conversation-summary", {
           body: {
-            message: userText,
-            pwaMode: true,
-            chatType: MODULE_CONFIG.type,
-            agentSlug: MODULE_CONFIG.type,
-            deviceId: deviceFingerprint || undefined,
+            deviceId,
+            moduleType: MODULE_CONFIG.moduleType,
+            messages: messages.slice(-6),
           },
         });
-
-        if (chatError) throw new Error(`CHAT_ERROR: ${chatError.message}`);
-        const aiResponse = chatData?.response || chatData?.message || chatData?.text;
-        if (!aiResponse) throw new Error("CHAT_EMPTY");
-
-        setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
-        await speak(aiResponse, MODULE_CONFIG.type);
-      } catch (error: any) {
-        let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
-        if (error.message?.includes("AUDIO_TOO_SHORT")) errorMessage = "A gravação foi muito curta.";
-        else if (error.message?.includes("STT")) errorMessage = "Não consegui processar o áudio.";
-        await speak(errorMessage, MODULE_CONFIG.type);
-      } finally {
-        setIsProcessing(false);
+      } catch (err) {
+        console.warn("[HealthContainer] Erro ao salvar resumo:", err);
       }
-    },
-    [deviceFingerprint, speak],
-  );
+    }
 
-  const handlePlayClick = useCallback(() => {
-    if (isPlaying) stop();
-    else if (greeting) speak(greeting, MODULE_CONFIG.type);
-  }, [isPlaying, stop, speak, greeting]);
-
-  const handleBack = useCallback(() => {
-    useAudioManager.getState().stopAllAndCleanup();
     onBack();
-  }, [onBack]);
+  }, [messages, deviceId, onBack]);
+
+  // Handler de áudio
+  const handleAudioCapture = async (audioBlob: Blob) => {
+    setIsProcessing(true);
+
+    try {
+      if (!audioBlob || audioBlob.size < 1000) {
+        throw new Error("AUDIO_TOO_SHORT");
+      }
+
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+
+      let mimeType = audioBlob.type || "audio/webm";
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        mimeType = "audio/mp4";
+      }
+
+      const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
+        body: { audio: base64, mimeType },
+      });
+
+      if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
+
+      const userText = sttData?.text;
+      if (!userText?.trim()) throw new Error("STT_EMPTY");
+
+      setMessages((prev) => [...prev, { role: "user", content: userText }]);
+
+      const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
+        body: {
+          message: userText,
+          pwaMode: true,
+          chatType: MODULE_CONFIG.moduleType,
+          agentSlug: MODULE_CONFIG.moduleType,
+          deviceId,
+        },
+      });
+
+      if (chatError) throw new Error(`CHAT_ERROR: ${chatError.message}`);
+
+      const aiResponse = chatData?.response || chatData?.message || chatData?.text;
+      if (!aiResponse) throw new Error("CHAT_EMPTY");
+
+      setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
+
+      await speak(aiResponse, MODULE_CONFIG.moduleType);
+    } catch (error: any) {
+      console.error("[HealthContainer] ERRO:", error);
+
+      let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
+      if (error.message?.includes("AUDIO_TOO_SHORT")) {
+        errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
+      } else if (error.message?.includes("STT_EMPTY")) {
+        errorMessage = "Não entendi o que você disse. Pode repetir?";
+      }
+
+      await speak(errorMessage, MODULE_CONFIG.moduleType);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePlayClick = () => {
+    if (isPlaying) {
+      stop();
+    } else if (greeting) {
+      speak(greeting, MODULE_CONFIG.moduleType);
+    }
+  };
 
   const visualizerState = isRecording
     ? "recording"
-    : isProcessing || isLoading
+    : isProcessing
       ? "loading"
-      : isPlaying
-        ? "playing"
-        : "idle";
-  const buttonState = isProcessing || isLoading ? "loading" : isPlaying ? "playing" : "idle";
+      : isLoading
+        ? "loading"
+        : isPlaying
+          ? "playing"
+          : "idle";
+  const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
@@ -212,6 +245,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
         >
           <ArrowLeft className="w-5 h-5 text-white" />
         </motion.button>
+
         <div className="flex items-center gap-3">
           <motion.div
             className={`w-10 h-10 rounded-full ${MODULE_CONFIG.bgColor} flex items-center justify-center`}
@@ -226,10 +260,11 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
             }}
             transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0 }}
           >
-            <HelpCircle className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
+            <Heart className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
           </motion.div>
           <span className="text-lg font-semibold text-white">{MODULE_CONFIG.name}</span>
         </div>
+
         <motion.button
           onClick={onHistoryClick}
           className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/10"
@@ -248,6 +283,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
           height={120}
           width={280}
         />
+
         <PlayButton
           state={buttonState}
           onClick={handlePlayClick}
@@ -255,6 +291,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
           size="lg"
           primaryColor={MODULE_CONFIG.color}
         />
+
         <ToggleMicrophoneButton
           onAudioCapture={handleAudioCapture}
           disabled={isLoading}
@@ -266,18 +303,8 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
           maxDurationSeconds={60}
         />
       </div>
-
-      {!isGreetingReady && (
-        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-          <motion.div
-            className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-      )}
     </div>
   );
 };
 
-export default HelpModuleContainer;
+export default HealthModuleContainer;
