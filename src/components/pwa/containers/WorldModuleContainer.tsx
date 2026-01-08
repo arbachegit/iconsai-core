@@ -2,7 +2,8 @@
  * ============================================================
  * WorldModuleContainer.tsx - Container INDEPENDENTE para Mundo
  * ============================================================
- * Versão: 5.0.0 - 2026-01-08
+ * Versão: 5.1.0 - 2026-01-08
+ * CORREÇÃO: Removido audioManager das dependências de useEffect
  * ============================================================
  */
 
@@ -110,7 +111,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     return () => clearTimeout(timer);
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // CLEANUP - array vazio, usar getState()
+  // ✅ CLEANUP - Array vazio, usa getState()
   useEffect(() => {
     return () => {
       useAudioManager.getState().stopAllAndCleanup();
@@ -118,15 +119,21 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     };
   }, []);
 
-  // FREQUÊNCIAS - usar apenas isPlaying como dependência
+  // ✅ FREQUÊNCIAS - Só audioManager.isPlaying
   useEffect(() => {
-    if (!audioManager.isPlaying) {
+    const isAudioPlaying = audioManager.isPlaying;
+
+    if (!isAudioPlaying) {
       setFrequencyData([]);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       return;
     }
 
     const updateFrequency = () => {
-      const data = useAudioManager.getState().getFrequencyData();
+      const data = audioManager.getFrequencyData();
       if (data.length > 0) setFrequencyData(data);
       animationRef.current = requestAnimationFrame(updateFrequency);
     };
@@ -193,6 +200,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     else if (greeting) speak(greeting, MODULE_CONFIG.type);
   }, [isPlaying, stop, speak, greeting]);
 
+  // ✅ HANDLE BACK - Removido audioManager das dependências
   const handleBack = useCallback(async () => {
     useAudioManager.getState().stopAllAndCleanup();
     if (messages.length >= 2 && deviceFingerprint) {
