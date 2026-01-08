@@ -1,10 +1,9 @@
 /**
  * ============================================================
- * HealthModuleContainer.tsx - v5.0.0
+ * HealthModuleContainer.tsx - v5.4.0
  * ============================================================
  * Container INDEPENDENTE do módulo Saúde
- * - Autoplay GARANTIDO em 2 etapas
- * - Salva resumo ao sair
+ * CORREÇÃO: Adiciona salvamento no historyStore (addMessage)
  * ============================================================
  */
 
@@ -16,6 +15,7 @@ import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
+import { useHistoryStore } from "@/stores/historyStore"; // ✅ ADICIONADO
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,17 +35,13 @@ interface HealthModuleContainerProps {
   deviceId: string;
 }
 
-export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ 
-  onBack, 
-  onHistoryClick,
-  deviceId 
-}) => {
+export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
+  const { addMessage } = useHistoryStore(); // ✅ ADICIONADO
   const { config: pwaConfig } = useConfigPWA();
   const { userName } = usePWAVoiceStore();
 
-  // Estado LOCAL do container - INDEPENDENTE
   const [greeting, setGreeting] = useState<string | null>(null);
   const [isGreetingReady, setIsGreetingReady] = useState(false);
   const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
@@ -53,7 +49,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
-  
+
   const animationRef = useRef<number | null>(null);
 
   // ============================================================
@@ -65,7 +61,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
     const fetchGreeting = async () => {
       try {
         console.log("[HealthContainer] Buscando saudação contextual...");
-        
+
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
             deviceId,
@@ -103,13 +99,13 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
 
     console.log("[HealthContainer] Executando autoplay");
     setHasPlayedAutoplay(true);
-    
+
     speak(greeting, MODULE_CONFIG.moduleType).catch((err) => {
       console.warn("[HealthContainer] Autoplay bloqueado:", err);
     });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // Captura de frequência - usar apenas isPlaying como dependência
+  // Captura de frequência
   useEffect(() => {
     if (!audioManager.isPlaying) {
       setFrequencyData([]);
@@ -128,7 +124,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
     };
   }, [audioManager.isPlaying]);
 
-  // Cleanup - array vazio, usar getState()
+  // Cleanup
   useEffect(() => {
     return () => {
       useAudioManager.getState().stopAllAndCleanup();
@@ -141,22 +137,22 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
   // ============================================================
   const handleBack = useCallback(async () => {
     useAudioManager.getState().stopAllAndCleanup();
-    
+
     if (messages.length >= 2) {
       try {
         console.log("[HealthContainer] Salvando resumo...");
         await supabase.functions.invoke("generate-conversation-summary", {
-          body: { 
-            deviceId, 
-            moduleType: MODULE_CONFIG.moduleType, 
-            messages: messages.slice(-6) 
-          }
+          body: {
+            deviceId,
+            moduleType: MODULE_CONFIG.moduleType,
+            messages: messages.slice(-6),
+          },
         });
       } catch (err) {
         console.warn("[HealthContainer] Erro ao salvar resumo:", err);
       }
     }
-    
+
     onBack();
   }, [messages, deviceId, onBack]);
 
@@ -186,8 +182,17 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
 
-      // Adicionar mensagem do usuário
-      setMessages(prev => [...prev, { role: "user", content: userText }]);
+      // ✅ Salvar mensagem do usuário no estado local
+      setMessages((prev) => [...prev, { role: "user", content: userText }]);
+
+      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      addMessage(MODULE_CONFIG.moduleType, {
+        role: "user",
+        title: userText,
+        audioUrl: "",
+        duration: 0,
+        transcription: userText,
+      });
 
       const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
         body: {
@@ -204,13 +209,22 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 
-      // Adicionar resposta do assistente
-      setMessages(prev => [...prev, { role: "assistant", content: aiResponse }]);
+      // ✅ Salvar resposta do assistente no estado local
+      setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
+
+      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      addMessage(MODULE_CONFIG.moduleType, {
+        role: "assistant",
+        title: aiResponse,
+        audioUrl: "",
+        duration: 0,
+        transcription: aiResponse,
+      });
 
       await speak(aiResponse, MODULE_CONFIG.moduleType);
     } catch (error: any) {
       console.error("[HealthContainer] ERRO:", error);
-      
+
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
       if (error.message?.includes("AUDIO_TOO_SHORT")) {
         errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
@@ -232,12 +246,19 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
     }
   };
 
-  const visualizerState = isRecording ? "recording" : isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
+  const visualizerState = isRecording
+    ? "recording"
+    : isProcessing
+      ? "loading"
+      : isLoading
+        ? "loading"
+        : isPlaying
+          ? "playing"
+          : "idle";
   const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-3 pt-12">
         <motion.button
           onClick={handleBack}
@@ -252,7 +273,11 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
             className={`w-10 h-10 rounded-full ${MODULE_CONFIG.bgColor} flex items-center justify-center`}
             animate={{
               boxShadow: isPlaying
-                ? [`0 0 0 0 ${MODULE_CONFIG.color}00`, `0 0 20px 5px ${MODULE_CONFIG.color}66`, `0 0 0 0 ${MODULE_CONFIG.color}00`]
+                ? [
+                    `0 0 0 0 ${MODULE_CONFIG.color}00`,
+                    `0 0 20px 5px ${MODULE_CONFIG.color}66`,
+                    `0 0 0 0 ${MODULE_CONFIG.color}00`,
+                  ]
                 : "none",
             }}
             transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0 }}
@@ -271,7 +296,6 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
         </motion.button>
       </div>
 
-      {/* CONTEÚDO */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
         <SpectrumAnalyzer
           state={visualizerState}
