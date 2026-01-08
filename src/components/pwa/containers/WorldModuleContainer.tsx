@@ -2,8 +2,8 @@
  * ============================================================
  * WorldModuleContainer.tsx - Container INDEPENDENTE para Mundo
  * ============================================================
- * Versão: 5.1.0 - 2026-01-08
- * CORREÇÃO: Removido audioManager das dependências de useEffect
+ * Versão: 5.2.0 - 2026-01-08
+ * CORREÇÃO: deviceId agora é recebido via PROP (igual ao Health)
  * ============================================================
  */
 
@@ -30,106 +30,84 @@ const MODULE_CONFIG = {
 interface WorldModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
-  deviceId: string;
+  deviceId: string; // ✅ AGORA RECEBE VIA PROP
 }
 
-export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
+export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
+  onBack,
+  onHistoryClick,
+  deviceId, // ✅ USANDO PROP
+}) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
   const { userName } = usePWAVoiceStore();
 
-  const [greeting, setGreeting] = useState<string>("");
+  const [greeting, setGreeting] = useState<string | null>(null);
   const [isGreetingReady, setIsGreetingReady] = useState(false);
   const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
-  const [isFirstInteraction, setIsFirstInteraction] = useState(true);
-
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
-  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
   const animationRef = useRef<number | null>(null);
-  const mountedRef = useRef(true);
 
-  // BUSCAR CONTEXTO
+  // ============================================================
+  // ETAPA 1: Buscar greeting com FALLBACK GARANTIDO
+  // ============================================================
   useEffect(() => {
-    mountedRef.current = true;
+    if (isGreetingReady) return;
 
-    const fetchModuleContext = async () => {
-      console.log(`[World] Iniciando busca de contexto...`);
-
+    const fetchGreeting = async () => {
       try {
+        console.log("[WorldContainer] Buscando saudação contextual...");
+
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
-            deviceId: deviceId || `anonymous-${Date.now()}`,
+            deviceId, // ✅ USANDO PROP
             moduleType: MODULE_CONFIG.type,
             action: "getGreeting",
           },
         });
 
-        if (!mountedRef.current) return;
-
-        if (error || !data?.greeting) {
-          const fallbackGreeting = MODULE_CONFIG.defaultWelcome.replace("[name]", userName || "");
-          setGreeting(fallbackGreeting);
-          setIsFirstInteraction(true);
-        } else {
+        if (error) {
+          console.warn("[WorldContainer] Erro:", error);
+          setGreeting(MODULE_CONFIG.defaultWelcome);
+        } else if (data?.greeting) {
+          console.log("[WorldContainer] Saudação contextual recebida");
           setGreeting(data.greeting);
-          setIsFirstInteraction(data.isFirstInteraction);
+        } else {
+          setGreeting(MODULE_CONFIG.defaultWelcome.replace("[name]", userName || ""));
         }
       } catch (err) {
-        if (mountedRef.current) {
-          const fallbackGreeting = MODULE_CONFIG.defaultWelcome.replace("[name]", userName || "");
-          setGreeting(fallbackGreeting);
-          setIsFirstInteraction(true);
-        }
+        console.warn("[WorldContainer] Exceção:", err);
+        setGreeting(MODULE_CONFIG.defaultWelcome);
       } finally {
-        if (mountedRef.current) {
-          setIsGreetingReady(true);
-        }
+        setIsGreetingReady(true);
       }
     };
 
-    fetchModuleContext();
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [deviceId, userName]);
+    fetchGreeting();
+  }, [deviceId, userName, isGreetingReady]);
 
-  // AUTOPLAY GARANTIDO
+  // ============================================================
+  // ETAPA 2: Autoplay SÓ quando greeting está pronto
+  // ============================================================
   useEffect(() => {
     if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
 
-    console.log("[World] Executando autoplay");
+    console.log("[WorldContainer] Executando autoplay");
     setHasPlayedAutoplay(true);
 
-    const timer = setTimeout(() => {
-      if (mountedRef.current) {
-        speak(greeting, MODULE_CONFIG.type).catch(console.warn);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
+    speak(greeting, MODULE_CONFIG.type).catch((err) => {
+      console.warn("[WorldContainer] Autoplay bloqueado:", err);
+    });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // ✅ CLEANUP - Array vazio, usa getState()
+  // ✅ Captura de frequência - SÓ audioManager.isPlaying
   useEffect(() => {
-    return () => {
-      useAudioManager.getState().stopAllAndCleanup();
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, []);
-
-  // ✅ FREQUÊNCIAS - Só audioManager.isPlaying
-  useEffect(() => {
-    const isAudioPlaying = audioManager.isPlaying;
-
-    if (!isAudioPlaying) {
+    if (!audioManager.isPlaying) {
       setFrequencyData([]);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
       return;
     }
 
@@ -145,83 +123,118 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     };
   }, [audioManager.isPlaying]);
 
-  // ÁUDIO CAPTURE
-  const handleAudioCapture = useCallback(
-    async (audioBlob: Blob) => {
-      setIsProcessing(true);
+  // ✅ Cleanup - array vazio
+  useEffect(() => {
+    return () => {
+      useAudioManager.getState().stopAllAndCleanup();
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
 
-      try {
-        if (!audioBlob || audioBlob.size < 1000) throw new Error("AUDIO_TOO_SHORT");
-
-        const arrayBuffer = await audioBlob.arrayBuffer();
-        const base64 = btoa(new Uint8Array(arrayBuffer).reduce((d, b) => d + String.fromCharCode(b), ""));
-
-        let mimeType = audioBlob.type || (/iPad|iPhone|iPod/.test(navigator.userAgent) ? "audio/mp4" : "audio/webm");
-
-        const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
-          body: { audio: base64, mimeType },
-        });
-
-        if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
-        const userText = sttData?.text;
-        if (!userText?.trim()) throw new Error("STT_EMPTY");
-
-        setMessages((prev) => [...prev, { role: "user", content: userText }]);
-
-        const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
-          body: {
-            message: userText,
-            pwaMode: true,
-            chatType: MODULE_CONFIG.type,
-            agentSlug: MODULE_CONFIG.type,
-            deviceId: deviceId || undefined,
-          },
-        });
-
-        if (chatError) throw new Error(`CHAT_ERROR: ${chatError.message}`);
-        const aiResponse = chatData?.response || chatData?.message || chatData?.text;
-        if (!aiResponse) throw new Error("CHAT_EMPTY");
-
-        setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
-        await speak(aiResponse, MODULE_CONFIG.type);
-      } catch (error: any) {
-        let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
-        if (error.message?.includes("AUDIO_TOO_SHORT")) errorMessage = "A gravação foi muito curta.";
-        else if (error.message?.includes("STT")) errorMessage = "Não consegui processar o áudio.";
-        await speak(errorMessage, MODULE_CONFIG.type);
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [deviceId, speak],
-  );
-
-  const handlePlayClick = useCallback(() => {
-    if (isPlaying) stop();
-    else if (greeting) speak(greeting, MODULE_CONFIG.type);
-  }, [isPlaying, stop, speak, greeting]);
-
-  // ✅ HANDLE BACK - Removido audioManager das dependências
+  // ============================================================
+  // SALVAR RESUMO AO SAIR
+  // ============================================================
   const handleBack = useCallback(async () => {
     useAudioManager.getState().stopAllAndCleanup();
-    if (messages.length >= 2 && deviceId) {
+
+    if (messages.length >= 2) {
       try {
+        console.log("[WorldContainer] Salvando resumo...");
         await supabase.functions.invoke("generate-conversation-summary", {
-          body: { deviceId: deviceId, moduleType: MODULE_CONFIG.type, messages: messages.slice(-6) },
+          body: {
+            deviceId, // ✅ USANDO PROP
+            moduleType: MODULE_CONFIG.type,
+            messages: messages.slice(-6),
+          },
         });
-      } catch {}
+      } catch (err) {
+        console.warn("[WorldContainer] Erro ao salvar resumo:", err);
+      }
     }
+
     onBack();
   }, [messages, deviceId, onBack]);
 
+  // Handler de áudio
+  const handleAudioCapture = async (audioBlob: Blob) => {
+    setIsProcessing(true);
+
+    try {
+      if (!audioBlob || audioBlob.size < 1000) {
+        throw new Error("AUDIO_TOO_SHORT");
+      }
+
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+
+      let mimeType = audioBlob.type || "audio/webm";
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        mimeType = "audio/mp4";
+      }
+
+      const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
+        body: { audio: base64, mimeType },
+      });
+
+      if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
+
+      const userText = sttData?.text;
+      if (!userText?.trim()) throw new Error("STT_EMPTY");
+
+      setMessages((prev) => [...prev, { role: "user", content: userText }]);
+
+      const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
+        body: {
+          message: userText,
+          pwaMode: true,
+          chatType: MODULE_CONFIG.type,
+          agentSlug: MODULE_CONFIG.type,
+          deviceId, // ✅ USANDO PROP
+        },
+      });
+
+      if (chatError) throw new Error(`CHAT_ERROR: ${chatError.message}`);
+
+      const aiResponse = chatData?.response || chatData?.message || chatData?.text;
+      if (!aiResponse) throw new Error("CHAT_EMPTY");
+
+      setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
+
+      await speak(aiResponse, MODULE_CONFIG.type);
+    } catch (error: any) {
+      console.error("[WorldContainer] ERRO:", error);
+
+      let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
+      if (error.message?.includes("AUDIO_TOO_SHORT")) {
+        errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
+      } else if (error.message?.includes("STT_EMPTY")) {
+        errorMessage = "Não entendi o que você disse. Pode repetir?";
+      }
+
+      await speak(errorMessage, MODULE_CONFIG.type);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePlayClick = () => {
+    if (isPlaying) {
+      stop();
+    } else if (greeting) {
+      speak(greeting, MODULE_CONFIG.type);
+    }
+  };
+
   const visualizerState = isRecording
     ? "recording"
-    : isProcessing || isLoading
+    : isProcessing
       ? "loading"
-      : isPlaying
-        ? "playing"
-        : "idle";
-  const buttonState = isProcessing || isLoading ? "loading" : isPlaying ? "playing" : "idle";
+      : isLoading
+        ? "loading"
+        : isPlaying
+          ? "playing"
+          : "idle";
+  const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
@@ -233,6 +246,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
         >
           <ArrowLeft className="w-5 h-5 text-white" />
         </motion.button>
+
         <div className="flex items-center gap-3">
           <motion.div
             className={`w-10 h-10 rounded-full ${MODULE_CONFIG.bgColor} flex items-center justify-center`}
@@ -251,6 +265,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
           </motion.div>
           <span className="text-lg font-semibold text-white">{MODULE_CONFIG.name}</span>
         </div>
+
         <motion.button
           onClick={onHistoryClick}
           className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/10"
@@ -269,6 +284,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
           height={120}
           width={280}
         />
+
         <PlayButton
           state={buttonState}
           onClick={handlePlayClick}
@@ -276,6 +292,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
           size="lg"
           primaryColor={MODULE_CONFIG.color}
         />
+
         <ToggleMicrophoneButton
           onAudioCapture={handleAudioCapture}
           disabled={isLoading}
@@ -287,16 +304,6 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
           maxDurationSeconds={60}
         />
       </div>
-
-      {!isGreetingReady && (
-        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-          <motion.div
-            className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-      )}
     </div>
   );
 };
