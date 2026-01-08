@@ -10,6 +10,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 interface CheckBanPayload {
   deviceFingerprint: string;
   userEmail?: string;
+  userId?: string;
 }
 
 serve(async (req) => {
@@ -66,9 +67,12 @@ serve(async (req) => {
     }
 
     const payload: CheckBanPayload = await req.json();
-    const { deviceFingerprint, userEmail } = payload;
+    const { deviceFingerprint, userEmail, userId } = payload;
 
     console.log(`Checking ban status for fingerprint: ${deviceFingerprint?.substring(0, 16)}...`);
+    if (userId) {
+      console.log(`  User ID provided: ${userId}`);
+    }
 
     // ✅ VERIFICAÇÃO #1: IP na security_whitelist
     if (clientIP) {
@@ -120,6 +124,36 @@ serve(async (req) => {
               whitelistEntry: {
                 name: deviceWhitelistEntry.user_name,
                 description: deviceWhitelistEntry.description,
+              },
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200,
+            }
+          );
+        }
+      }
+    }
+
+    // ✅ VERIFICAÇÃO #3: User ID na security_whitelist
+    if (userId) {
+      const { data: userWhitelistEntry } = await supabase
+        .from("security_whitelist")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (userWhitelistEntry) {
+        if (!userWhitelistEntry.expires_at || new Date(userWhitelistEntry.expires_at) > new Date()) {
+          console.log(`✅ User ${userId} is in security whitelist`);
+          return new Response(
+            JSON.stringify({
+              isBanned: false,
+              whitelisted: true,
+              whitelistEntry: {
+                name: userWhitelistEntry.user_name,
+                description: userWhitelistEntry.description,
               },
             }),
             {

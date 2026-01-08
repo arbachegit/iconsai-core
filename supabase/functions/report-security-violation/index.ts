@@ -321,6 +321,23 @@ serve(async (req) => {
       }
     }
 
+    // 1.6. Check User ID Whitelist
+    if (!isIPWhitelisted && userId) {
+      const { data: userWhitelistEntry } = await supabase
+        .from("security_whitelist")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (userWhitelistEntry) {
+        if (!userWhitelistEntry.expires_at || new Date(userWhitelistEntry.expires_at) > new Date()) {
+          isIPWhitelisted = true;
+          console.log(`[WHITELIST] User ${userId} is whitelisted by user_id`);
+        }
+      }
+    }
+
     // 2. Fetch Geolocation Data
     const geoData = await fetchGeoData(clientIP);
     if (geoData) {
