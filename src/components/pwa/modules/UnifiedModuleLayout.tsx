@@ -84,7 +84,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ module
 
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { stopAllAndCleanup, getFrequencyData } = audioManager;
+  // v5.1.0: NÃO desestruturar funções - causa loop infinito
   const { config: pwaConfig } = useConfigPWA();
   const { userName, deviceFingerprint } = usePWAVoiceStore();
 
@@ -182,25 +182,31 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ module
     };
   }, [speak, moduleType, pwaConfig, config, userName, contextualGreeting, isFirstInteraction]);
 
-  // Cleanup ao desmontar
+  // v5.1.0: Cleanup ao desmontar - deps: [] (array vazio)
   useEffect(() => {
     return () => {
-      stopAllAndCleanup();
+      useAudioManager.getState().stopAllAndCleanup();
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [stopAllAndCleanup]);
+  }, []);
 
-  // Capturar frequências do TTS
+  // v5.1.0: Capturar frequências - deps: [audioManager.isPlaying] (primitivo estável)
   useEffect(() => {
-    if (!isPlaying) {
+    const isAudioPlaying = audioManager.isPlaying;
+
+    if (!isAudioPlaying) {
       setFrequencyData([]);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       return;
     }
 
     const updateFrequency = () => {
-      const data = getFrequencyData();
+      const data = audioManager.getFrequencyData();
       if (data.length > 0) {
         setFrequencyData(data);
       }
@@ -215,7 +221,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ module
         animationRef.current = null;
       }
     };
-  }, [isPlaying, getFrequencyData]);
+  }, [audioManager.isPlaying]);
 
   // Handler para captura de áudio
   const handleAudioCapture = async (audioBlob: Blob) => {
@@ -307,8 +313,9 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ module
     }
   };
 
+  // v5.1.0: handleBack usa getState() diretamente
   const handleBack = () => {
-    stopAllAndCleanup();
+    useAudioManager.getState().stopAllAndCleanup();
     onBack();
   };
 

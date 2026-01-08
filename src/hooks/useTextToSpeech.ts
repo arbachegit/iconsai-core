@@ -41,6 +41,7 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
   // Usar o AudioManager global
   const audioManager = useAudioManager();
 
+  // v5.1.0: Remover audioManager das deps - usar getState() dentro
   const speak = useCallback(async (text: string, source: string = "default") => {
     if (!text.trim()) return;
     
@@ -77,30 +78,31 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
       
       setLocalLoading(false);
       
-      // USAR AudioManager global (para que apenas este áudio toque)
-      await audioManager.playAudio(idRef.current, audioUrl, source);
+      // v5.1.0: Usar getState() para evitar loop infinito
+      await useAudioManager.getState().playAudio(idRef.current, audioUrl, source);
 
     } catch (err) {
       console.error("TTS Error:", err);
       setError(err instanceof Error ? err.message : "Falha ao gerar fala");
       setLocalLoading(false);
     }
-  }, [voice, audioManager]);
+  }, [voice]);
 
+  // v5.1.0: Todas as funções usam getState() - deps: []
   const stop = useCallback(() => {
-    audioManager.stopAudio();
+    useAudioManager.getState().stopAudio();
     setIsPaused(false);
-  }, [audioManager]);
+  }, []);
 
   const pause = useCallback(() => {
-    audioManager.pauseAudio();
+    useAudioManager.getState().pauseAudio();
     setIsPaused(true);
-  }, [audioManager]);
+  }, []);
 
   const resume = useCallback(() => {
-    audioManager.resumeAudio();
+    useAudioManager.getState().resumeAudio();
     setIsPaused(false);
-  }, [audioManager]);
+  }, []);
 
   return {
     speak,
