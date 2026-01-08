@@ -1,6 +1,10 @@
 /**
- * PWAVoiceAssistant.tsx - v3.0.0 - 2026-01-08
- * CORREÇÕES: Autoplay, navegação, isolamento de contexto
+ * PWAVoiceAssistant.tsx - v3.1.0 - 2026-01-08
+ * 
+ * CORREÇÃO CRÍTICA v3.1.0:
+ * - HOME NÃO TOCA mensagem do módulo
+ * - Navegação IMEDIATA ao clicar no módulo
+ * - Módulo é responsável por sua própria saudação
  */
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -52,11 +56,9 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [lastSpokenText, setLastSpokenText] = useState<string | null>(null);
-  const [pendingModule, setPendingModule] = useState<Exclude<ModuleId, null> | null>(null);
-  const [isExplaining, setIsExplaining] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
 
-  // CORREÇÃO CRÍTICA: Controle rigoroso de autoplay
+  // Controle de autoplay
   const hasPlayedWelcome = useRef(false);
   const welcomeAttempted = useRef(false);
   const isNavigatingToModule = useRef(false);
@@ -130,9 +132,11 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     };
   }, [audioManager.isPlaying, audioManager]);
 
-  // AUTOPLAY HOME: APENAS se NÃO estiver navegando para módulo
+  // ============================================================
+  // AUTOPLAY HOME: Apenas boas-vindas genéricas
+  // ============================================================
   useEffect(() => {
-    // CORREÇÃO CRÍTICA: NÃO executar se estamos navegando para um módulo
+    // NÃO executar se estamos navegando para um módulo
     if (isNavigatingToModule.current) {
       console.log("[PWA] Autoplay HOME bloqueado - navegando para módulo");
       return;
@@ -143,14 +147,13 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
       !isConfigLoading && 
       !welcomeAttempted.current && 
       config.welcomeText &&
-      !pendingModule &&
-      !isExplaining
+      !activeModule
     ) {
       welcomeAttempted.current = true;
 
       const fetchContextualGreeting = async () => {
         // Verificar novamente antes de executar
-        if (isNavigatingToModule.current || pendingModule) {
+        if (isNavigatingToModule.current || activeModule) {
           console.log("[PWA] Autoplay cancelado - navegação em andamento");
           return;
         }
@@ -164,7 +167,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           });
 
           // Verificar novamente após fetch
-          if (isNavigatingToModule.current || pendingModule) {
+          if (isNavigatingToModule.current || activeModule) {
             console.log("[PWA] Autoplay cancelado após fetch");
             return;
           }
@@ -183,7 +186,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           }
         } catch (err) {
           // Verificar novamente antes do fallback
-          if (isNavigatingToModule.current || pendingModule) {
+          if (isNavigatingToModule.current || activeModule) {
             return;
           }
           
@@ -199,7 +202,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
       const timer = setTimeout(fetchContextualGreeting, 300);
       return () => clearTimeout(timer);
     }
-  }, [appState, isConfigLoading, deviceFingerprint, userName, speak, config.welcomeText, pendingModule, isExplaining]);
+  }, [appState, isConfigLoading, deviceFingerprint, userName, speak, config.welcomeText, activeModule]);
 
   const handleReplay = useCallback(() => {
     if (lastSpokenText) {
@@ -211,61 +214,39 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     setAppState("idle");
   };
 
-  // SELEÇÃO DE MÓDULO: Controle rigoroso de navegação
-  const handleModuleSelect = async (moduleId: Exclude<ModuleId, null>) => {
-    if (isExplaining || isNavigatingToModule.current) return;
+  // ============================================================
+  // SELEÇÃO DE MÓDULO: Navegação IMEDIATA (sem tocar áudio na HOME)
+  // ============================================================
+  const handleModuleSelect = (moduleId: Exclude<ModuleId, null>) => {
+    // Evitar cliques duplos
+    if (isNavigatingToModule.current) {
+      console.log("[PWA] Navegação já em andamento, ignorando");
+      return;
+    }
     
     console.log("[PWA] Navegando para módulo:", moduleId);
     
-    // CORREÇÃO CRÍTICA: Marcar que estamos navegando ANTES de tudo
+    // CRÍTICO: Marcar navegação ANTES de qualquer ação
     isNavigatingToModule.current = true;
     
     // Parar QUALQUER áudio atual IMEDIATAMENTE
     stop();
     audioManager.stopAllAndCleanup();
     
-    setPendingModule(moduleId);
-    setIsExplaining(true);
+    // CORREÇÃO v3.1.0: Navegar IMEDIATAMENTE para o módulo
+    // NÃO tocar nenhum áudio na HOME
+    // O módulo será responsável por tocar sua própria saudação
+    setActiveModule(moduleId);
     
-    const welcomeTexts: Record<string, string> = {
-      help: config.helpWelcomeText || "",
-      world: config.worldWelcomeText || "",
-      health: config.healthWelcomeText || "",
-      ideas: config.ideasWelcomeText || "",
-    };
-    
-    const welcomeText = welcomeTexts[moduleId] || "";
-    const greeting = welcomeText.replace("[name]", userName || "");
-    
-    if (greeting) {
-      setLastSpokenText(greeting);
-      try {
-        await speak(greeting);
-      } catch (err) {
-        console.warn("[PWA] Erro no welcome do módulo:", err);
-      }
-    }
+    // Resetar flag após pequeno delay
+    setTimeout(() => {
+      isNavigatingToModule.current = false;
+    }, 300);
   };
-  
-  // Navegar quando a explicação terminar
-  useEffect(() => {
-    if (pendingModule && isExplaining && !isPlaying && !isLoading) {
-      console.log("[PWA] Explicação concluída, navegando para:", pendingModule);
-      
-      usePWAVoiceStore.getState().setSkipWelcome(true);
-      
-      setActiveModule(pendingModule);
-      setPendingModule(null);
-      setIsExplaining(false);
-      
-      // Resetar flag de navegação após delay
-      setTimeout(() => {
-        isNavigatingToModule.current = false;
-      }, 500);
-    }
-  }, [pendingModule, isExplaining, isPlaying, isLoading, setActiveModule]);
 
-  // VOLTAR PARA HOME: Reset completo de estados
+  // ============================================================
+  // VOLTAR PARA HOME: Reset completo
+  // ============================================================
   const handleBackToHome = () => {
     console.log("[PWA] Voltando para HOME");
     
@@ -280,8 +261,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     setActiveModule(null);
     setAppState("idle");
     setPlayerState("idle");
-    setPendingModule(null);
-    setIsExplaining(false);
+    
+    // NÃO resetar welcomeAttempted - evita repetir o welcome da HOME
   };
   
   const handleOpenHistoryFromModule = () => {
@@ -375,6 +356,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
             />
           )}
 
+          {/* HOME - Apenas quando NÃO tem módulo ativo */}
           {(appState === "idle" || appState === "welcome") && !activeModule && (
             <motion.div
               key="home"
@@ -415,8 +397,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                 <ModuleSelector 
                   onSelect={handleModuleSelect} 
                   isPlaying={isPlaying} 
-                  disabled={isExplaining || isPlaying || isLoading}
-                  pendingModule={pendingModule}
+                  disabled={isPlaying || isLoading}
                 />
               </motion.div>
               
@@ -431,7 +412,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
             </motion.div>
           )}
 
-          {appState === "module" && activeModule && (
+          {/* MÓDULO ATIVO */}
+          {activeModule && (
             <motion.div
               key="module"
               initial={{ opacity: 0, x: 20 }}
