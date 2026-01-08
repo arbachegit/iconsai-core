@@ -2,13 +2,8 @@
  * ============================================================
  * IdeasModuleContainer.tsx - Container INDEPENDENTE para Ideias
  * ============================================================
- * Versão: 5.0.0 - 2026-01-08
- *
- * PRINCÍPIOS:
- * - Container 100% INDEPENDENTE
- * - Autoplay GARANTIDO
- * - Resumo de conversa ao sair
- * - Sem dependência de outros módulos
+ * Versão: 5.1.0 - 2026-01-08
+ * CORREÇÃO: Removido audioManager das dependências de useEffect
  * ============================================================
  */
 
@@ -23,9 +18,6 @@ import { useAudioManager } from "@/stores/audioManagerStore";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
-// ============================================================
-// CONFIGURAÇÃO DO MÓDULO
-// ============================================================
 const MODULE_CONFIG = {
   type: "ideas" as const,
   name: "Ideias",
@@ -33,14 +25,6 @@ const MODULE_CONFIG = {
   bgColor: "bg-amber-500/20",
   defaultWelcome:
     "Olá! Sou seu consultor de ideias usando a técnica do Advogado do Diabo. Vou te ajudar a fortalecer suas ideias através de questionamentos duros. O que você está planejando?",
-  contextualPrompts: {
-    returning: {
-      recent:
-        "de volta tão cedo! Você estava trabalhando em {topic}. Conseguiu avançar desde a última vez? Me conta o que aconteceu.",
-      days: "boa! Lembro que você estava desenvolvendo {topic}. Conseguiu implementar alguma coisa? Encontrou alguma solução?",
-      week: "há quanto tempo! Da última vez estávamos discutindo {topic}. Como foi? Conseguiu tirar do papel?",
-    },
-  },
 };
 
 interface IdeasModuleContainerProps {
@@ -53,28 +37,19 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
   const audioManager = useAudioManager();
   const { userName, deviceFingerprint } = usePWAVoiceStore();
 
-  // ============================================================
-  // ESTADOS LOCAIS (100% independentes)
-  // ============================================================
   const [greeting, setGreeting] = useState<string>("");
   const [isGreetingReady, setIsGreetingReady] = useState(false);
   const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
-  const [isFirstInteraction, setIsFirstInteraction] = useState(true);
-  const [lastTopic, setLastTopic] = useState<string | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
-
-  // Histórico de mensagens DESTE módulo apenas
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
   const animationRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
 
-  // ============================================================
-  // ETAPA 1: BUSCAR CONTEXTO DO MÓDULO (apenas ideas)
-  // ============================================================
+  // BUSCAR CONTEXTO
   useEffect(() => {
     mountedRef.current = true;
 
@@ -92,30 +67,19 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
 
         if (!mountedRef.current) return;
 
-        if (error) {
+        if (error || !data?.greeting) {
           console.warn("[Ideas] Erro ao buscar contexto:", error);
           const fallbackGreeting = MODULE_CONFIG.defaultWelcome.replace("[name]", userName || "");
           setGreeting(fallbackGreeting);
-          setIsFirstInteraction(true);
-        } else if (data?.greeting) {
-          console.log("[Ideas] Contexto recebido:", {
-            hasContext: data.hasContext,
-            isFirst: data.isFirstInteraction,
-          });
-          setGreeting(data.greeting);
-          setIsFirstInteraction(data.isFirstInteraction);
-          setLastTopic(data.lastTopic || null);
         } else {
-          const fallbackGreeting = MODULE_CONFIG.defaultWelcome.replace("[name]", userName || "");
-          setGreeting(fallbackGreeting);
-          setIsFirstInteraction(true);
+          console.log("[Ideas] Contexto recebido:", { hasContext: data.hasContext, isFirst: data.isFirstInteraction });
+          setGreeting(data.greeting);
         }
       } catch (err) {
         console.error("[Ideas] Exceção ao buscar contexto:", err);
         if (mountedRef.current) {
           const fallbackGreeting = MODULE_CONFIG.defaultWelcome.replace("[name]", userName || "");
           setGreeting(fallbackGreeting);
-          setIsFirstInteraction(true);
         }
       } finally {
         if (mountedRef.current) {
@@ -126,19 +90,14 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
     };
 
     fetchModuleContext();
-
     return () => {
       mountedRef.current = false;
     };
   }, [deviceFingerprint, userName]);
 
-  // ============================================================
-  // ETAPA 2: AUTOPLAY GARANTIDO
-  // ============================================================
+  // AUTOPLAY GARANTIDO
   useEffect(() => {
-    if (!isGreetingReady || hasPlayedAutoplay || !greeting) {
-      return;
-    }
+    if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
 
     console.log("[Ideas] Executando autoplay com greeting:", greeting.substring(0, 50) + "...");
     setHasPlayedAutoplay(true);
@@ -154,73 +113,57 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
     return () => clearTimeout(timer);
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // ============================================================
-  // CLEANUP AO DESMONTAR - array vazio, usar getState()
-  // ============================================================
+  // ✅ CLEANUP - Array vazio, usa getState()
   useEffect(() => {
     return () => {
       useAudioManager.getState().stopAllAndCleanup();
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, []);
 
-  // ============================================================
-  // CAPTURAR FREQUÊNCIAS DO TTS - usar apenas isPlaying
-  // ============================================================
+  // ✅ FREQUÊNCIAS - Só audioManager.isPlaying
   useEffect(() => {
-    if (!audioManager.isPlaying) {
+    const isAudioPlaying = audioManager.isPlaying;
+
+    if (!isAudioPlaying) {
       setFrequencyData([]);
-      return;
-    }
-
-    const updateFrequency = () => {
-      const data = useAudioManager.getState().getFrequencyData();
-      if (data.length > 0) {
-        setFrequencyData(data);
-      }
-      animationRef.current = requestAnimationFrame(updateFrequency);
-    };
-
-    updateFrequency();
-
-    return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
       }
+      return;
+    }
+
+    const updateFrequency = () => {
+      const data = audioManager.getFrequencyData();
+      if (data.length > 0) setFrequencyData(data);
+      animationRef.current = requestAnimationFrame(updateFrequency);
+    };
+
+    updateFrequency();
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [audioManager.isPlaying]);
 
-  // ============================================================
-  // HANDLER PARA CAPTURA DE ÁUDIO
-  // ============================================================
+  // ÁUDIO CAPTURE
   const handleAudioCapture = useCallback(
     async (audioBlob: Blob) => {
       setIsProcessing(true);
 
       try {
-        if (!audioBlob || audioBlob.size < 1000) {
-          throw new Error("AUDIO_TOO_SHORT");
-        }
+        if (!audioBlob || audioBlob.size < 1000) throw new Error("AUDIO_TOO_SHORT");
 
         const arrayBuffer = await audioBlob.arrayBuffer();
-        const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+        const base64 = btoa(new Uint8Array(arrayBuffer).reduce((d, b) => d + String.fromCharCode(b), ""));
 
-        let mimeType = audioBlob.type;
-        if (!mimeType || mimeType === "") {
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-          mimeType = isIOS || isSafari ? "audio/mp4" : "audio/webm";
-        }
+        let mimeType = audioBlob.type || (/iPad|iPhone|iPod/.test(navigator.userAgent) ? "audio/mp4" : "audio/webm");
 
         const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
           body: { audio: base64, mimeType },
         });
 
         if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
-
         const userText = sttData?.text;
         if (!userText?.trim()) throw new Error("STT_EMPTY");
 
@@ -237,28 +180,16 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         });
 
         if (chatError) throw new Error(`CHAT_ERROR: ${chatError.message}`);
-
         const aiResponse = chatData?.response || chatData?.message || chatData?.text;
         if (!aiResponse) throw new Error("CHAT_EMPTY");
 
         setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
-
         await speak(aiResponse, MODULE_CONFIG.type);
       } catch (error: any) {
         console.error("[Ideas] Erro:", error);
-
         let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
-
-        if (error.message?.includes("AUDIO_TOO_SHORT")) {
-          errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
-        } else if (error.message?.includes("STT_ERROR")) {
-          errorMessage = "Não consegui processar o áudio.";
-        } else if (error.message?.includes("STT_EMPTY")) {
-          errorMessage = "Não entendi o que você disse. Pode repetir?";
-        } else if (error.message?.includes("CHAT_ERROR")) {
-          errorMessage = "O serviço está temporariamente indisponível.";
-        }
-
+        if (error.message?.includes("AUDIO_TOO_SHORT")) errorMessage = "A gravação foi muito curta.";
+        else if (error.message?.includes("STT")) errorMessage = "Não consegui processar o áudio.";
         await speak(errorMessage, MODULE_CONFIG.type);
       } finally {
         setIsProcessing(false);
@@ -268,25 +199,21 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
   );
 
   const handlePlayClick = useCallback(() => {
-    if (isPlaying) {
-      stop();
-    } else if (greeting) {
-      speak(greeting, MODULE_CONFIG.type);
-    }
+    if (isPlaying) stop();
+    else if (greeting) speak(greeting, MODULE_CONFIG.type);
   }, [isPlaying, stop, speak, greeting]);
 
+  // ✅ HANDLE BACK - Removido audioManager das dependências
   const handleBack = useCallback(async () => {
     useAudioManager.getState().stopAllAndCleanup();
 
     if (messages.length >= 2 && deviceFingerprint) {
       try {
-        const recentMessages = messages.slice(-6);
-
         await supabase.functions.invoke("generate-conversation-summary", {
           body: {
             deviceId: deviceFingerprint,
             moduleType: MODULE_CONFIG.type,
-            messages: recentMessages,
+            messages: messages.slice(-6),
           },
         });
         console.log("[Ideas] Resumo da conversa salvo");
@@ -300,19 +227,15 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
 
   const visualizerState = isRecording
     ? "recording"
-    : isProcessing
+    : isProcessing || isLoading
       ? "loading"
-      : isLoading
-        ? "loading"
-        : isPlaying
-          ? "playing"
-          : "idle";
-
-  const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
+      : isPlaying
+        ? "playing"
+        : "idle";
+  const buttonState = isProcessing || isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-3 pt-12">
         <motion.button
           onClick={handleBack}
@@ -321,7 +244,6 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         >
           <ArrowLeft className="w-5 h-5 text-white" />
         </motion.button>
-
         <div className="flex items-center gap-3">
           <motion.div
             className={`w-10 h-10 rounded-full ${MODULE_CONFIG.bgColor} flex items-center justify-center`}
@@ -340,7 +262,6 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
           </motion.div>
           <span className="text-lg font-semibold text-white">{MODULE_CONFIG.name}</span>
         </div>
-
         <motion.button
           onClick={onHistoryClick}
           className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/10"
@@ -350,7 +271,6 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         </motion.button>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
         <SpectrumAnalyzer
           state={visualizerState}
@@ -360,7 +280,6 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
           height={120}
           width={280}
         />
-
         <PlayButton
           state={buttonState}
           onClick={handlePlayClick}
@@ -368,7 +287,6 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
           size="lg"
           primaryColor={MODULE_CONFIG.color}
         />
-
         <ToggleMicrophoneButton
           onAudioCapture={handleAudioCapture}
           disabled={isLoading}
