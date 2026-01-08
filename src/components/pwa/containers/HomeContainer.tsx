@@ -53,8 +53,9 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   useEffect(() => {
     mountedRef.current = true;
 
-    // Aguardar config carregar
+    // Aguardar config E deviceId estarem prontos
     if (isConfigLoading) return;
+    if (!deviceId || deviceId === "") return;
 
     const fetchHomeGreeting = async () => {
       console.log("[HOME] Buscando saudação...");
