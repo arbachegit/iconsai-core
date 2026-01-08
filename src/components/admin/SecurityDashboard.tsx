@@ -408,17 +408,16 @@ export function SecurityDashboard() {
                   setUnbanningDevice(log.device_fingerprint);
                   
                   try {
-                    // Remover da tabela banned_devices
-                    const { error } = await supabase
-                      .from('banned_devices')
-                      .update({ 
-                        is_active: false, 
-                        unbanned_at: new Date().toISOString(),
-                        unban_reason: 'Removido manualmente pelo administrador via Dashboard'
-                      })
-                      .eq('device_fingerprint', log.device_fingerprint);
+                    // Usar edge function para remover banimento (bypassa RLS)
+                    const { data, error } = await supabase.functions.invoke('unban-device', {
+                      body: { 
+                        deviceFingerprint: log.device_fingerprint,
+                        reason: 'Removido manualmente pelo administrador via Dashboard'
+                      }
+                    });
                     
                     if (error) throw error;
+                    if (!data?.success) throw new Error(data?.error || 'Erro desconhecido');
                     
                     // ✅ Marcar como desbanido localmente
                     setUnbannedDevices(prev => new Set(prev).add(log.device_fingerprint));
@@ -433,7 +432,7 @@ export function SecurityDashboard() {
                   } catch (error) {
                     console.error('Erro ao remover banimento:', error);
                     toast.error('Erro ao remover banimento', {
-                      description: 'Tente novamente ou verifique os logs.'
+                      description: error instanceof Error ? error.message : 'Tente novamente ou verifique os logs.'
                     });
                   } finally {
                     setUnbanningDevice(null);
