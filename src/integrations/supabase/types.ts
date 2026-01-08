@@ -6355,6 +6355,29 @@ export type Database = {
           is_nullable: string
         }[]
       }
+      get_pwa_users_aggregated: {
+        Args: {
+          p_company?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort_column?: string
+          p_sort_direction?: string
+        }
+        Returns: {
+          company: string
+          company_source: string
+          device_id: string
+          last_activity: string
+          modules_used: string[]
+          total_count: number
+          total_sessions: number
+          user_email: string
+          user_name: string
+        }[]
+      }
       get_register_pwa_user_definition: {
         Args: never
         Returns: {

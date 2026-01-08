@@ -14,7 +14,9 @@ import type {
   PWAUsersFilters, 
   PWAUsersSortConfig, 
   AutocompleteItem, 
-  PWAModuleType 
+  PWAModuleType,
+  CompanySource,
+  KeyTopics
 } from '@/types/pwa-conversations';
 import { toast } from 'sonner';
 
@@ -39,16 +41,51 @@ export function usePWAConversations() {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Implementar busca real quando tabelas existirem
       console.log('[usePWAConversations] Buscando usuários com filtros:', filters);
       console.log('[usePWAConversations] Ordenação:', sortConfig);
       console.log('[usePWAConversations] Página:', currentPage, 'Tamanho:', pageSize);
       
-      // Placeholder - será substituído por query real
-      setUsers([]);
-      setTotalUsers(0);
+      const { data, error: rpcError } = await supabase.rpc('get_pwa_users_aggregated', {
+        p_search: filters.search || null,
+        p_company: filters.company || null,
+        p_date_from: filters.dateFrom || null,
+        p_date_to: filters.dateTo || null,
+        p_sort_column: sortConfig.column,
+        p_sort_direction: sortConfig.direction,
+        p_page_size: pageSize,
+        p_page: currentPage,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const mappedUsers: PWAUser[] = (data || []).map((row: {
+        device_id: string;
+        user_name: string | null;
+        user_email: string | null;
+        company: string | null;
+        company_source: string | null;
+        last_activity: string;
+        total_sessions: number;
+        modules_used: string[];
+        total_count: number;
+      }) => ({
+        device_id: row.device_id,
+        user_name: row.user_name,
+        user_email: row.user_email,
+        company: row.company,
+        company_source: (row.company_source as CompanySource) || 'undefined',
+        last_activity: row.last_activity,
+        total_sessions: Number(row.total_sessions),
+        modules_used: row.modules_used as PWAModuleType[],
+      }));
+
+      setUsers(mappedUsers);
+      setTotalUsers(data?.[0]?.total_count ?? 0);
+      
+      console.log('[usePWAConversations] Usuários carregados:', mappedUsers.length);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      console.error('[usePWAConversations] Erro ao buscar usuários:', err);
       setError(message);
       toast.error('Erro ao carregar conversas');
     } finally {
@@ -61,9 +98,64 @@ export function usePWAConversations() {
     try {
       console.log('[usePWAConversations] Buscando sessões para:', deviceId, 'módulo:', moduleType);
       
-      // TODO: Implementar busca real quando tabelas existirem
-      setSessions([]);
+      // 1. Buscar sessões
+      let sessionsQuery = supabase
+        .from('pwa_conversation_sessions')
+        .select('*')
+        .eq('device_id', deviceId)
+        .order('started_at', { ascending: false });
+      
+      if (moduleType) {
+        sessionsQuery = sessionsQuery.eq('module_type', moduleType);
+      }
+      
+      const { data: sessionsData, error: sessionsError } = await sessionsQuery;
+      if (sessionsError) throw sessionsError;
+      
+      // 2. Para cada sessão, buscar mensagens e resumo
+      const sessionsWithDetails: PWAConversationSession[] = await Promise.all(
+        (sessionsData || []).map(async (session) => {
+          // Buscar mensagens
+          const { data: messagesData } = await supabase
+            .from('pwa_conversation_messages')
+            .select('*')
+            .eq('session_id', session.id)
+            .order('timestamp', { ascending: true });
+          
+          // Buscar resumo (tabela: pwa_conv_summaries)
+          const { data: summaryData } = await supabase
+            .from('pwa_conv_summaries')
+            .select('*')
+            .eq('session_id', session.id)
+            .maybeSingle();
+          
+          // Mapear mensagens com tipos corretos
+          const mappedMessages = (messagesData || []).map((msg) => ({
+            ...msg,
+            role: msg.role as 'user' | 'assistant',
+            key_topics: msg.key_topics as unknown as KeyTopics,
+          }));
+          
+          // Mapear resumo com tipos corretos
+          const mappedSummary = summaryData ? {
+            ...summaryData,
+            key_topics: summaryData.key_topics as unknown as KeyTopics,
+          } : undefined;
+          
+          return {
+            ...session,
+            company_source: (session.company_source as CompanySource) || 'undefined',
+            module_type: session.module_type as PWAModuleType,
+            messages: mappedMessages,
+            summary: mappedSummary,
+          } as PWAConversationSession;
+        })
+      );
+      
+      setSessions(sessionsWithDetails);
+      console.log('[usePWAConversations] Sessões carregadas:', sessionsWithDetails.length);
     } catch (err: unknown) {
+      console.error('[usePWAConversations] Erro ao buscar sessões:', err);
       toast.error('Erro ao carregar sessões');
     } finally {
       setIsLoadingSessions(false);
@@ -77,11 +169,28 @@ export function usePWAConversations() {
     }
     
     try {
-      // TODO: Buscar do banco - global_taxonomy
       console.log('[usePWAConversations] Buscando taxonomias:', query);
-      setTaxonomySuggestions([]);
+      
+      const { data, error } = await supabase
+        .from('global_taxonomy')
+        .select('id, name, code')
+        .ilike('name', `${query}%`)
+        .eq('status', 'active')
+        .limit(10);
+      
+      if (error) throw error;
+      
+      const suggestions: AutocompleteItem[] = (data || []).map((item) => ({
+        value: item.code || item.name,
+        label: item.name,
+        category: 'taxonomy' as const,
+      }));
+      
+      setTaxonomySuggestions(suggestions);
+      console.log('[usePWAConversations] Taxonomias encontradas:', suggestions.length);
     } catch (err) {
-      console.error('Erro ao buscar taxonomias:', err);
+      console.error('[usePWAConversations] Erro ao buscar taxonomias:', err);
+      setTaxonomySuggestions([]);
     }
   }, []);
 
@@ -92,11 +201,53 @@ export function usePWAConversations() {
     }
     
     try {
-      // TODO: Buscar do banco - key_topics das mensagens
       console.log('[usePWAConversations] Buscando temas-chave:', query);
-      setKeyTopicsSuggestions([]);
+      
+      // Buscar mensagens com key_topics
+      const { data, error } = await supabase
+        .from('pwa_conversation_messages')
+        .select('key_topics')
+        .not('key_topics', 'is', null)
+        .limit(100);
+      
+      if (error) throw error;
+      
+      // Extrair e filtrar tópicos únicos
+      const topicsSet = new Map<string, AutocompleteItem>();
+      const lowerQuery = query.toLowerCase();
+      
+      (data || []).forEach((row) => {
+        const kt = row.key_topics as unknown as KeyTopics | null;
+        if (!kt) return;
+        
+        // People
+        kt.people?.forEach((p) => {
+          if (p.toLowerCase().startsWith(lowerQuery) && !topicsSet.has(p)) {
+            topicsSet.set(p, { value: p, label: p, category: 'person' });
+          }
+        });
+        
+        // Countries
+        kt.countries?.forEach((c) => {
+          if (c.toLowerCase().startsWith(lowerQuery) && !topicsSet.has(c)) {
+            topicsSet.set(c, { value: c, label: c, category: 'country' });
+          }
+        });
+        
+        // Organizations
+        kt.organizations?.forEach((o) => {
+          if (o.toLowerCase().startsWith(lowerQuery) && !topicsSet.has(o)) {
+            topicsSet.set(o, { value: o, label: o, category: 'organization' });
+          }
+        });
+      });
+      
+      const suggestions = Array.from(topicsSet.values()).slice(0, 10);
+      setKeyTopicsSuggestions(suggestions);
+      console.log('[usePWAConversations] Temas-chave encontrados:', suggestions.length);
     } catch (err) {
-      console.error('Erro ao buscar temas-chave:', err);
+      console.error('[usePWAConversations] Erro ao buscar temas-chave:', err);
+      setKeyTopicsSuggestions([]);
     }
   }, []);
 
