@@ -6328,6 +6328,7 @@ export type Database = {
           total_suggestions: number
         }[]
       }
+      get_module_type_from_slug: { Args: { slug: string }; Returns: string }
       get_onboarding_stats: {
         Args: never
         Returns: {
