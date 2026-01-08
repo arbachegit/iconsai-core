@@ -187,29 +187,8 @@ async function getModuleMemory(supabase: any, deviceId: string, moduleType: stri
   }
 }
 
-async function isFirstEverInteraction(supabase: any, deviceId: string): Promise<boolean> {
-  try {
-    const { data: session } = await supabase
-      .from("pwa_sessions")
-      .select("id")
-      .eq("device_id", deviceId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    
-    if (!session) return true;
-    
-    const { count } = await supabase
-      .from("pwa_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("session_id", session.id)
-      .eq("role", "user");
-    
-    return (count || 0) === 0;
-  } catch {
-    return true;
-  }
-}
+// Removed isFirstEverInteraction - now we use memory === null to determine first module interaction
+// This ensures each module is treated independently
 
 async function getUserName(supabase: any, deviceId: string): Promise<string | null> {
   try {
@@ -244,12 +223,13 @@ serve(async (req: Request) => {
     const supabase = getSupabaseAdmin();
     
     if (action === "getGreeting" || !action) {
-      const [memory, isFirst, userName] = await Promise.all([
+      const [memory, userName] = await Promise.all([
         getModuleMemory(supabase, deviceId, moduleType),
-        isFirstEverInteraction(supabase, deviceId),
         getUserName(supabase, deviceId),
       ]);
       
+      // isFirst is now determined by module-specific memory (not global)
+      const isFirst = !memory;
       const greeting = generateContextualGreeting(userName, moduleType, memory, isFirst);
       
       return new Response(
