@@ -1,45 +1,45 @@
 /**
  * ============================================================
- * IdeasModuleContainer.tsx - Container INDEPENDENTE para Ideias
+ * HealthModuleContainer.tsx - v5.4.0
  * ============================================================
- * Versão: 5.2.0 - 2026-01-08
- * CORREÇÃO: deviceId agora é recebido via PROP (igual ao Health)
+ * Container INDEPENDENTE do módulo Saúde
+ * CORREÇÃO: Adiciona salvamento no historyStore (addMessage)
  * ============================================================
  */
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { Lightbulb, ArrowLeft, History } from "lucide-react";
+import { Heart, ArrowLeft, History } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
+import { useHistoryStore } from "@/stores/historyStore"; // ✅ ADICIONADO
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
 const MODULE_CONFIG = {
-  type: "ideas" as const,
-  name: "Ideias",
-  color: "#F59E0B",
-  bgColor: "bg-amber-500/20",
-  defaultWelcome:
-    "Olá! Sou seu consultor de ideias usando a técnica do Advogado do Diabo. Vou te ajudar a fortalecer suas ideias através de questionamentos duros. O que você está planejando?",
+  name: "Saúde",
+  icon: Heart,
+  color: "#F43F5E",
+  bgColor: "bg-rose-500/20",
+  moduleType: "health" as const,
+  defaultWelcome: "Olá! Sou sua assistente de saúde. Como posso ajudar você hoje?",
 };
 
-interface IdeasModuleContainerProps {
+interface HealthModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
-  deviceId: string; // ✅ AGORA RECEBE VIA PROP
+  deviceId: string;
 }
 
-export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
-  onBack,
-  onHistoryClick,
-  deviceId, // ✅ USANDO PROP
-}) => {
+export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
+  const { addMessage } = useHistoryStore(); // ✅ ADICIONADO
+  const { config: pwaConfig } = useConfigPWA();
   const { userName } = usePWAVoiceStore();
 
   const [greeting, setGreeting] = useState<string | null>(null);
@@ -60,27 +60,28 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
 
     const fetchGreeting = async () => {
       try {
-        console.log("[IdeasContainer] Buscando saudação contextual...");
+        console.log("[HealthContainer] Buscando saudação contextual...");
 
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
-            deviceId, // ✅ USANDO PROP
-            moduleType: MODULE_CONFIG.type,
+            deviceId,
+            moduleType: MODULE_CONFIG.moduleType,
             action: "getGreeting",
           },
         });
 
         if (error) {
-          console.warn("[IdeasContainer] Erro:", error);
+          console.warn("[HealthContainer] Erro:", error);
           setGreeting(MODULE_CONFIG.defaultWelcome);
         } else if (data?.greeting) {
-          console.log("[IdeasContainer] Saudação contextual recebida");
+          console.log("[HealthContainer] Saudação contextual recebida");
           setGreeting(data.greeting);
         } else {
-          setGreeting(MODULE_CONFIG.defaultWelcome.replace("[name]", userName || ""));
+          const configWelcome = (pwaConfig as any)?.healthWelcomeText;
+          setGreeting(configWelcome?.replace("[name]", userName || "") || MODULE_CONFIG.defaultWelcome);
         }
       } catch (err) {
-        console.warn("[IdeasContainer] Exceção:", err);
+        console.warn("[HealthContainer] Exceção:", err);
         setGreeting(MODULE_CONFIG.defaultWelcome);
       } finally {
         setIsGreetingReady(true);
@@ -88,7 +89,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
     };
 
     fetchGreeting();
-  }, [deviceId, userName, isGreetingReady]);
+  }, [deviceId, pwaConfig, userName, isGreetingReady]);
 
   // ============================================================
   // ETAPA 2: Autoplay SÓ quando greeting está pronto
@@ -96,15 +97,15 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
   useEffect(() => {
     if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
 
-    console.log("[IdeasContainer] Executando autoplay");
+    console.log("[HealthContainer] Executando autoplay");
     setHasPlayedAutoplay(true);
 
-    speak(greeting, MODULE_CONFIG.type).catch((err) => {
-      console.warn("[IdeasContainer] Autoplay bloqueado:", err);
+    speak(greeting, MODULE_CONFIG.moduleType).catch((err) => {
+      console.warn("[HealthContainer] Autoplay bloqueado:", err);
     });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // ✅ Captura de frequência - SÓ audioManager.isPlaying
+  // Captura de frequência
   useEffect(() => {
     if (!audioManager.isPlaying) {
       setFrequencyData([]);
@@ -112,7 +113,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
     }
 
     const updateFrequency = () => {
-      const data = audioManager.getFrequencyData();
+      const data = useAudioManager.getState().getFrequencyData();
       if (data.length > 0) setFrequencyData(data);
       animationRef.current = requestAnimationFrame(updateFrequency);
     };
@@ -123,7 +124,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
     };
   }, [audioManager.isPlaying]);
 
-  // ✅ Cleanup - array vazio
+  // Cleanup
   useEffect(() => {
     return () => {
       useAudioManager.getState().stopAllAndCleanup();
@@ -139,16 +140,16 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
 
     if (messages.length >= 2) {
       try {
-        console.log("[IdeasContainer] Salvando resumo...");
+        console.log("[HealthContainer] Salvando resumo...");
         await supabase.functions.invoke("generate-conversation-summary", {
           body: {
-            deviceId, // ✅ USANDO PROP
-            moduleType: MODULE_CONFIG.type,
+            deviceId,
+            moduleType: MODULE_CONFIG.moduleType,
             messages: messages.slice(-6),
           },
         });
       } catch (err) {
-        console.warn("[IdeasContainer] Erro ao salvar resumo:", err);
+        console.warn("[HealthContainer] Erro ao salvar resumo:", err);
       }
     }
 
@@ -181,15 +182,25 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
 
+      // ✅ Salvar mensagem do usuário no estado local
       setMessages((prev) => [...prev, { role: "user", content: userText }]);
+
+      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      addMessage(MODULE_CONFIG.moduleType, {
+        role: "user",
+        title: userText,
+        audioUrl: "",
+        duration: 0,
+        transcription: userText,
+      });
 
       const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
         body: {
           message: userText,
           pwaMode: true,
-          chatType: MODULE_CONFIG.type,
-          agentSlug: MODULE_CONFIG.type,
-          deviceId, // ✅ USANDO PROP
+          chatType: MODULE_CONFIG.moduleType,
+          agentSlug: MODULE_CONFIG.moduleType,
+          deviceId,
         },
       });
 
@@ -198,11 +209,21 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 
+      // ✅ Salvar resposta do assistente no estado local
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
 
-      await speak(aiResponse, MODULE_CONFIG.type);
+      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      addMessage(MODULE_CONFIG.moduleType, {
+        role: "assistant",
+        title: aiResponse,
+        audioUrl: "",
+        duration: 0,
+        transcription: aiResponse,
+      });
+
+      await speak(aiResponse, MODULE_CONFIG.moduleType);
     } catch (error: any) {
-      console.error("[IdeasContainer] ERRO:", error);
+      console.error("[HealthContainer] ERRO:", error);
 
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
       if (error.message?.includes("AUDIO_TOO_SHORT")) {
@@ -211,7 +232,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
         errorMessage = "Não entendi o que você disse. Pode repetir?";
       }
 
-      await speak(errorMessage, MODULE_CONFIG.type);
+      await speak(errorMessage, MODULE_CONFIG.moduleType);
     } finally {
       setIsProcessing(false);
     }
@@ -221,7 +242,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
     if (isPlaying) {
       stop();
     } else if (greeting) {
-      speak(greeting, MODULE_CONFIG.type);
+      speak(greeting, MODULE_CONFIG.moduleType);
     }
   };
 
@@ -261,7 +282,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
             }}
             transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0 }}
           >
-            <Lightbulb className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
+            <Heart className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
           </motion.div>
           <span className="text-lg font-semibold text-white">{MODULE_CONFIG.name}</span>
         </div>
@@ -308,4 +329,4 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({
   );
 };
 
-export default IdeasModuleContainer;
+export default HealthModuleContainer;
