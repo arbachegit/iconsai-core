@@ -2,16 +2,8 @@
  * ============================================================
  * HomeContainer.tsx - Container INDEPENDENTE para HOME
  * ============================================================
- * Versão: 5.1.0 - 2026-01-08
- *
- * CORREÇÃO v5.1.0:
- * - Removido audioManager das dependências do useEffect (causava loop infinito)
- * - useEffect de cleanup agora usa array vazio []
- *
- * PRINCÍPIOS:
- * - Container 100% INDEPENDENTE
- * - Autoplay GARANTIDO
- * - NÃO interfere nos módulos
+ * Versão: 5.2.0-debug - 2026-01-08
+ * DEBUG: Logs extensivos para identificar falha no autoplay
  * ============================================================
  */
 
@@ -19,7 +11,6 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { VoicePlayerBox } from "../voice/VoicePlayerBox";
 import { ModuleSelector } from "../voice/ModuleSelector";
-import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
@@ -31,21 +22,189 @@ interface HomeContainerProps {
 }
 
 export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, deviceId }) => {
-  const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
   const { config, isLoading: isConfigLoading } = useConfigPWA();
   const { userName, playerState, setPlayerState } = usePWAVoiceStore();
 
-  // ============================================================
-  // ESTADOS LOCAIS (100% independentes)
-  // ============================================================
+  // Estados locais
   const [greeting, setGreeting] = useState<string>("");
   const [isGreetingReady, setIsGreetingReady] = useState(false);
   const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const frequencyAnimationRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // ============================================================
+  // FUNÇÃO SPEAK INLINE (sem depender do hook)
+  // ============================================================
+  const speakDirect = useCallback(async (text: string) => {
+    if (!text.trim()) {
+      console.error("[HOME-DEBUG] ❌ Texto vazio!");
+      return;
+    }
+
+    console.log("[HOME-DEBUG] 🎤 Iniciando TTS para:", text.substring(0, 50));
+    setIsLoading(true);
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      console.log("[HOME-DEBUG] 🔑 URL definida:", !!supabaseUrl);
+      console.log("[HOME-DEBUG] 🔑 Key definida:", !!supabaseKey);
+
+      if (!supabaseUrl || !supabaseKey) {
+        console.error("[HOME-DEBUG] ❌ Variáveis de ambiente não definidas!");
+        // Fallback: usar URL hardcoded para teste
+        const fallbackUrl = "https://gmflpmcepempcygdrayv.supabase.co";
+        const fallbackKey =
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZmxwbWNlcGVtcGN5Z2RyYXl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI1NzYyMDAsImV4cCI6MjA0ODE1MjIwMH0.K3sJfvYBVqCg8-FgWxZyEfRkjNfwvuLdP_sGqwe6Ryc";
+
+        console.log("[HOME-DEBUG] 🔄 Usando fallback...");
+
+        const response = await fetch(`${fallbackUrl}/functions/v1/text-to-speech`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: fallbackKey,
+            Authorization: `Bearer ${fallbackKey}`,
+          },
+          body: JSON.stringify({ text, voice: "fernando" }),
+        });
+
+        console.log("[HOME-DEBUG] 📡 Response status:", response.status);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const audioBlob = await response.blob();
+        console.log("[HOME-DEBUG] 📦 Blob size:", audioBlob.size);
+
+        const audioUrl = URL.createObjectURL(audioBlob);
+        console.log("[HOME-DEBUG] 🔗 Audio URL criada");
+
+        // Criar e tocar áudio diretamente
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = "";
+        }
+
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          console.log("[HOME-DEBUG] ▶️ Áudio começou a tocar!");
+          setIsPlaying(true);
+          setIsLoading(false);
+        };
+
+        audio.onended = () => {
+          console.log("[HOME-DEBUG] ⏹️ Áudio terminou");
+          setIsPlaying(false);
+          setProgress(0);
+        };
+
+        audio.onerror = (e) => {
+          console.error("[HOME-DEBUG] ❌ Erro no áudio:", e);
+          setIsPlaying(false);
+          setIsLoading(false);
+        };
+
+        audio.ontimeupdate = () => {
+          if (audio.duration) {
+            setProgress((audio.currentTime / audio.duration) * 100);
+          }
+        };
+
+        console.log("[HOME-DEBUG] 🎵 Chamando audio.play()...");
+        await audio.play();
+        console.log("[HOME-DEBUG] ✅ audio.play() executado com sucesso!");
+
+        return;
+      }
+
+      // Caminho normal com variáveis de ambiente
+      console.log("[HOME-DEBUG] 📡 Fazendo fetch para TTS...");
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ text, voice: "fernando" }),
+      });
+
+      console.log("[HOME-DEBUG] 📡 Response status:", response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const audioBlob = await response.blob();
+      console.log("[HOME-DEBUG] 📦 Blob size:", audioBlob.size);
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+      console.log("[HOME-DEBUG] 🔗 Audio URL criada");
+
+      // Criar e tocar áudio diretamente
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onplay = () => {
+        console.log("[HOME-DEBUG] ▶️ Áudio começou a tocar!");
+        setIsPlaying(true);
+        setIsLoading(false);
+      };
+
+      audio.onended = () => {
+        console.log("[HOME-DEBUG] ⏹️ Áudio terminou");
+        setIsPlaying(false);
+        setProgress(0);
+      };
+
+      audio.onerror = (e) => {
+        console.error("[HOME-DEBUG] ❌ Erro no áudio:", e);
+        setIsPlaying(false);
+        setIsLoading(false);
+      };
+
+      audio.ontimeupdate = () => {
+        if (audio.duration) {
+          setProgress((audio.currentTime / audio.duration) * 100);
+        }
+      };
+
+      console.log("[HOME-DEBUG] 🎵 Chamando audio.play()...");
+      await audio.play();
+      console.log("[HOME-DEBUG] ✅ audio.play() executado com sucesso!");
+    } catch (err) {
+      console.error("[HOME-DEBUG] ❌ Erro no TTS:", err);
+      setIsLoading(false);
+    }
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setProgress(0);
+  }, []);
 
   // ============================================================
   // ETAPA 1: BUSCAR SAUDAÇÃO DA HOME
@@ -53,56 +212,52 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   useEffect(() => {
     mountedRef.current = true;
 
-    // Aguardar config E deviceId estarem prontos
-    if (isConfigLoading) return;
-    if (!deviceId || deviceId === "") return;
+    if (isConfigLoading) {
+      console.log("[HOME-DEBUG] ⏳ Aguardando config...");
+      return;
+    }
+    if (!deviceId || deviceId === "") {
+      console.log("[HOME-DEBUG] ⏳ Aguardando deviceId...");
+      return;
+    }
 
     const fetchHomeGreeting = async () => {
-      console.log("[HOME] Buscando saudação...");
+      console.log("[HOME-DEBUG] 🔍 Buscando saudação...");
 
       try {
-        // Tentar buscar saudação contextual
         const { data, error } = await supabase.functions.invoke("generate-contextual-greeting", {
           body: {
-            deviceId: deviceId || `anonymous-${Date.now()}`,
+            deviceId: deviceId,
             userName: userName || undefined,
-            // NÃO passar moduleId - é HOME
           },
         });
 
         if (!mountedRef.current) return;
 
         if (error) {
-          console.warn("[HOME] Erro ao buscar saudação:", error);
-          // FALLBACK GARANTIDO
+          console.warn("[HOME-DEBUG] ⚠️ Erro ao buscar saudação:", error);
           const fallbackGreeting =
             config.welcomeText?.replace("[name]", userName || "") ||
             "Olá! Eu sou o KnowYOU, seu assistente de voz. Escolha um módulo abaixo para começar.";
           setGreeting(fallbackGreeting);
         } else if (data?.greeting) {
-          console.log("[HOME] Saudação recebida:", {
-            isFirst: data.isFirstInteraction,
-          });
+          console.log("[HOME-DEBUG] ✅ Saudação recebida:", data.greeting.substring(0, 50));
           setGreeting(data.greeting);
         } else {
-          // FALLBACK GARANTIDO se resposta vazia
           const fallbackGreeting =
             config.welcomeText?.replace("[name]", userName || "") ||
             "Olá! Eu sou o KnowYOU, seu assistente de voz. Escolha um módulo abaixo para começar.";
           setGreeting(fallbackGreeting);
         }
       } catch (err) {
-        console.error("[HOME] Exceção ao buscar saudação:", err);
+        console.error("[HOME-DEBUG] ❌ Exceção:", err);
         if (mountedRef.current) {
-          const fallbackGreeting =
-            config.welcomeText?.replace("[name]", userName || "") ||
-            "Olá! Eu sou o KnowYOU, seu assistente de voz. Escolha um módulo abaixo para começar.";
-          setGreeting(fallbackGreeting);
+          setGreeting("Olá! Eu sou o KnowYOU, seu assistente de voz.");
         }
       } finally {
         if (mountedRef.current) {
           setIsGreetingReady(true);
-          console.log("[HOME] Greeting pronto para autoplay");
+          console.log("[HOME-DEBUG] ✅ Greeting pronto!");
         }
       }
     };
@@ -115,26 +270,34 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   }, [isConfigLoading, deviceId, userName, config.welcomeText]);
 
   // ============================================================
-  // ETAPA 2: AUTOPLAY GARANTIDO
+  // ETAPA 2: AUTOPLAY
   // ============================================================
   useEffect(() => {
-    if (!isGreetingReady || hasPlayedAutoplay || !greeting) {
+    if (!isGreetingReady) {
+      console.log("[HOME-DEBUG] ⏳ Greeting não está pronto");
+      return;
+    }
+    if (hasPlayedAutoplay) {
+      console.log("[HOME-DEBUG] ⏳ Já executou autoplay");
+      return;
+    }
+    if (!greeting) {
+      console.log("[HOME-DEBUG] ⏳ Greeting vazio");
       return;
     }
 
-    console.log("[HOME] Executando autoplay com greeting:", greeting.substring(0, 50) + "...");
+    console.log("[HOME-DEBUG] 🚀 Executando autoplay em 500ms...");
     setHasPlayedAutoplay(true);
 
     const timer = setTimeout(() => {
       if (mountedRef.current) {
-        speak(greeting).catch((err) => {
-          console.warn("[HOME] Autoplay bloqueado pelo browser:", err);
-        });
+        console.log("[HOME-DEBUG] 🎯 Chamando speakDirect()...");
+        speakDirect(greeting);
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
+  }, [isGreetingReady, hasPlayedAutoplay, greeting, speakDirect]);
 
   // ============================================================
   // ATUALIZAR PLAYER STATE
@@ -150,70 +313,34 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   }, [isLoading, isPlaying, setPlayerState]);
 
   // ============================================================
-  // CAPTURAR FREQUÊNCIAS DO TTS
-  // ============================================================
-  useEffect(() => {
-    const isAudioPlaying = audioManager.isPlaying;
-
-    if (!isAudioPlaying) {
-      setFrequencyData([]);
-      if (frequencyAnimationRef.current) {
-        cancelAnimationFrame(frequencyAnimationRef.current);
-        frequencyAnimationRef.current = null;
-      }
-      return;
-    }
-
-    const updateFrequency = () => {
-      const data = audioManager.getFrequencyData();
-      if (data.length > 0) {
-        setFrequencyData(data);
-      }
-      frequencyAnimationRef.current = requestAnimationFrame(updateFrequency);
-    };
-
-    updateFrequency();
-
-    return () => {
-      if (frequencyAnimationRef.current) {
-        cancelAnimationFrame(frequencyAnimationRef.current);
-        frequencyAnimationRef.current = null;
-      }
-    };
-  }, [audioManager.isPlaying]); // ✅ CORREÇÃO: Usar apenas audioManager.isPlaying
-
-  // ============================================================
-  // CLEANUP AO DESMONTAR
+  // CLEANUP
   // ============================================================
   useEffect(() => {
     return () => {
-      // ✅ CORREÇÃO: Chamar diretamente sem depender do audioManager na lista
-      useAudioManager.getState().stopAllAndCleanup();
-      if (frequencyAnimationRef.current) {
-        cancelAnimationFrame(frequencyAnimationRef.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
       }
     };
-  }, []); // ✅ CORREÇÃO: Array vazio - executa apenas ao desmontar
+  }, []);
 
   // ============================================================
   // HANDLERS
   // ============================================================
   const handleReplay = useCallback(() => {
     if (greeting) {
-      speak(greeting);
+      console.log("[HOME-DEBUG] 🔄 Replay solicitado");
+      speakDirect(greeting);
     }
-  }, [greeting, speak]);
+  }, [greeting, speakDirect]);
 
   const handleModuleClick = useCallback(
     (moduleId: Exclude<ModuleId, null>) => {
-      // Parar áudio da HOME imediatamente
-      stop();
-      useAudioManager.getState().stopAllAndCleanup(); // ✅ CORREÇÃO: Usar getState()
-
-      // Navegar para módulo
+      stopAudio();
+      useAudioManager.getState().stopAllAndCleanup();
       onModuleSelect(moduleId);
     },
-    [stop, onModuleSelect], // ✅ CORREÇÃO: Removido audioManager das dependências
+    [stopAudio, onModuleSelect],
   );
 
   // ============================================================
@@ -251,7 +378,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         <VoicePlayerBox
           state={playerState}
           onPlay={handleReplay}
-          onPause={stop}
+          onPause={stopAudio}
           audioProgress={progress}
           frequencyData={frequencyData}
         />
