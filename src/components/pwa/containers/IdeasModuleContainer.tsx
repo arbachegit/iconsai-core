@@ -1,44 +1,44 @@
 /**
  * ============================================================
- * HealthModuleContainer.tsx - v5.4.0
+ * IdeasModuleContainer.tsx - v5.4.0
  * ============================================================
- * Container INDEPENDENTE do módulo Saúde
+ * Container INDEPENDENTE do módulo Ideias
  * CORREÇÃO: Adiciona salvamento no historyStore (addMessage)
  * ============================================================
  */
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { Heart, ArrowLeft, History } from "lucide-react";
+import { Lightbulb, ArrowLeft, History } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
-import { useHistoryStore } from "@/stores/historyStore"; // ✅ ADICIONADO
+import { useHistoryStore } from "@/stores/historyStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
 const MODULE_CONFIG = {
-  name: "Saúde",
-  icon: Heart,
-  color: "#F43F5E",
-  bgColor: "bg-rose-500/20",
-  moduleType: "health" as const,
-  defaultWelcome: "Olá! Sou sua assistente de saúde. Como posso ajudar você hoje?",
+  name: "Ideias",
+  icon: Lightbulb,
+  color: "#F59E0B",
+  bgColor: "bg-amber-500/20",
+  moduleType: "ideas" as const,
+  defaultWelcome: "Olá! Sou seu assistente de ideias. Vamos desenvolver e validar suas ideias de negócio juntos!",
 };
 
-interface HealthModuleContainerProps {
+interface IdeasModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
   deviceId: string;
 }
 
-export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
+export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { addMessage } = useHistoryStore(); // ✅ ADICIONADO
+  const { addMessage } = useHistoryStore();
   const { config: pwaConfig } = useConfigPWA();
   const { userName } = usePWAVoiceStore();
 
@@ -60,7 +60,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
 
     const fetchGreeting = async () => {
       try {
-        console.log("[HealthContainer] Buscando saudação contextual...");
+        console.log("[IdeasContainer] Buscando saudação contextual...");
 
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
@@ -71,17 +71,17 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
         });
 
         if (error) {
-          console.warn("[HealthContainer] Erro:", error);
+          console.warn("[IdeasContainer] Erro:", error);
           setGreeting(MODULE_CONFIG.defaultWelcome);
         } else if (data?.greeting) {
-          console.log("[HealthContainer] Saudação contextual recebida");
+          console.log("[IdeasContainer] Saudação contextual recebida");
           setGreeting(data.greeting);
         } else {
-          const configWelcome = (pwaConfig as any)?.healthWelcomeText;
+          const configWelcome = (pwaConfig as any)?.ideasWelcomeText;
           setGreeting(configWelcome?.replace("[name]", userName || "") || MODULE_CONFIG.defaultWelcome);
         }
       } catch (err) {
-        console.warn("[HealthContainer] Exceção:", err);
+        console.warn("[IdeasContainer] Exceção:", err);
         setGreeting(MODULE_CONFIG.defaultWelcome);
       } finally {
         setIsGreetingReady(true);
@@ -97,11 +97,11 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   useEffect(() => {
     if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
 
-    console.log("[HealthContainer] Executando autoplay");
+    console.log("[IdeasContainer] Executando autoplay");
     setHasPlayedAutoplay(true);
 
     speak(greeting, MODULE_CONFIG.moduleType).catch((err) => {
-      console.warn("[HealthContainer] Autoplay bloqueado:", err);
+      console.warn("[IdeasContainer] Autoplay bloqueado:", err);
     });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
@@ -118,63 +118,32 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       animationRef.current = requestAnimationFrame(updateFrequency);
     };
 
-    updateFrequency();
+    animationRef.current = requestAnimationFrame(updateFrequency);
+
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
   }, [audioManager.isPlaying]);
 
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      useAudioManager.getState().stopAllAndCleanup();
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, []);
-
-  // ============================================================
-  // SALVAR RESUMO AO SAIR
-  // ============================================================
-  const handleBack = useCallback(async () => {
-    useAudioManager.getState().stopAllAndCleanup();
-
-    if (messages.length >= 2) {
-      try {
-        console.log("[HealthContainer] Salvando resumo...");
-        await supabase.functions.invoke("generate-conversation-summary", {
-          body: {
-            deviceId,
-            moduleType: MODULE_CONFIG.moduleType,
-            messages: messages.slice(-6),
-          },
-        });
-      } catch (err) {
-        console.warn("[HealthContainer] Erro ao salvar resumo:", err);
-      }
-    }
-
+  const handleBack = useCallback(() => {
+    stop();
     onBack();
-  }, [messages, deviceId, onBack]);
+  }, [stop, onBack]);
 
-  // Handler de áudio
   const handleAudioCapture = async (audioBlob: Blob) => {
+    if (isProcessing || isLoading) return;
     setIsProcessing(true);
 
     try {
-      if (!audioBlob || audioBlob.size < 1000) {
-        throw new Error("AUDIO_TOO_SHORT");
-      }
+      console.log("[IdeasContainer] Processando áudio capturado...");
 
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "audio.webm");
 
-      let mimeType = audioBlob.type || "audio/webm";
-      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-        mimeType = "audio/mp4";
-      }
-
-      const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
-        body: { audio: base64, mimeType },
+      const { data: sttData, error: sttError } = await supabase.functions.invoke("speech-to-text", {
+        body: formData,
       });
 
       if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
@@ -182,10 +151,10 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
 
-      // ✅ Salvar mensagem do usuário no estado local
+      // Salvar mensagem do usuário no estado local
       setMessages((prev) => [...prev, { role: "user", content: userText }]);
 
-      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      // Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.moduleType, {
         role: "user",
         title: userText,
@@ -209,10 +178,10 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 
-      // ✅ Salvar resposta do assistente no estado local
+      // Salvar resposta do assistente no estado local
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
 
-      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      // Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.moduleType, {
         role: "assistant",
         title: aiResponse,
@@ -223,7 +192,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
 
       await speak(aiResponse, MODULE_CONFIG.moduleType);
     } catch (error: any) {
-      console.error("[HealthContainer] ERRO:", error);
+      console.error("[IdeasContainer] ERRO:", error);
 
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
       if (error.message?.includes("AUDIO_TOO_SHORT")) {
@@ -282,7 +251,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
             }}
             transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0 }}
           >
-            <Heart className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
+            <Lightbulb className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
           </motion.div>
           <span className="text-lg font-semibold text-white">{MODULE_CONFIG.name}</span>
         </div>
@@ -329,4 +298,4 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   );
 };
 
-export default HealthModuleContainer;
+export default IdeasModuleContainer;
