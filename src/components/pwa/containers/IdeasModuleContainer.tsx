@@ -1,45 +1,43 @@
 /**
  * ============================================================
- * HealthModuleContainer.tsx - v5.4.0
+ * IdeasModuleContainer.tsx - Container INDEPENDENTE para Ideias
  * ============================================================
- * Container INDEPENDENTE do módulo Saúde
+ * Versão: 5.4.0 - 2026-01-08
  * CORREÇÃO: Adiciona salvamento no historyStore (addMessage)
  * ============================================================
  */
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Heart, ArrowLeft, History } from "lucide-react";
+import { Lightbulb, ArrowLeft, History } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { useHistoryStore } from "@/stores/historyStore"; // ✅ ADICIONADO
-import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
 const MODULE_CONFIG = {
-  name: "Saúde",
-  icon: Heart,
-  color: "#F43F5E",
-  bgColor: "bg-rose-500/20",
-  moduleType: "health" as const,
-  defaultWelcome: "Olá! Sou sua assistente de saúde. Como posso ajudar você hoje?",
+  type: "ideas" as const,
+  name: "Ideias",
+  color: "#F59E0B",
+  bgColor: "bg-amber-500/20",
+  defaultWelcome:
+    "Olá! Sou seu consultor de ideias usando a técnica do Advogado do Diabo. Vou te ajudar a fortalecer suas ideias através de questionamentos duros. O que você está planejando?",
 };
 
-interface HealthModuleContainerProps {
+interface IdeasModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
   deviceId: string;
 }
 
-export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
+export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
   const { addMessage } = useHistoryStore(); // ✅ ADICIONADO
-  const { config: pwaConfig } = useConfigPWA();
   const { userName } = usePWAVoiceStore();
 
   const [greeting, setGreeting] = useState<string | null>(null);
@@ -60,28 +58,27 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
 
     const fetchGreeting = async () => {
       try {
-        console.log("[HealthContainer] Buscando saudação contextual...");
+        console.log("[IdeasContainer] Buscando saudação contextual...");
 
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
             deviceId,
-            moduleType: MODULE_CONFIG.moduleType,
+            moduleType: MODULE_CONFIG.type,
             action: "getGreeting",
           },
         });
 
         if (error) {
-          console.warn("[HealthContainer] Erro:", error);
+          console.warn("[IdeasContainer] Erro:", error);
           setGreeting(MODULE_CONFIG.defaultWelcome);
         } else if (data?.greeting) {
-          console.log("[HealthContainer] Saudação contextual recebida");
+          console.log("[IdeasContainer] Saudação contextual recebida");
           setGreeting(data.greeting);
         } else {
-          const configWelcome = (pwaConfig as any)?.healthWelcomeText;
-          setGreeting(configWelcome?.replace("[name]", userName || "") || MODULE_CONFIG.defaultWelcome);
+          setGreeting(MODULE_CONFIG.defaultWelcome.replace("[name]", userName || ""));
         }
       } catch (err) {
-        console.warn("[HealthContainer] Exceção:", err);
+        console.warn("[IdeasContainer] Exceção:", err);
         setGreeting(MODULE_CONFIG.defaultWelcome);
       } finally {
         setIsGreetingReady(true);
@@ -89,7 +86,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
     };
 
     fetchGreeting();
-  }, [deviceId, pwaConfig, userName, isGreetingReady]);
+  }, [deviceId, userName, isGreetingReady]);
 
   // ============================================================
   // ETAPA 2: Autoplay SÓ quando greeting está pronto
@@ -97,11 +94,11 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   useEffect(() => {
     if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
 
-    console.log("[HealthContainer] Executando autoplay");
+    console.log("[IdeasContainer] Executando autoplay");
     setHasPlayedAutoplay(true);
 
-    speak(greeting, MODULE_CONFIG.moduleType).catch((err) => {
-      console.warn("[HealthContainer] Autoplay bloqueado:", err);
+    speak(greeting, MODULE_CONFIG.type).catch((err) => {
+      console.warn("[IdeasContainer] Autoplay bloqueado:", err);
     });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
@@ -113,7 +110,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
     }
 
     const updateFrequency = () => {
-      const data = useAudioManager.getState().getFrequencyData();
+      const data = audioManager.getFrequencyData();
       if (data.length > 0) setFrequencyData(data);
       animationRef.current = requestAnimationFrame(updateFrequency);
     };
@@ -140,16 +137,16 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
 
     if (messages.length >= 2) {
       try {
-        console.log("[HealthContainer] Salvando resumo...");
+        console.log("[IdeasContainer] Salvando resumo...");
         await supabase.functions.invoke("generate-conversation-summary", {
           body: {
             deviceId,
-            moduleType: MODULE_CONFIG.moduleType,
+            moduleType: MODULE_CONFIG.type,
             messages: messages.slice(-6),
           },
         });
       } catch (err) {
-        console.warn("[HealthContainer] Erro ao salvar resumo:", err);
+        console.warn("[IdeasContainer] Erro ao salvar resumo:", err);
       }
     }
 
@@ -186,7 +183,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       setMessages((prev) => [...prev, { role: "user", content: userText }]);
 
       // ✅ NOVO: Salvar no historyStore para aparecer no histórico
-      addMessage(MODULE_CONFIG.moduleType, {
+      addMessage(MODULE_CONFIG.type, {
         role: "user",
         title: userText,
         audioUrl: "",
@@ -198,8 +195,8 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
         body: {
           message: userText,
           pwaMode: true,
-          chatType: MODULE_CONFIG.moduleType,
-          agentSlug: MODULE_CONFIG.moduleType,
+          chatType: MODULE_CONFIG.type,
+          agentSlug: MODULE_CONFIG.type,
           deviceId,
         },
       });
@@ -213,7 +210,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
 
       // ✅ NOVO: Salvar no historyStore para aparecer no histórico
-      addMessage(MODULE_CONFIG.moduleType, {
+      addMessage(MODULE_CONFIG.type, {
         role: "assistant",
         title: aiResponse,
         audioUrl: "",
@@ -221,9 +218,9 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
         transcription: aiResponse,
       });
 
-      await speak(aiResponse, MODULE_CONFIG.moduleType);
+      await speak(aiResponse, MODULE_CONFIG.type);
     } catch (error: any) {
-      console.error("[HealthContainer] ERRO:", error);
+      console.error("[IdeasContainer] ERRO:", error);
 
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
       if (error.message?.includes("AUDIO_TOO_SHORT")) {
@@ -232,7 +229,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
         errorMessage = "Não entendi o que você disse. Pode repetir?";
       }
 
-      await speak(errorMessage, MODULE_CONFIG.moduleType);
+      await speak(errorMessage, MODULE_CONFIG.type);
     } finally {
       setIsProcessing(false);
     }
@@ -242,7 +239,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
     if (isPlaying) {
       stop();
     } else if (greeting) {
-      speak(greeting, MODULE_CONFIG.moduleType);
+      speak(greeting, MODULE_CONFIG.type);
     }
   };
 
@@ -282,7 +279,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
             }}
             transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0 }}
           >
-            <Heart className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
+            <Lightbulb className="w-5 h-5" style={{ color: MODULE_CONFIG.color }} />
           </motion.div>
           <span className="text-lg font-semibold text-white">{MODULE_CONFIG.name}</span>
         </div>
@@ -329,4 +326,4 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   );
 };
 
-export default HealthModuleContainer;
+export default IdeasModuleContainer;
