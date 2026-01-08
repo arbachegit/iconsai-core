@@ -3489,6 +3489,148 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_conv_summaries: {
+        Row: {
+          generated_at: string | null
+          id: string
+          key_topics: Json | null
+          session_id: string
+          summary_audio_url: string | null
+          summary_text: string
+          taxonomy_tags: string[] | null
+        }
+        Insert: {
+          generated_at?: string | null
+          id?: string
+          key_topics?: Json | null
+          session_id: string
+          summary_audio_url?: string | null
+          summary_text: string
+          taxonomy_tags?: string[] | null
+        }
+        Update: {
+          generated_at?: string | null
+          id?: string
+          key_topics?: Json | null
+          session_id?: string
+          summary_audio_url?: string | null
+          summary_text?: string
+          taxonomy_tags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pwa_conv_summaries_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "pwa_conversation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pwa_conversation_messages: {
+        Row: {
+          audio_duration_seconds: number | null
+          audio_url: string | null
+          content: string
+          created_at: string | null
+          id: string
+          key_topics: Json | null
+          role: string
+          session_id: string
+          taxonomy_tags: string[] | null
+          timestamp: string | null
+          transcription: string | null
+        }
+        Insert: {
+          audio_duration_seconds?: number | null
+          audio_url?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          key_topics?: Json | null
+          role: string
+          session_id: string
+          taxonomy_tags?: string[] | null
+          timestamp?: string | null
+          transcription?: string | null
+        }
+        Update: {
+          audio_duration_seconds?: number | null
+          audio_url?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          key_topics?: Json | null
+          role?: string
+          session_id?: string
+          taxonomy_tags?: string[] | null
+          timestamp?: string | null
+          transcription?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pwa_conversation_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "pwa_conversation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pwa_conversation_sessions: {
+        Row: {
+          city: string | null
+          company: string | null
+          company_source: string | null
+          country: string | null
+          created_at: string | null
+          device_id: string
+          ended_at: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          module_type: string
+          started_at: string
+          updated_at: string | null
+          user_email: string | null
+          user_name: string | null
+        }
+        Insert: {
+          city?: string | null
+          company?: string | null
+          company_source?: string | null
+          country?: string | null
+          created_at?: string | null
+          device_id: string
+          ended_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          module_type: string
+          started_at?: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          city?: string | null
+          company?: string | null
+          company_source?: string | null
+          country?: string | null
+          created_at?: string | null
+          device_id?: string
+          ended_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          module_type?: string
+          started_at?: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       pwa_conversation_summaries: {
         Row: {
           created_at: string | null
