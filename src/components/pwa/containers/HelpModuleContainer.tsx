@@ -29,12 +29,13 @@ const MODULE_CONFIG = {
 interface HelpModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
+  deviceId: string;
 }
 
-export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack, onHistoryClick }) => {
+export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { userName, deviceFingerprint } = usePWAVoiceStore();
+  const { userName } = usePWAVoiceStore();
 
   const [greeting, setGreeting] = useState<string>("");
   const [isGreetingReady, setIsGreetingReady] = useState(false);
@@ -58,7 +59,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
       try {
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
-            deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
+            deviceId: deviceId || `anonymous-${Date.now()}`,
             moduleType: MODULE_CONFIG.type,
             action: "getGreeting",
           },
@@ -88,7 +89,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
     return () => {
       mountedRef.current = false;
     };
-  }, [deviceFingerprint, userName]);
+  }, [deviceId, userName]);
 
   // AUTOPLAY GARANTIDO
   useEffect(() => {
@@ -168,7 +169,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
             pwaMode: true,
             chatType: MODULE_CONFIG.type,
             agentSlug: MODULE_CONFIG.type,
-            deviceId: deviceFingerprint || undefined,
+            deviceId: deviceId || undefined,
           },
         });
 
@@ -187,7 +188,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
         setIsProcessing(false);
       }
     },
-    [deviceFingerprint, speak],
+    [deviceId, speak],
   );
 
   const handlePlayClick = useCallback(() => {
