@@ -1,4 +1,11 @@
 // usePWAConversations Hook - v1.0.0
+// 
+// ===== TABELAS DO BANCO DE DADOS =====
+// - pwa_conversation_sessions   : Sessões de conversa
+// - pwa_conversation_messages   : Mensagens das conversas
+// - pwa_conv_summaries          : Resumos das conversas (NÃO usar "pwa_conversation_summaries")
+// =====================================
+//
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { 
