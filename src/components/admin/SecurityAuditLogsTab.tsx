@@ -28,10 +28,13 @@ import {
   User,
   ExternalLink,
   Filter,
-  FileText
+  FileText,
+  BarChart3,
+  List
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { SecurityMetricsDashboard } from "./security/SecurityMetricsDashboard";
 
 interface AuditLog {
   id: string;
@@ -103,6 +106,7 @@ export function SecurityAuditLogsTab() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [page, setPage] = useState(0);
+  const [viewMode, setViewMode] = useState<"dashboard" | "logs">("dashboard");
   const pageSize = 50;
 
   // Fetch audit logs
@@ -214,6 +218,27 @@ export function SecurityAuditLogsTab() {
           </div>
         </div>
         <div className="flex gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex border rounded-lg overflow-hidden">
+            <Button 
+              variant={viewMode === "dashboard" ? "default" : "ghost"} 
+              size="sm"
+              onClick={() => setViewMode("dashboard")}
+              className="rounded-none"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+            <Button 
+              variant={viewMode === "logs" ? "default" : "ghost"} 
+              size="sm"
+              onClick={() => setViewMode("logs")}
+              className="rounded-none"
+            >
+              <List className="h-4 w-4 mr-2" />
+              Logs
+            </Button>
+          </div>
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
@@ -225,8 +250,14 @@ export function SecurityAuditLogsTab() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* Dashboard View */}
+      {viewMode === "dashboard" && <SecurityMetricsDashboard />}
+
+      {/* Logs View */}
+      {viewMode === "logs" && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -603,6 +634,8 @@ export function SecurityAuditLogsTab() {
           )}
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }
