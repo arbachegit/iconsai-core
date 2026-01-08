@@ -311,3 +311,12 @@ verify_jwt = true
 
 [functions.sync-meta-tier]
 verify_jwt = true
+
+# ============================================
+# CONTEXTUAL GREETING - Public (PWA memory)
+# ============================================
+[functions.generate-contextual-greeting]
+verify_jwt = false
+
+[functions.update-user-context]
+verify_jwt = false
