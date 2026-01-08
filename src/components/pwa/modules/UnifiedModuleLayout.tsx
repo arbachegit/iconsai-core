@@ -1,23 +1,21 @@
 /**
  * ============================================================
- * UnifiedModuleLayout.tsx - Layout Padrão de Módulos v3.0.0
+ * UnifiedModuleLayout.tsx - v4.0.0 - 2026-01-08
  * ============================================================
- * Versão: 3.0.0
- * Data: 2026-01-08
- * CORREÇÃO: Memória contextual por módulo
+ *
+ * CORREÇÃO CRÍTICA v4.0.0:
+ * - Usa `pwa-contextual-memory` (correto) em vez de `generate-contextual-greeting`
+ * - Remove skipWelcome - cada módulo é INDEPENDENTE
+ * - Busca memória por módulo específico (agent_slug)
+ * - Primeira interação: boas-vindas do módulo
+ * - Segunda+ interação: saudação contextual com nome + tema anterior
+ *
  * ============================================================
  */
 
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  HelpCircle, 
-  Globe, 
-  Heart, 
-  Lightbulb,
-  ArrowLeft,
-  History
-} from "lucide-react";
+import { HelpCircle, Globe, Heart, Lightbulb, ArrowLeft, History } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
@@ -29,14 +27,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type ModuleType = "help" | "world" | "health" | "ideas";
 
-const MODULE_CONFIG: Record<ModuleType, {
-  name: string;
-  icon: typeof HelpCircle;
-  color: string;
-  bgColor: string;
-  welcomeKey: string;
-  defaultWelcome: string;
-}> = {
+const MODULE_CONFIG: Record<
+  ModuleType,
+  {
+    name: string;
+    icon: typeof HelpCircle;
+    color: string;
+    bgColor: string;
+    welcomeKey: string;
+    defaultWelcome: string;
+  }
+> = {
   help: {
     name: "Ajuda",
     icon: HelpCircle,
@@ -77,102 +78,109 @@ interface UnifiedModuleLayoutProps {
   onHistoryClick: () => void;
 }
 
-export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
-  moduleType,
-  onBack,
-  onHistoryClick,
-}) => {
+export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ moduleType, onBack, onHistoryClick }) => {
   const config = MODULE_CONFIG[moduleType];
   const IconComponent = config.icon;
-  
+
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
   const { stopAllAndCleanup, getFrequencyData } = audioManager;
   const { config: pwaConfig } = useConfigPWA();
-  const { userName, deviceFingerprint, skipWelcome, setSkipWelcome } = usePWAVoiceStore();
-  
+  const { userName, deviceFingerprint } = usePWAVoiceStore();
+
   const hasSpokenWelcome = useRef(false);
+  const hasFetchedGreeting = useRef(false);
   const animationRef = useRef<number | null>(null);
+
   const [contextualGreeting, setContextualGreeting] = useState<string | null>(null);
-  
+  const [isFirstInteraction, setIsFirstInteraction] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
 
-  // Buscar saudação contextual específica do módulo
+  // ============================================================
+  // BUSCAR SAUDAÇÃO CONTEXTUAL ESPECÍFICA DO MÓDULO
+  // Usa pwa-contextual-memory que consulta pwa_messages por agent_slug
+  // ============================================================
   useEffect(() => {
+    if (!deviceFingerprint || hasFetchedGreeting.current) return;
+    hasFetchedGreeting.current = true;
+
     const fetchContextualGreeting = async () => {
-      if (!deviceFingerprint || skipWelcome) return;
-      
       try {
-        console.log(`[Module-${moduleType}] Buscando saudação contextual...`);
-        
-        const { data, error } = await supabase.functions.invoke(
-          "generate-contextual-greeting",
-          { 
-            body: { 
-              deviceId: deviceFingerprint, 
-              moduleId: moduleType,
-              userName: userName || undefined
-            } 
-          }
-        );
-        
+        console.log(`[Module-${moduleType}] Buscando saudação contextual via pwa-contextual-memory...`);
+
+        // CORREÇÃO: Usar pwa-contextual-memory (correto) em vez de generate-contextual-greeting
+        const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
+          body: {
+            deviceId: deviceFingerprint,
+            moduleType: moduleType,
+            action: "getGreeting",
+          },
+        });
+
         if (error) {
           console.warn(`[Module-${moduleType}] Erro ao buscar contexto:`, error);
           return;
         }
-        
+
         if (data?.greeting) {
-          console.log(`[Module-${moduleType}] Saudação contextual:`, {
-            hasContext: !data.isFirstInteraction,
+          console.log(`[Module-${moduleType}] Saudação contextual recebida:`, {
+            hasContext: data.hasContext,
             isFirstInteraction: data.isFirstInteraction,
-            lastModule: data.lastModule,
+            greeting: data.greeting.substring(0, 50) + "...",
           });
           setContextualGreeting(data.greeting);
+          setIsFirstInteraction(data.isFirstInteraction);
         }
       } catch (err) {
         console.warn(`[Module-${moduleType}] Exceção ao buscar contexto:`, err);
       }
     };
-    
-    fetchContextualGreeting();
-  }, [deviceFingerprint, moduleType, skipWelcome, userName]);
 
-  // Autoplay
+    fetchContextualGreeting();
+  }, [deviceFingerprint, moduleType]);
+
+  // ============================================================
+  // AUTOPLAY - Cada módulo é INDEPENDENTE
+  // SEMPRE toca saudação (contextual ou padrão)
+  // ============================================================
   useEffect(() => {
     if (hasSpokenWelcome.current) return;
     hasSpokenWelcome.current = true;
 
-    if (skipWelcome) {
-      console.log(`[Module-${moduleType}] Pulando welcome (ouviu na HOME)`);
-      setSkipWelcome(false);
-      return;
-    }
+    // CORREÇÃO: Removido skipWelcome - cada módulo é INDEPENDENTE
+    // Não depende mais do que aconteceu na HOME
 
-    const getGreetingText = () => {
+    const getGreetingText = (): string => {
+      // Se temos saudação contextual, usar ela
       if (contextualGreeting) {
         return contextualGreeting;
       }
-      
+
+      // Fallback: usar configuração do pwa_config
       const configRecord = pwaConfig as unknown as Record<string, string>;
       const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
       return welcomeText.replace("[name]", userName || "");
     };
 
+    // Delay para garantir que a busca de contexto terminou
     const timer = setTimeout(() => {
       const greeting = getGreetingText();
-      console.log(`[Module-${moduleType}] Autoplay:`, greeting.substring(0, 50) + "...");
-      
+      console.log(
+        `[Module-${moduleType}] Autoplay (isFirst: ${isFirstInteraction}):`,
+        greeting.substring(0, 50) + "...",
+      );
+
       speak(greeting, moduleType).catch((err) => {
         console.warn("Autoplay bloqueado:", err);
       });
-    }, 800);
+    }, 1000); // 1 segundo para dar tempo da busca de contexto
 
     return () => {
       clearTimeout(timer);
     };
-  }, [speak, moduleType, pwaConfig, config, userName, skipWelcome, setSkipWelcome, contextualGreeting]);
+  }, [speak, moduleType, pwaConfig, config, userName, contextualGreeting, isFirstInteraction]);
 
   // Cleanup ao desmontar
   useEffect(() => {
@@ -212,69 +220,60 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   // Handler para captura de áudio
   const handleAudioCapture = async (audioBlob: Blob) => {
     setIsProcessing(true);
-    
+
     try {
       if (!audioBlob || audioBlob.size < 1000) {
         throw new Error("AUDIO_TOO_SHORT: Gravação muito curta");
       }
-      
+
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce(
-          (data, byte) => data + String.fromCharCode(byte), ""
-        )
-      );
-      
+      const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+
       let mimeType = audioBlob.type;
       if (!mimeType || mimeType === "") {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        mimeType = (isIOS || isSafari) ? "audio/mp4" : "audio/webm";
+        mimeType = isIOS || isSafari ? "audio/mp4" : "audio/webm";
       }
-      
-      const { data: sttData, error: sttError } = await supabase.functions.invoke(
-        "voice-to-text",
-        { body: { audio: base64, mimeType } }
-      );
-      
+
+      const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
+        body: { audio: base64, mimeType },
+      });
+
       if (sttError) {
         throw new Error(`STT_ERROR: ${sttError.message}`);
       }
-      
+
       const userText = sttData?.text;
       if (!userText?.trim()) {
         throw new Error("STT_EMPTY: Não entendi o áudio");
       }
-      
-      const { data: chatData, error: chatError } = await supabase.functions.invoke(
-        "chat-router",
-        { 
-          body: { 
-            message: userText, 
-            pwaMode: true, 
-            chatType: moduleType,
-            agentSlug: moduleType,
-            deviceId: deviceFingerprint || undefined
-          } 
-        }
-      );
-      
+
+      const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
+        body: {
+          message: userText,
+          pwaMode: true,
+          chatType: moduleType,
+          agentSlug: moduleType,
+          deviceId: deviceFingerprint || undefined,
+        },
+      });
+
       if (chatError) {
         throw new Error(`CHAT_ERROR: ${chatError.message}`);
       }
-      
+
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) {
         throw new Error("CHAT_EMPTY: Resposta vazia");
       }
-      
+
       await speak(aiResponse, moduleType);
-      
     } catch (error: any) {
       console.error(`[Module-${moduleType}] ERRO:`, error);
-      
+
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
-      
+
       if (error.message?.includes("AUDIO_TOO_SHORT")) {
         errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
       } else if (error.message?.includes("STT_ERROR")) {
@@ -284,7 +283,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
       } else if (error.message?.includes("CHAT_ERROR")) {
         errorMessage = "O serviço está temporariamente indisponível.";
       }
-      
+
       await speak(errorMessage, moduleType);
     } finally {
       setIsProcessing(false);
@@ -303,7 +302,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
         const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
         greeting = welcomeText.replace("[name]", userName || "");
       }
-      
+
       speak(greeting, moduleType);
     }
   };
@@ -313,14 +312,14 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     onBack();
   };
 
-  const visualizerState = isRecording 
-    ? "recording" 
-    : isProcessing 
-      ? "loading" 
-      : isLoading 
-        ? "loading" 
-        : isPlaying 
-          ? "playing" 
+  const visualizerState = isRecording
+    ? "recording"
+    : isProcessing
+      ? "loading"
+      : isLoading
+        ? "loading"
+        : isPlaying
+          ? "playing"
           : "idle";
   const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
@@ -341,20 +340,14 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
             className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center`}
             animate={{
               boxShadow: isPlaying
-                ? [
-                    `0 0 0 0 ${config.color}00`,
-                    `0 0 20px 5px ${config.color}66`,
-                    `0 0 0 0 ${config.color}00`,
-                  ]
+                ? [`0 0 0 0 ${config.color}00`, `0 0 20px 5px ${config.color}66`, `0 0 0 0 ${config.color}00`]
                 : "none",
             }}
             transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0 }}
           >
             <IconComponent className="w-5 h-5" style={{ color: config.color }} />
           </motion.div>
-          <span className="text-lg font-semibold text-white">
-            {config.name}
-          </span>
+          <span className="text-lg font-semibold text-white">{config.name}</span>
         </div>
 
         <motion.button
@@ -389,7 +382,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           size="lg"
           primaryColor={config.color}
         />
-        
+
         <ToggleMicrophoneButton
           onAudioCapture={handleAudioCapture}
           disabled={isLoading}
