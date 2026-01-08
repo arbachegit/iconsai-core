@@ -30,12 +30,13 @@ const MODULE_CONFIG = {
 interface WorldModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
+  deviceId: string;
 }
 
-export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBack, onHistoryClick }) => {
+export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { userName, deviceFingerprint } = usePWAVoiceStore();
+  const { userName } = usePWAVoiceStore();
 
   const [greeting, setGreeting] = useState<string>("");
   const [isGreetingReady, setIsGreetingReady] = useState(false);
@@ -60,7 +61,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
       try {
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
-            deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
+            deviceId: deviceId || `anonymous-${Date.now()}`,
             moduleType: MODULE_CONFIG.type,
             action: "getGreeting",
           },
@@ -93,7 +94,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     return () => {
       mountedRef.current = false;
     };
-  }, [deviceFingerprint, userName]);
+  }, [deviceId, userName]);
 
   // AUTOPLAY GARANTIDO
   useEffect(() => {
@@ -173,7 +174,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
             pwaMode: true,
             chatType: MODULE_CONFIG.type,
             agentSlug: MODULE_CONFIG.type,
-            deviceId: deviceFingerprint || undefined,
+            deviceId: deviceId || undefined,
           },
         });
 
@@ -192,7 +193,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
         setIsProcessing(false);
       }
     },
-    [deviceFingerprint, speak],
+    [deviceId, speak],
   );
 
   const handlePlayClick = useCallback(() => {
@@ -203,15 +204,15 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
   // ✅ HANDLE BACK - Removido audioManager das dependências
   const handleBack = useCallback(async () => {
     useAudioManager.getState().stopAllAndCleanup();
-    if (messages.length >= 2 && deviceFingerprint) {
+    if (messages.length >= 2 && deviceId) {
       try {
         await supabase.functions.invoke("generate-conversation-summary", {
-          body: { deviceId: deviceFingerprint, moduleType: MODULE_CONFIG.type, messages: messages.slice(-6) },
+          body: { deviceId: deviceId, moduleType: MODULE_CONFIG.type, messages: messages.slice(-6) },
         });
       } catch {}
     }
     onBack();
-  }, [messages, deviceFingerprint, onBack]);
+  }, [messages, deviceId, onBack]);
 
   const visualizerState = isRecording
     ? "recording"

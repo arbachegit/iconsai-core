@@ -30,12 +30,13 @@ const MODULE_CONFIG = {
 interface IdeasModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
+  deviceId: string;
 }
 
-export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBack, onHistoryClick }) => {
+export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { userName, deviceFingerprint } = usePWAVoiceStore();
+  const { userName } = usePWAVoiceStore();
 
   const [greeting, setGreeting] = useState<string>("");
   const [isGreetingReady, setIsGreetingReady] = useState(false);
@@ -54,12 +55,12 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
     mountedRef.current = true;
 
     const fetchModuleContext = async () => {
-      console.log(`[Ideas] Iniciando busca de contexto para device: ${deviceFingerprint?.substring(0, 10)}...`);
+      console.log(`[Ideas] Iniciando busca de contexto para device: ${deviceId?.substring(0, 10)}...`);
 
       try {
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
-            deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
+            deviceId: deviceId || `anonymous-${Date.now()}`,
             moduleType: MODULE_CONFIG.type,
             action: "getGreeting",
           },
@@ -93,7 +94,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
     return () => {
       mountedRef.current = false;
     };
-  }, [deviceFingerprint, userName]);
+  }, [deviceId, userName]);
 
   // AUTOPLAY GARANTIDO
   useEffect(() => {
@@ -175,7 +176,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
             pwaMode: true,
             chatType: MODULE_CONFIG.type,
             agentSlug: MODULE_CONFIG.type,
-            deviceId: deviceFingerprint || undefined,
+            deviceId: deviceId || undefined,
           },
         });
 
@@ -195,7 +196,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         setIsProcessing(false);
       }
     },
-    [deviceFingerprint, speak],
+    [deviceId, speak],
   );
 
   const handlePlayClick = useCallback(() => {
@@ -207,11 +208,11 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
   const handleBack = useCallback(async () => {
     useAudioManager.getState().stopAllAndCleanup();
 
-    if (messages.length >= 2 && deviceFingerprint) {
+    if (messages.length >= 2 && deviceId) {
       try {
         await supabase.functions.invoke("generate-conversation-summary", {
           body: {
-            deviceId: deviceFingerprint,
+            deviceId: deviceId,
             moduleType: MODULE_CONFIG.type,
             messages: messages.slice(-6),
           },
@@ -223,7 +224,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
     }
 
     onBack();
-  }, [messages, deviceFingerprint, onBack]);
+  }, [messages, deviceId, onBack]);
 
   const visualizerState = isRecording
     ? "recording"
