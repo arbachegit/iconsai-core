@@ -1,20 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import type { PWAConversationMessage } from '@/types/pwa-conversations';
-import { Play, Pause, Share2, FileText, Download, AlertCircle, Loader2, Volume2, User, Bot } from 'lucide-react';
+import { Play, Pause, Share2, FileText, Download, AlertCircle, Loader2, Volume2, User, Bot, MessageSquare, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PWAAudioMessageProps {
   message: PWAConversationMessage;
   moduleColor: string;
   isSummary?: boolean;
+  taxonomyTags?: string[];
 }
 
 export const PWAAudioMessage = ({ 
   message, 
   moduleColor, 
-  isSummary = false 
+  isSummary = false,
+  taxonomyTags = []
 }: PWAAudioMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,16 +30,17 @@ export const PWAAudioMessage = ({
   const isUser = message.role === 'user';
   const hasAudio = !!message.audio_url;
   
-  // CORES DIFERENCIADAS: user=cinza escuro, assistant=cor do modulo
-  const bgStyle = isUser 
-    ? { backgroundColor: '#e2e8f0' }
-    : { backgroundColor: moduleColor + '18' };
-    
-  const borderStyle = isUser 
-    ? { borderLeft: '4px solid #64748b' }
-    : { borderLeft: `4px solid ${moduleColor}` };
-    
-  const alignment = isUser ? 'mr-auto' : 'ml-auto';
+  // PRD: Agente=ESQUERDA (mr-auto), Usuario=DIREITA (ml-auto)
+  const alignment = isUser ? 'ml-auto' : 'mr-auto';
+  
+  // PRD: Agente=VERDE CLARO, Usuario=BRANCO
+  const bgColor = isUser 
+    ? 'bg-white dark:bg-slate-50' 
+    : 'bg-green-200 dark:bg-green-300';
+  
+  const borderColor = isUser 
+    ? 'border-l-4 border-l-slate-400' 
+    : 'border-l-4 border-l-green-500';
 
   useEffect(() => {
     return () => {
@@ -117,10 +121,20 @@ export const PWAAudioMessage = ({
     }
   };
 
-  const handleShare = () => {
+  const handleShareAudio = () => {
     if (message.audio_url) {
       navigator.clipboard.writeText(message.audio_url);
-      toast.success('Link copiado');
+      toast.success('Link do audio copiado');
+    }
+  };
+
+  const handleShareTranscription = () => {
+    const text = message.transcription || message.content || '';
+    if (text) {
+      navigator.clipboard.writeText(text);
+      toast.success('Transcricao copiada');
+    } else {
+      toast.error('Transcricao nao disponivel');
     }
   };
 
@@ -142,19 +156,32 @@ export const PWAAudioMessage = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Taxonomias no header (max 6 palavras conforme PRD)
+  const displayTags = taxonomyTags.slice(0, 6);
+
   // SEM AUDIO = apenas texto
   if (!hasAudio) {
     return (
-      <div 
-        className={`rounded-lg p-3 max-w-[85%] ${alignment}`}
-        style={{ ...bgStyle, ...borderStyle }}
-      >
+      <div className={`rounded-lg p-3 max-w-[75%] ${alignment} ${bgColor} ${borderColor} text-slate-900`}>
+        {/* Header com taxonomia (max 6) */}
+        {displayTags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {displayTags.map((tag, i) => (
+              <Badge key={i} variant="outline" className="text-xs gap-1 bg-white/50">
+                <Tag className="w-2.5 h-2.5" />
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+        
         <div className="text-sm">
-          <p className="whitespace-pre-wrap text-foreground">
+          <p className="whitespace-pre-wrap">
             {message.content || message.transcription || 'Sem conteudo'}
           </p>
         </div>
-        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+        
+        <div className="flex items-center gap-1 mt-2 text-xs text-slate-600">
           {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
           <span>{isUser ? 'Usuario' : 'Assistente'}</span>
           <span>|</span>
@@ -166,23 +193,31 @@ export const PWAAudioMessage = ({
 
   // COM AUDIO = player completo
   return (
-    <div 
-      className={`rounded-lg p-3 max-w-[85%] ${alignment}`}
-      style={{ ...bgStyle, ...borderStyle }}
-    >
+    <div className={`rounded-lg p-3 max-w-[75%] ${alignment} ${bgColor} ${borderColor} text-slate-900`}>
+      {/* Header com taxonomia (max 6) - PRD */}
+      {displayTags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {displayTags.map((tag, i) => (
+            <Badge key={i} variant="outline" className="text-xs gap-1 bg-white/50">
+              <Tag className="w-2.5 h-2.5" />
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+      
       <div className="space-y-2">
         {/* Player Controls */}
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full shrink-0"
+            className="h-10 w-10 rounded-full shrink-0 bg-white/50 hover:bg-white/70"
             onClick={handlePlayPause}
             disabled={isLoading || hasError}
-            style={{ backgroundColor: moduleColor + '20' }}
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> 
-             : hasError ? <AlertCircle className="w-5 h-5 text-destructive" /> 
+             : hasError ? <AlertCircle className="w-5 h-5 text-red-600" /> 
              : isPlaying ? <Pause className="w-5 h-5" /> 
              : <Play className="w-5 h-5" />}
           </Button>
@@ -196,21 +231,17 @@ export const PWAAudioMessage = ({
               className="cursor-pointer"
               disabled={hasError}
             />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>
-                {formatDuration((progress / 100) * duration)}
-              </span>
-              <span>
-                {formatDuration(duration)}
-              </span>
+            <div className="flex justify-between text-xs text-slate-600">
+              <span>{formatDuration((progress / 100) * duration)}</span>
+              <span>{formatDuration(duration)}</span>
             </div>
           </div>
           
-          <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />
+          <Volume2 className="w-4 h-4 text-slate-600 shrink-0" />
         </div>
 
         {hasError && (
-          <div className="flex items-center gap-2 text-xs text-destructive">
+          <div className="flex items-center gap-2 text-xs text-red-600">
             <AlertCircle className="w-3 h-3" />
             <span>Erro ao carregar audio</span>
           </div>
@@ -218,17 +249,20 @@ export const PWAAudioMessage = ({
 
         {/* Transcricao */}
         {showTranscription && (
-          <div className="mt-2 p-2 bg-background/50 rounded text-sm">
+          <div className="mt-2 p-2 bg-white/50 rounded text-sm">
             {message.transcription || message.content || 'Transcricao nao disponivel'}
           </div>
         )}
 
-        {/* Botoes de acao */}
+        {/* Footer com 4 botoes (PRD) */}
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShare} title="Compartilhar">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShareAudio} title="Compartilhar Audio">
             <Share2 className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowTranscription(!showTranscription)} title="Transcricao">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShareTranscription} title="Compartilhar Transcricao">
+            <MessageSquare className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowTranscription(!showTranscription)} title="Ver Transcricao">
             <FileText className="w-3.5 h-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDownload} title="Download">
@@ -238,7 +272,7 @@ export const PWAAudioMessage = ({
       </div>
 
       {/* Indicador de role */}
-      <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+      <div className="flex items-center gap-1 mt-2 text-xs text-slate-600">
         {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
         <span>{isUser ? 'Usuario' : 'Assistente'}</span>
         <span>|</span>

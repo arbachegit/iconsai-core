@@ -9,9 +9,9 @@ import { PWAConversationBlocks } from './PWAConversationBlocks';
 import { TaxonomyAutocomplete } from './TaxonomyAutocomplete';
 import { KeyTopicsAutocomplete } from './KeyTopicsAutocomplete';
 import { usePWAConversations } from '@/hooks/usePWAConversations';
-import type { PWAConversationModalProps, PWAConversationSession, PWASummaryFilters, AutocompleteItem } from '@/types/pwa-conversations';
+import type { PWAConversationModalProps, PWAConversationSession, PWASummaryFilters } from '@/types/pwa-conversations';
 import { PWA_MODULES } from '@/types/pwa-conversations';
-import { Globe, Heart, Lightbulb, Search, Filter, X, type LucideIcon } from 'lucide-react';
+import { Globe, Heart, Lightbulb, Search, Filter, X, Calendar, type LucideIcon } from 'lucide-react';
 
 const ICONS: Record<string, LucideIcon> = { Globe, Heart, Lightbulb };
 
@@ -37,6 +37,7 @@ export const PWAConversationModal = ({
   const [filterTaxonomy, setFilterTaxonomy] = useState<string[]>([]);
   const [filterKeyTopics, setFilterKeyTopics] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
+  const [filterDate, setFilterDate] = useState('');
   const sessionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const moduleConfig = PWA_MODULES.find(m => m.type === moduleType);
@@ -49,11 +50,18 @@ export const PWAConversationModal = ({
       setFilterTaxonomy([]);
       setFilterKeyTopics([]);
       setSearchText('');
+      setFilterDate('');
     }
   }, [isOpen, deviceId, moduleType, fetchSessionsForUser]);
 
   // Filtrar sessoes baseado nos filtros
   const filteredSessions = sessions.filter(session => {
+    // Filtro por data
+    if (filterDate) {
+      const sessionDate = new Date(session.started_at).toISOString().split('T')[0];
+      if (sessionDate !== filterDate) return false;
+    }
+    
     // Filtro por texto
     if (searchText) {
       const hasMatch = session.messages?.some(msg => 
@@ -122,9 +130,10 @@ export const PWAConversationModal = ({
     setFilterTaxonomy([]);
     setFilterKeyTopics([]);
     setSearchText('');
+    setFilterDate('');
   };
 
-  const hasActiveFilters = filterTaxonomy.length > 0 || filterKeyTopics.length > 0 || searchText.length > 0;
+  const hasActiveFilters = filterTaxonomy.length > 0 || filterKeyTopics.length > 0 || searchText.length > 0 || filterDate.length > 0;
 
   if (!moduleConfig) return null;
 
@@ -178,6 +187,20 @@ export const PWAConversationModal = ({
                 )}
               </div>
               
+              {/* Filtro por Data (PRD) */}
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  Data
+                </label>
+                <Input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              
               {/* Busca por texto */}
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Buscar no conteudo</label>
@@ -217,6 +240,12 @@ export const PWAConversationModal = ({
               {/* Tags ativas */}
               {hasActiveFilters && (
                 <div className="flex flex-wrap gap-1 pt-2">
+                  {filterDate && (
+                    <Badge variant="outline" className="text-xs gap-1">
+                      {filterDate}
+                      <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterDate('')} />
+                    </Badge>
+                  )}
                   {filterTaxonomy.map((t, i) => (
                     <Badge key={`tax-${i}`} variant="secondary" className="text-xs gap-1">
                       {t}

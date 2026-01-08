@@ -12,6 +12,7 @@ import { TaxonomyAutocomplete } from './pwa-conversations/TaxonomyAutocomplete';
 import { KeyTopicsAutocomplete } from './pwa-conversations/KeyTopicsAutocomplete';
 import { usePWAConversations } from '@/hooks/usePWAConversations';
 import type { PWAModuleType, SortDirection } from '@/types/pwa-conversations';
+import { extractCompanyFromEmail } from '@/types/pwa-conversations';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -302,7 +303,7 @@ export const PWAConversationsTab = () => {
                               {user.user_email || '-'}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
-                              {user.company || 'Não definida'}
+                              {user.company || extractCompanyFromEmail(user.user_email).company}
                             </TableCell>
                             <TableCell className="text-center">
                               <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-primary/10 text-primary text-sm font-medium">

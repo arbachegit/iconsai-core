@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PWAAudioMessage } from './PWAAudioMessage';
-import type { PWAConversationSession, PWAModuleConfig, KeyTopics } from '@/types/pwa-conversations';
+import type { PWAConversationSession, PWAModuleConfig, KeyTopics, PWAConversationMessage } from '@/types/pwa-conversations';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Clock, MapPin, MessageSquare, Users, Globe, Building2, Tag, FileText, Volume2 } from 'lucide-react';
@@ -20,7 +20,7 @@ const KeyTopicsDisplay = ({ keyTopics, color }: { keyTopics: KeyTopics | null; c
   if (!people.length && !countries.length && !organizations.length) return null;
   
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
+    <div className="flex flex-wrap gap-1">
       {people.map((p: string, i: number) => (
         <Badge key={`p-${i}`} variant="outline" className="text-xs gap-1" style={{ borderColor: color }}>
           <Users className="w-3 h-3" />
@@ -47,7 +47,7 @@ const KeyTopicsDisplay = ({ keyTopics, color }: { keyTopics: KeyTopics | null; c
 const TaxonomyDisplay = ({ tags, color }: { tags: string[] | null; color: string }) => {
   if (!tags?.length) return null;
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
+    <div className="flex flex-wrap gap-1">
       {tags.map((tag, i) => (
         <Badge key={i} variant="secondary" className="text-xs gap-1" style={{ backgroundColor: color + '15' }}>
           <Tag className="w-3 h-3" />
@@ -144,17 +144,17 @@ export const PWAConversationBlocks = ({
               {session.messages && session.messages.length > 0 ? (
                 <div className="space-y-3">
                   {session.messages.map((msg) => (
-                    <div key={msg.id} className="space-y-1">
-                      <PWAAudioMessage message={msg} moduleColor={moduleConfig.color} />
-                      {/* KeyTopics e Taxonomias apos cada mensagem */}
+                    <div key={msg.id}>
+                      {/* Taxonomia passada para o header do audio (PRD) */}
+                      <PWAAudioMessage 
+                        message={msg} 
+                        moduleColor={moduleConfig.color} 
+                        taxonomyTags={msg.taxonomy_tags || []}
+                      />
+                      {/* KeyTopics apos mensagem (pessoas, paises, orgs) */}
                       {msg.key_topics && (
-                        <div className="ml-4">
+                        <div className={`mt-1 ${msg.role === 'user' ? 'ml-auto max-w-[75%]' : 'mr-auto max-w-[75%]'}`}>
                           <KeyTopicsDisplay keyTopics={msg.key_topics} color={moduleConfig.color} />
-                        </div>
-                      )}
-                      {msg.taxonomy_tags && msg.taxonomy_tags.length > 0 && (
-                        <div className="ml-4">
-                          <TaxonomyDisplay tags={msg.taxonomy_tags} color={moduleConfig.color} />
                         </div>
                       )}
                     </div>
@@ -166,16 +166,39 @@ export const PWAConversationBlocks = ({
                 </div>
               )}
 
-              {/* Resumo */}
+              {/* Resumo (com player de audio se disponivel) */}
               {session.summary && (
-                <div className="mt-4 p-4 rounded-lg border" style={{ backgroundColor: moduleConfig.color + '08' }}>
+                <div className="mt-4 p-4 rounded-lg border bg-green-50 dark:bg-green-900/20">
                   <div className="flex items-center gap-2 font-medium mb-2">
                     <FileText className="w-4 h-4" style={{ color: moduleConfig.color }} />
                     <span>Resumo da Conversa</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {session.summary.summary_text}
-                  </p>
+                  
+                  {/* Se tiver audio do resumo, mostrar player */}
+                  {session.summary.summary_audio_url ? (
+                    <PWAAudioMessage 
+                      message={{
+                        id: session.summary.id,
+                        session_id: session.id,
+                        role: 'assistant',
+                        content: session.summary.summary_text,
+                        audio_url: session.summary.summary_audio_url,
+                        audio_duration_seconds: null,
+                        transcription: session.summary.summary_text,
+                        timestamp: session.summary.generated_at,
+                        taxonomy_tags: session.summary.taxonomy_tags || [],
+                        key_topics: session.summary.key_topics,
+                        created_at: session.summary.generated_at
+                      } as PWAConversationMessage}
+                      moduleColor="#22c55e"
+                      isSummary
+                      taxonomyTags={session.summary.taxonomy_tags || []}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {session.summary.summary_text}
+                    </p>
+                  )}
                   
                   {/* Taxonomias do resumo */}
                   {session.summary.taxonomy_tags && session.summary.taxonomy_tags.length > 0 && (
