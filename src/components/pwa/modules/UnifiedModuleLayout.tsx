@@ -1,12 +1,10 @@
 /**
  * ============================================================
- * UnifiedModuleLayout.tsx - Layout Padrão de Módulos
+ * UnifiedModuleLayout.tsx - Layout Padrão de Módulos v3.0.0
  * ============================================================
- * Versão: 2.0.0
- * Data: 2026-01-04
- * 
- * Descrição: Layout padronizado para TODOS os módulos.
- * Igual à Home: Play + Spectrum + Nome do módulo + Microfone.
+ * Versão: 3.0.0
+ * Data: 2026-01-08
+ * CORREÇÃO: Memória contextual por módulo
  * ============================================================
  */
 
@@ -29,10 +27,8 @@ import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
-// Tipos de módulo
 export type ModuleType = "help" | "world" | "health" | "ideas";
 
-// Configuração visual de cada módulo
 const MODULE_CONFIG: Record<ModuleType, {
   name: string;
   icon: typeof HelpCircle;
@@ -47,7 +43,7 @@ const MODULE_CONFIG: Record<ModuleType, {
     color: "#3B82F6",
     bgColor: "bg-blue-500/20",
     welcomeKey: "helpWelcomeText",
-    defaultWelcome: "Bem-vindo ao módulo de Ajuda! Aqui você aprende a usar todas as funcionalidades do KnowYOU.",
+    defaultWelcome: "Olá! Posso te explicar como usar cada módulo do KnowYOU. O que você precisa de ajuda?",
   },
   world: {
     name: "Mundo",
@@ -55,7 +51,7 @@ const MODULE_CONFIG: Record<ModuleType, {
     color: "#10B981",
     bgColor: "bg-emerald-500/20",
     welcomeKey: "worldWelcomeText",
-    defaultWelcome: "Olá! Eu sou seu assistente de conhecimento geral. Pergunte sobre qualquer assunto!",
+    defaultWelcome: "Olá! Sou seu analista de economia. O que gostaria de saber?",
   },
   health: {
     name: "Saúde",
@@ -63,7 +59,7 @@ const MODULE_CONFIG: Record<ModuleType, {
     color: "#F43F5E",
     bgColor: "bg-rose-500/20",
     welcomeKey: "healthWelcomeText",
-    defaultWelcome: "Olá! Sou sua assistente de saúde. Vou te ajudar usando o protocolo OLDCARTS.",
+    defaultWelcome: "Olá! Sou sua assistente de saúde. Como posso ajudar?",
   },
   ideas: {
     name: "Ideias",
@@ -71,7 +67,7 @@ const MODULE_CONFIG: Record<ModuleType, {
     color: "#F59E0B",
     bgColor: "bg-amber-500/20",
     welcomeKey: "ideasWelcomeText",
-    defaultWelcome: "Olá! Sou seu consultor de ideias. Vou usar a técnica do Advogado do Diabo.",
+    defaultWelcome: "Olá! Sou seu consultor de ideias. O que você está planejando?",
   },
 };
 
@@ -97,39 +93,88 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   
   const hasSpokenWelcome = useRef(false);
   const animationRef = useRef<number | null>(null);
+  const [contextualGreeting, setContextualGreeting] = useState<string | null>(null);
   
-  // Estado do microfone e frequência
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
 
-  // AUTOPLAY ao entrar no módulo (pula se já ouviu na HOME)
+  // Buscar saudação contextual específica do módulo
+  useEffect(() => {
+    const fetchContextualGreeting = async () => {
+      if (!deviceFingerprint || skipWelcome) return;
+      
+      try {
+        console.log(`[Module-${moduleType}] Buscando saudação contextual...`);
+        
+        const { data, error } = await supabase.functions.invoke(
+          "generate-contextual-greeting",
+          { 
+            body: { 
+              deviceId: deviceFingerprint, 
+              moduleId: moduleType,
+              userName: userName || undefined
+            } 
+          }
+        );
+        
+        if (error) {
+          console.warn(`[Module-${moduleType}] Erro ao buscar contexto:`, error);
+          return;
+        }
+        
+        if (data?.greeting) {
+          console.log(`[Module-${moduleType}] Saudação contextual:`, {
+            hasContext: !data.isFirstInteraction,
+            isFirstInteraction: data.isFirstInteraction,
+            lastModule: data.lastModule,
+          });
+          setContextualGreeting(data.greeting);
+        }
+      } catch (err) {
+        console.warn(`[Module-${moduleType}] Exceção ao buscar contexto:`, err);
+      }
+    };
+    
+    fetchContextualGreeting();
+  }, [deviceFingerprint, moduleType, skipWelcome, userName]);
+
+  // Autoplay
   useEffect(() => {
     if (hasSpokenWelcome.current) return;
     hasSpokenWelcome.current = true;
 
-    // Se foi marcado para pular (já ouviu explicação na HOME)
     if (skipWelcome) {
-      setSkipWelcome(false); // Resetar para próxima vez
-      return; // Não tocar welcome
+      console.log(`[Module-${moduleType}] Pulando welcome (ouviu na HOME)`);
+      setSkipWelcome(false);
+      return;
     }
 
-    const configRecord = pwaConfig as unknown as Record<string, string>;
-    const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
-    const greeting = welcomeText.replace("[name]", userName || "");
+    const getGreetingText = () => {
+      if (contextualGreeting) {
+        return contextualGreeting;
+      }
+      
+      const configRecord = pwaConfig as unknown as Record<string, string>;
+      const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
+      return welcomeText.replace("[name]", userName || "");
+    };
 
     const timer = setTimeout(() => {
+      const greeting = getGreetingText();
+      console.log(`[Module-${moduleType}] Autoplay:`, greeting.substring(0, 50) + "...");
+      
       speak(greeting, moduleType).catch((err) => {
         console.warn("Autoplay bloqueado:", err);
       });
-    }, 500);
+    }, 800);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [speak, moduleType, pwaConfig, config, userName, skipWelcome, setSkipWelcome]);
+  }, [speak, moduleType, pwaConfig, config, userName, skipWelcome, setSkipWelcome, contextualGreeting]);
 
-  // Cleanup ao desmontar (voltar)
+  // Cleanup ao desmontar
   useEffect(() => {
     return () => {
       stopAllAndCleanup();
@@ -139,7 +184,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     };
   }, [stopAllAndCleanup]);
 
-  // Capturar frequências do TTS quando estiver tocando
+  // Capturar frequências do TTS
   useEffect(() => {
     if (!isPlaying) {
       setFrequencyData([]);
@@ -164,23 +209,15 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     };
   }, [isPlaying, getFrequencyData]);
 
-  // Handler para captura de áudio (fluxo completo com logging detalhado)
+  // Handler para captura de áudio
   const handleAudioCapture = async (audioBlob: Blob) => {
     setIsProcessing(true);
     
     try {
-      // 1. Validar blob
       if (!audioBlob || audioBlob.size < 1000) {
         throw new Error("AUDIO_TOO_SHORT: Gravação muito curta");
       }
       
-      console.log("[Voice] Blob recebido:", {
-        size: audioBlob.size,
-        type: audioBlob.type,
-        sizeKB: (audioBlob.size / 1024).toFixed(2) + "KB"
-      });
-      
-      // 2. Converter para base64
       const arrayBuffer = await audioBlob.arrayBuffer();
       const base64 = btoa(
         new Uint8Array(arrayBuffer).reduce(
@@ -188,41 +225,27 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
         )
       );
       
-      // 3. Detectar mimeType com fallback robusto
       let mimeType = audioBlob.type;
       if (!mimeType || mimeType === "") {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         mimeType = (isIOS || isSafari) ? "audio/mp4" : "audio/webm";
-        console.log("[Voice] mimeType detectado por fallback:", mimeType);
       }
       
-      console.log("[Voice] Enviando para STT...", { 
-        base64Length: base64.length, 
-        mimeType 
-      });
-      
-      // 4. Transcrever com Whisper
       const { data: sttData, error: sttError } = await supabase.functions.invoke(
         "voice-to-text",
         { body: { audio: base64, mimeType } }
       );
       
       if (sttError) {
-        console.error("[Voice] Erro STT:", sttError);
-        throw new Error(`STT_ERROR: ${sttError.message || "Falha na transcrição"}`);
+        throw new Error(`STT_ERROR: ${sttError.message}`);
       }
       
       const userText = sttData?.text;
-      
-      if (!userText || userText.trim() === "") {
-        throw new Error("STT_EMPTY: Não foi possível entender o áudio");
+      if (!userText?.trim()) {
+        throw new Error("STT_EMPTY: Não entendi o áudio");
       }
       
-      console.log("[Voice] Transcrição OK:", userText);
-      
-      // 5. Enviar para chat-router
-      console.log("[Voice] Enviando para chat-router...");
       const { data: chatData, error: chatError } = await supabase.functions.invoke(
         "chat-router",
         { 
@@ -237,41 +260,29 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
       );
       
       if (chatError) {
-        console.error("[Voice] Erro Chat:", chatError);
-        throw new Error(`CHAT_ERROR: ${chatError.message || "Falha ao processar"}`);
+        throw new Error(`CHAT_ERROR: ${chatError.message}`);
       }
       
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
-      
       if (!aiResponse) {
-        throw new Error("CHAT_EMPTY: Resposta vazia da IA");
+        throw new Error("CHAT_EMPTY: Resposta vazia");
       }
       
-      console.log("[Voice] Resposta IA OK:", aiResponse.substring(0, 100) + "...");
-      
-      // 6. Falar resposta com TTS
-      console.log("[Voice] Enviando para TTS...");
       await speak(aiResponse, moduleType);
-      console.log("[Voice] Fluxo completo com sucesso!");
       
     } catch (error: any) {
-      console.error("[Voice] ERRO COMPLETO:", error);
+      console.error(`[Module-${moduleType}] ERRO:`, error);
       
-      // Mensagens específicas por tipo de erro
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
       
       if (error.message?.includes("AUDIO_TOO_SHORT")) {
         errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
       } else if (error.message?.includes("STT_ERROR")) {
-        errorMessage = "Não consegui processar o áudio. Verifique se o microfone está funcionando.";
+        errorMessage = "Não consegui processar o áudio.";
       } else if (error.message?.includes("STT_EMPTY")) {
         errorMessage = "Não entendi o que você disse. Pode repetir?";
       } else if (error.message?.includes("CHAT_ERROR")) {
-        errorMessage = "O serviço está temporariamente indisponível. Tente novamente.";
-      } else if (error.message?.includes("CHAT_EMPTY")) {
-        errorMessage = "Não consegui gerar uma resposta. Tente reformular sua pergunta.";
-      } else if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
-        errorMessage = "Erro de autenticação. Recarregue a página e tente novamente.";
+        errorMessage = "O serviço está temporariamente indisponível.";
       }
       
       await speak(errorMessage, moduleType);
@@ -280,25 +291,28 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     }
   };
 
-  // Handler do botão play
   const handlePlayClick = () => {
     if (isPlaying) {
       stop();
     } else {
-      const configRecord = pwaConfig as unknown as Record<string, string>;
-      const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
-      const greeting = welcomeText.replace("[name]", userName || "");
+      let greeting: string;
+      if (contextualGreeting) {
+        greeting = contextualGreeting;
+      } else {
+        const configRecord = pwaConfig as unknown as Record<string, string>;
+        const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
+        greeting = welcomeText.replace("[name]", userName || "");
+      }
+      
       speak(greeting, moduleType);
     }
   };
 
-  // Handler voltar
   const handleBack = () => {
     stopAllAndCleanup();
     onBack();
   };
 
-  // Determinar estado do visualizador
   const visualizerState = isRecording 
     ? "recording" 
     : isProcessing 
@@ -314,7 +328,6 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-3 pt-12">
-        {/* Botão Voltar */}
         <motion.button
           onClick={handleBack}
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10"
@@ -323,7 +336,6 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           <ArrowLeft className="w-5 h-5 text-white" />
         </motion.button>
 
-        {/* Ícone + Nome */}
         <div className="flex items-center gap-3">
           <motion.div
             className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center`}
@@ -345,14 +357,12 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           </span>
         </div>
 
-        {/* Botão Histórico */}
         <motion.button
           onClick={onHistoryClick}
           className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/10"
           whileTap={{ scale: 0.95 }}
         >
           <History className="w-5 h-5 text-white" />
-          {/* Bolinha VERMELHA pulsando */}
           <motion.span
             className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"
             animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
@@ -361,9 +371,8 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
         </motion.button>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL - IGUAL À HOME */}
+      {/* CONTEÚDO PRINCIPAL */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
-        {/* Spectrum Analyzer com dados reais */}
         <SpectrumAnalyzer
           state={visualizerState}
           frequencyData={frequencyData}
@@ -373,7 +382,6 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           width={280}
         />
 
-        {/* Botão Play para ouvir welcome */}
         <PlayButton
           state={buttonState}
           onClick={handlePlayClick}
@@ -382,7 +390,6 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           primaryColor={config.color}
         />
         
-        {/* Toggle Microphone Button */}
         <ToggleMicrophoneButton
           onAudioCapture={handleAudioCapture}
           disabled={isLoading}

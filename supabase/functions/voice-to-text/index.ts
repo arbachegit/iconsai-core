@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.2.0 | DEPLOY: 2026-01-07
-// CORREÇÃO: Melhor suporte a formatos de áudio
+// VERSAO: 2.3.0 | DEPLOY: 2026-01-08
+// CORREÇÃO: Tratamento específico para audio_too_short
 // ============================================
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -274,7 +274,16 @@ serve(async (req) => {
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           } else {
-            console.log(`[VOICE-TO-TEXT] Fallback ${format.ext} falhou:`, fallbackResponse.status);
+            // CORREÇÃO: Verificar se fallback também retorna audio_too_short
+            const fallbackErrorText = await fallbackResponse.text();
+            console.log(`[VOICE-TO-TEXT] Fallback ${format.ext} falhou:`, fallbackResponse.status, fallbackErrorText);
+            
+            if (fallbackErrorText.includes('audio_too_short') || fallbackErrorText.includes('too short')) {
+              return new Response(
+                JSON.stringify({ error: 'Áudio muito curto. Grave por mais tempo.' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
           }
         }
 

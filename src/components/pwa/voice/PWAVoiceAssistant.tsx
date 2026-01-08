@@ -1,3 +1,8 @@
+/**
+ * PWAVoiceAssistant.tsx - v3.0.0 - 2026-01-08
+ * CORREÇÕES: Autoplay, navegação, isolamento de contexto
+ */
+
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
@@ -7,10 +12,7 @@ import { useAudioManager } from "@/stores/audioManagerStore";
 import { SplashScreen } from "./SplashScreen";
 import { VoicePlayerBox } from "./VoicePlayerBox";
 import { ModuleSelector } from "./ModuleSelector";
-import { ModuleHeader } from "./ModuleHeader";
-import { HeaderActions } from "./HeaderActions";
 import { FooterModules } from "./FooterModules";
-import { TranscriptArea } from "./TranscriptArea";
 import { HistoryScreen } from "./HistoryScreen";
 import { HelpModule } from "../modules/HelpModule";
 import { WorldModule } from "../modules/WorldModule";
@@ -40,10 +42,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   } = usePWAVoiceStore();
   
   const { initialize: initializeHistory } = useHistoryStore();
-  
-  // AudioManager para capturar frequências do TTS
   const audioManager = useAudioManager();
-
   const { config, isLoading: isConfigLoading } = useConfigPWA();
   const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech({ voice: config.ttsVoice });
 
@@ -51,17 +50,16 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [showDesktopWarning, setShowDesktopWarning] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
-  const [interimTranscript, setInterimTranscript] = useState("");
-  const [isListening, setIsListening] = useState(false);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [lastSpokenText, setLastSpokenText] = useState<string | null>(null);
   const [pendingModule, setPendingModule] = useState<Exclude<ModuleId, null> | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
 
-  // Controle de autoplay - executa UMA vez por sessão
+  // CORREÇÃO CRÍTICA: Controle rigoroso de autoplay
   const hasPlayedWelcome = useRef(false);
   const welcomeAttempted = useRef(false);
+  const isNavigatingToModule = useRef(false);
   const frequencyAnimationRef = useRef<number | null>(null);
 
   // Lock scroll
@@ -103,9 +101,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     }
   }, [isLoading, isPlaying, setPlayerState]);
 
-  // ============================================================
-  // CAPTURA DE FREQUÊNCIA DO TTS para SpectrumAnalyzer
-  // ============================================================
+  // Captura de frequência do TTS
   useEffect(() => {
     if (!audioManager.isPlaying) {
       setFrequencyData([]);
@@ -134,27 +130,44 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     };
   }, [audioManager.isPlaying, audioManager]);
 
-  // ============================================================
-  // AUTOPLAY: Executa saudação contextual ao entrar na HOME
-  // Busca memória persistente do usuário para gerar saudação personalizada
-  // ============================================================
+  // AUTOPLAY HOME: APENAS se NÃO estiver navegando para módulo
   useEffect(() => {
-    // Condições para executar autoplay:
-    // 1. Estamos na HOME (idle)
-    // 2. Config já carregou
-    // 3. Ainda não tentamos o autoplay nesta sessão
-    if (appState === "idle" && !isConfigLoading && !welcomeAttempted.current) {
+    // CORREÇÃO CRÍTICA: NÃO executar se estamos navegando para um módulo
+    if (isNavigatingToModule.current) {
+      console.log("[PWA] Autoplay HOME bloqueado - navegando para módulo");
+      return;
+    }
+
+    if (
+      appState === "idle" && 
+      !isConfigLoading && 
+      !welcomeAttempted.current && 
+      config.welcomeText &&
+      !pendingModule &&
+      !isExplaining
+    ) {
       welcomeAttempted.current = true;
 
       const fetchContextualGreeting = async () => {
+        // Verificar novamente antes de executar
+        if (isNavigatingToModule.current || pendingModule) {
+          console.log("[PWA] Autoplay cancelado - navegação em andamento");
+          return;
+        }
+
         try {
-          // Buscar saudação contextual da edge function
           const { data, error } = await supabase.functions.invoke("generate-contextual-greeting", {
             body: { 
               deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
               userName: userName || undefined
             }
           });
+
+          // Verificar novamente após fetch
+          if (isNavigatingToModule.current || pendingModule) {
+            console.log("[PWA] Autoplay cancelado após fetch");
+            return;
+          }
 
           if (error) {
             console.warn("Erro ao buscar saudação contextual:", error);
@@ -169,8 +182,12 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
             hasPlayedWelcome.current = true;
           }
         } catch (err) {
+          // Verificar novamente antes do fallback
+          if (isNavigatingToModule.current || pendingModule) {
+            return;
+          }
+          
           console.warn("Fallback para saudação padrão:", err);
-          // Fallback para saudação padrão
           const fallbackGreeting = config.welcomeText?.replace("[name]", userName || "") || "";
           if (fallbackGreeting) {
             setLastSpokenText(fallbackGreeting);
@@ -179,14 +196,11 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
         }
       };
 
-      // Pequeno delay para garantir que a UI está pronta
       const timer = setTimeout(fetchContextualGreeting, 300);
-
       return () => clearTimeout(timer);
     }
-  }, [appState, isConfigLoading, deviceFingerprint, userName, speak, config.welcomeText]);
+  }, [appState, isConfigLoading, deviceFingerprint, userName, speak, config.welcomeText, pendingModule, isExplaining]);
 
-  // Replay do último texto falado
   const handleReplay = useCallback(() => {
     if (lastSpokenText) {
       speak(lastSpokenText);
@@ -197,18 +211,22 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     setAppState("idle");
   };
 
+  // SELEÇÃO DE MÓDULO: Controle rigoroso de navegação
   const handleModuleSelect = async (moduleId: Exclude<ModuleId, null>) => {
-    // Se já está explicando, ignorar
-    if (isExplaining) return;
+    if (isExplaining || isNavigatingToModule.current) return;
     
-    // Parar áudio atual
+    console.log("[PWA] Navegando para módulo:", moduleId);
+    
+    // CORREÇÃO CRÍTICA: Marcar que estamos navegando ANTES de tudo
+    isNavigatingToModule.current = true;
+    
+    // Parar QUALQUER áudio atual IMEDIATAMENTE
     stop();
+    audioManager.stopAllAndCleanup();
     
-    // Marcar como explicando
     setPendingModule(moduleId);
     setIsExplaining(true);
     
-    // Buscar texto de boas-vindas do módulo
     const welcomeTexts: Record<string, string> = {
       help: config.helpWelcomeText || "",
       world: config.worldWelcomeText || "",
@@ -221,31 +239,49 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     
     if (greeting) {
       setLastSpokenText(greeting);
-      await speak(greeting);
+      try {
+        await speak(greeting);
+      } catch (err) {
+        console.warn("[PWA] Erro no welcome do módulo:", err);
+      }
     }
-    
-    // O useEffect abaixo vai navegar quando o áudio terminar
   };
   
-  // Efeito para navegar quando a explicação terminar
+  // Navegar quando a explicação terminar
   useEffect(() => {
     if (pendingModule && isExplaining && !isPlaying && !isLoading) {
-      // Marcar para pular welcome no módulo
+      console.log("[PWA] Explicação concluída, navegando para:", pendingModule);
+      
       usePWAVoiceStore.getState().setSkipWelcome(true);
       
-      // Navegar para o módulo
       setActiveModule(pendingModule);
       setPendingModule(null);
       setIsExplaining(false);
+      
+      // Resetar flag de navegação após delay
+      setTimeout(() => {
+        isNavigatingToModule.current = false;
+      }, 500);
     }
   }, [pendingModule, isExplaining, isPlaying, isLoading, setActiveModule]);
 
+  // VOLTAR PARA HOME: Reset completo de estados
   const handleBackToHome = () => {
-    // CRÍTICO: Parar todo áudio antes de voltar
+    console.log("[PWA] Voltando para HOME");
+    
+    // Parar TODO áudio
     stop();
+    audioManager.stopAllAndCleanup();
+    
+    // Resetar flag de navegação
+    isNavigatingToModule.current = false;
+    
+    // Resetar estados
     setActiveModule(null);
     setAppState("idle");
     setPlayerState("idle");
+    setPendingModule(null);
+    setIsExplaining(false);
   };
   
   const handleOpenHistoryFromModule = () => {
@@ -288,10 +324,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     }
   };
 
-  // Filtrar conversas por módulo ativo
   const filteredConversations = activeModule ? conversations.filter((c) => c.module === activeModule) : conversations;
 
-  // Desktop warning
   if (showDesktopWarning) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -317,12 +351,10 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     );
   }
 
-  // Main content
   const renderContent = ({ fingerprint, pwaAccess }: { fingerprint: string; pwaAccess: string[] }) => {
     useEffect(() => {
       if (fingerprint) {
         setAuthenticated(true, fingerprint);
-        // Inicializa o histórico com o deviceId
         initializeHistory(fingerprint);
       }
     }, [fingerprint]);
@@ -334,7 +366,6 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     return (
       <div className={wrapperClass}>
         <AnimatePresence mode="wait">
-          {/* Splash Screen */}
           {appState === "splash" && (
             <SplashScreen
               key="splash"
@@ -344,13 +375,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
             />
           )}
 
-          {/* ============================================================
-              HOME - MINIMALISTA
-              - Logo centralizado (com padding para evitar notch)
-              - VoicePlayerBox (autoplay + replay)
-              - Grid de 4 módulos (com animação de descida quando playing)
-              ============================================================ */}
-          {(appState === "idle" || appState === "welcome") && (
+          {(appState === "idle" || appState === "welcome") && !activeModule && (
             <motion.div
               key="home"
               initial={{ opacity: 0 }}
@@ -359,16 +384,11 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               transition={{ duration: 0.6, ease: "easeOut" }}
               className="flex-1 flex flex-col overflow-hidden"
             >
-              {/* Header - Logo com animação suave */}
               <motion.div 
                 className="pt-12 pb-2 px-4"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.7, 
-                  delay: 0.1,
-                  ease: [0.25, 0.46, 0.45, 0.94] 
-                }}
+                transition={{ duration: 0.7, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
                 <div className="text-center overflow-hidden">
                   <h1 className="text-2xl font-bold whitespace-nowrap">
@@ -377,30 +397,20 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                 </div>
               </motion.div>
 
-              {/* VoicePlayerBox - Com scale e delay */}
               <motion.div 
                 className="px-6 py-4"
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.6, 
-                  delay: 0.25,
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
+                transition={{ duration: 0.6, delay: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
                 <VoicePlayerBox state={playerState} onPlay={handleReplay} onPause={stop} audioProgress={progress} frequencyData={frequencyData} />
               </motion.div>
 
-              {/* Grid de Módulos - Com delay maior */}
               <motion.div 
                 className="flex-1 px-4 pb-2 overflow-hidden"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.7, 
-                  delay: 0.4,
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
+                transition={{ duration: 0.7, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
                 <ModuleSelector 
                   onSelect={handleModuleSelect} 
@@ -409,27 +419,18 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                   pendingModule={pendingModule}
                 />
               </motion.div>
+              
               <motion.div 
                 className="py-2 text-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ 
-                  duration: 0.5, 
-                  delay: 0.6,
-                  ease: "easeOut"
-                }}
+                transition={{ duration: 0.5, delay: 0.6, ease: "easeOut" }}
               >
                 <p className="text-[10px] text-muted-foreground/60">KnowYOU © 2025</p>
               </motion.div>
             </motion.div>
           )}
 
-          {/* ============================================================
-              MÓDULO ATIVO
-              - Header com botão voltar + HeaderActions (histórico)
-              - Conteúdo do módulo (com microfone interno)
-              - Footer de navegação
-              ============================================================ */}
           {appState === "module" && activeModule && (
             <motion.div
               key="module"
@@ -438,17 +439,12 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               exit={{ opacity: 0, x: -20 }}
               className="flex-1 flex flex-col overflow-hidden"
             >
-
-              {/* Conteúdo do módulo */}
               <div className="flex-1 overflow-hidden">{renderModule()}</div>
-
-              {/* Footer de navegação entre módulos */}
               <FooterModules activeModule={activeModule} onSelectModule={handleModuleSelect} showIndicators={true} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Tela de Histórico */}
         {isConversationsOpen && (
           <HistoryScreen
             onBack={() => setIsConversationsOpen(false)}
