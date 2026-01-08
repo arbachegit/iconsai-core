@@ -27,13 +27,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface HomeContainerProps {
   onModuleSelect: (moduleId: Exclude<ModuleId, null>) => void;
+  deviceId: string;
 }
 
-export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect }) => {
+export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
   const { config, isLoading: isConfigLoading } = useConfigPWA();
-  const { userName, deviceFingerprint, playerState, setPlayerState } = usePWAVoiceStore();
+  const { userName, playerState, setPlayerState } = usePWAVoiceStore();
 
   // ============================================================
   // ESTADOS LOCAIS (100% independentes)
@@ -62,7 +63,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect }) 
         // Tentar buscar saudação contextual
         const { data, error } = await supabase.functions.invoke("generate-contextual-greeting", {
           body: {
-            deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
+            deviceId: deviceId || `anonymous-${Date.now()}`,
             userName: userName || undefined,
             // NÃO passar moduleId - é HOME
           },
@@ -110,7 +111,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect }) 
     return () => {
       mountedRef.current = false;
     };
-  }, [isConfigLoading, deviceFingerprint, userName, config.welcomeText]);
+  }, [isConfigLoading, deviceId, userName, config.welcomeText]);
 
   // ============================================================
   // ETAPA 2: AUTOPLAY GARANTIDO
