@@ -49,6 +49,10 @@ export interface PWAConversationMessage {
   created_at: string;
 }
 
+/**
+ * PWA Conversation Summary
+ * @table pwa_conv_summaries - Nome da tabela no banco de dados
+ */
 export interface PWAConversationSummary {
   id: string;
   session_id: string;
