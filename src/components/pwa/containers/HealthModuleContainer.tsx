@@ -22,6 +22,7 @@ import { useHistoryStore } from "@/stores/historyStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
+import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 
 const MODULE_CONFIG = {
   name: "Saúde",
@@ -221,7 +222,12 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
         transcription: aiResponse,
       });
 
-      await speak(aiResponse, MODULE_CONFIG.moduleType);
+      // Classificar e enriquecer para TTS contextual
+      const enrichment = await classifyAndEnrich(aiResponse, MODULE_CONFIG.moduleType);
+      
+      await speak(enrichment.enrichedText || aiResponse, MODULE_CONFIG.moduleType, {
+        phoneticMapOverride: enrichment.phoneticMap
+      });
     } catch (error: any) {
       console.error("[HealthContainer] ERRO:", error);
 

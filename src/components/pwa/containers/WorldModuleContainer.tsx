@@ -21,6 +21,7 @@ import { useAudioManager } from "@/stores/audioManagerStore";
 import { useHistoryStore } from "@/stores/historyStore";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
+import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 
 const MODULE_CONFIG = {
   type: "world" as const,
@@ -218,7 +219,12 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
         transcription: aiResponse,
       });
 
-      await speak(aiResponse, MODULE_CONFIG.type);
+      // Classificar e enriquecer para TTS contextual
+      const enrichment = await classifyAndEnrich(aiResponse, MODULE_CONFIG.type);
+      
+      await speak(enrichment.enrichedText || aiResponse, MODULE_CONFIG.type, {
+        phoneticMapOverride: enrichment.phoneticMap
+      });
     } catch (error: any) {
       console.error("[WorldContainer] ERRO:", error);
 
