@@ -338,3 +338,6 @@ verify_jwt = false
 # ============================================
 [functions.pwa-save-message]
 verify_jwt = false
+
+[functions.pwa-get-history]
+verify_jwt = false
