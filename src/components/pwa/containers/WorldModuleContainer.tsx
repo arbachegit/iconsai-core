@@ -2,12 +2,11 @@
  * ============================================================
  * WorldModuleContainer.tsx - Container INDEPENDENTE para Mundo
  * ============================================================
- * Versão: 5.5.0 - 2026-01-09
- * CORREÇÃO: defaultWelcome corrigido (MUNDO ≠ ECONOMIA)
+ * Versão: 5.6.0 - 2026-01-09
+ * FIX: Verificação de deviceId vazio antes de chamar API
  * ============================================================
- * CHANGELOG v5.5.0:
- * - defaultWelcome agora reflete módulo MUNDO (generalista)
- * - Removida menção a "analista de economia"
+ * CHANGELOG v5.6.0:
+ * - Adicionado if (!deviceId) return; para evitar erro 400
  * ============================================================
  */
 
@@ -23,15 +22,11 @@ import { useHistoryStore } from "@/stores/historyStore";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
-// ============================================================
-// CORREÇÃO v5.5.0: defaultWelcome reflete módulo MUNDO
-// ============================================================
 const MODULE_CONFIG = {
   type: "world" as const,
   name: "Mundo",
   color: "#10B981",
   bgColor: "bg-emerald-500/20",
-  // CORRIGIDO: Mensagem genérica para módulo MUNDO (não economia)
   defaultWelcome:
     "Olá! Sou seu assistente do módulo Mundo. Posso te ajudar com notícias, acontecimentos globais, política, tecnologia e muito mais. O que gostaria de saber?",
 };
@@ -63,6 +58,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
   // ============================================================
   useEffect(() => {
     if (isGreetingReady) return;
+    if (!deviceId) return; // FIX v5.6.0: Evitar chamada com deviceId vazio
 
     const fetchGreeting = async () => {
       try {
@@ -187,10 +183,8 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
 
-      // Salvar mensagem do usuário no estado local
       setMessages((prev) => [...prev, { role: "user", content: userText }]);
 
-      // Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.type, {
         role: "user",
         title: userText,
@@ -214,10 +208,8 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 
-      // Salvar resposta do assistente no estado local
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
 
-      // Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.type, {
         role: "assistant",
         title: aiResponse,
