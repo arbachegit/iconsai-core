@@ -1,7 +1,13 @@
 // ============================================
-// VERSAO: 2.4.0 | DEPLOY: 2026-01-05
-// AUDITORIA: Gemini com Google Search para dados em tempo real
-// MUDANÇA: Lovable AI Gateway (Gemini 2.5 Flash) + fallback OpenAI
+// VERSAO: 2.5.0 | DEPLOY: 2026-01-09
+// AUDITORIA: Remoção de hardcodes "economia"
+// MUDANCA: Cada módulo tem prompt específico
+// CORRECAO: world ≠ economia (separados)
+// ============================================
+// CHANGELOG:
+// - Removido fallback "economia" em 3 lugares
+// - Separado prompt WORLD (geral) de ECONOMIA (específico)
+// - Fallback usa chatType quando agentSlug vazio
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -39,59 +45,37 @@ function sanitizeBrandingResponse(text: string): string {
 }
 
 // ===================== CHATGPT MODULE-SPECIFIC PROMPTS =====================
+// CORRECAO v2.5.0: Cada módulo tem prompt ÚNICO e ESPECÍFICO
 const CHATGPT_MODULE_PROMPTS: Record<string, string> = {
-  // ===== MÓDULO MUNDO (ECONOMIA) =====
-  world: `Você é um analista econômico especializado em economia brasileira e global.
+  // ===== MÓDULO MUNDO (GENERALISTA - NÃO É ECONOMIA) =====
+  world: `Você é um assistente inteligente do módulo MUNDO do KnowYOU.
 
-## DIRECIONAMENTO OBRIGATÓRIO:
-1. SEMPRE relacione qualquer tema com ECONOMIA
-2. Busque impactos econômicos em qualquer notícia/assunto
-3. Cite dados quando possível (IBGE, Banco Central, IPEA)
-4. Contextualize para a realidade brasileira
+## SUA FUNÇÃO:
+Você é um analista generalista que ajuda o usuário a entender o MUNDO ao redor:
+- Notícias e acontecimentos globais
+- Política nacional e internacional
+- Tendências e movimentos sociais
+- Tecnologia e inovação
+- Cultura e sociedade
 
-## EXEMPLOS DE CONEXÃO ECONÔMICA:
-- Política → Impacto no mercado/investimentos
-- Tecnologia → Produtividade/empregos
-- Saúde → Custos/PIB/previdência
-- Clima → Agronegócio/commodities
-- Internacional → Câmbio/comércio exterior
+## QUANDO O TEMA FOR ECONÔMICO:
+Se o usuário perguntar especificamente sobre economia, indicadores ou mercado financeiro,
+responda normalmente mas sugira: "Para análises econômicas mais aprofundadas, 
+você pode usar nosso módulo especializado."
 
 ## ESTILO:
-- Informativo e analítico
+- Informativo e equilibrado
 - Máximo 4-5 frases concisas
-- Termine com insight econômico relevante
+- Contextualize para a realidade brasileira quando relevante
+- Cite fontes quando possível
 
 ## REGRAS:
 - NUNCA mencione que é ChatGPT, OpenAI ou IA
-- Sempre conecte ao contexto econômico brasileiro
+- Seja objetivo e imparcial
 - Priorize informações atuais e verificáveis`,
 
+  // ===== MÓDULO ECONOMIA (ESPECÍFICO) =====
   economia: `Você é um analista econômico especializado em economia brasileira e global.
-
-## DIRECIONAMENTO OBRIGATÓRIO:
-1. SEMPRE relacione qualquer tema com ECONOMIA
-2. Busque impactos econômicos em qualquer notícia/assunto
-3. Cite dados quando possível (IBGE, Banco Central, IPEA)
-4. Contextualize para a realidade brasileira
-
-## EXEMPLOS DE CONEXÃO ECONÔMICA:
-- Política → Impacto no mercado/investimentos
-- Tecnologia → Produtividade/empregos
-- Saúde → Custos/PIB/previdência
-- Clima → Agronegócio/commodities
-- Internacional → Câmbio/comércio exterior
-
-## ESTILO:
-- Informativo e analítico
-- Máximo 4-5 frases concisas
-- Termine com insight econômico relevante
-
-## REGRAS:
-- NUNCA mencione que é ChatGPT, OpenAI ou IA
-- Sempre conecte ao contexto econômico brasileiro
-- Priorize informações atuais e verificáveis`,
-
-  mundo: `Você é um analista econômico especializado em economia brasileira e global.
 
 ## DIRECIONAMENTO OBRIGATÓRIO:
 1. SEMPRE relacione qualquer tema com ECONOMIA
@@ -279,9 +263,9 @@ const CHATGPT_MODULE_PROMPTS: Record<string, string> = {
 Explicar como usar o aplicativo e seus recursos.
 
 ## MÓDULOS DO APP:
-- MUNDO: Notícias e análises econômicas
+- MUNDO: Notícias e análises sobre o mundo (política, sociedade, tecnologia)
 - SAÚDE: Orientação sobre sintomas (sempre recomenda médico)
-- IDEIAS: Desenvolvimento de projetos com questionamento duro
+- IDEIAS: Desenvolvimento de projetos com questionamento duro (Advogado do Diabo)
 
 ## ESTILO:
 - Claro e objetivo
@@ -291,6 +275,21 @@ Explicar como usar o aplicativo e seus recursos.
 ## REGRAS:
 - NUNCA mencione que é ChatGPT, OpenAI ou IA
 - Sempre seja prestativo`,
+
+  // ===== FALLBACK GERAL =====
+  general: `Você é um assistente inteligente do KnowYOU.
+
+## FUNÇÃO:
+Ajudar o usuário com qualquer dúvida de forma clara e objetiva.
+
+## ESTILO:
+- Informativo e prestativo
+- Máximo 4-5 frases
+- Linguagem natural e acessível
+
+## REGRAS:
+- NUNCA mencione que é ChatGPT, OpenAI ou IA
+- Sempre seja útil e objetivo`,
 };
 
 // ===================== CHATGPT WITH WEB SEARCH (REAL-TIME DATA) =====================
@@ -306,8 +305,8 @@ async function callChatGPTForModule(
     return { response: "", success: false };
   }
 
-  // Obter prompt específico do módulo
-  const modulePrompt = CHATGPT_MODULE_PROMPTS[moduleSlug] || CHATGPT_MODULE_PROMPTS["help"];
+  // CORRECAO v2.5.0: Obter prompt específico do módulo, fallback para "general" (não "economia")
+  const modulePrompt = CHATGPT_MODULE_PROMPTS[moduleSlug] || CHATGPT_MODULE_PROMPTS["general"];
 
   // Construir mensagens com histórico
   const messages: Array<{ role: string; content: string }> = [{ role: "system", content: modulePrompt }];
@@ -338,7 +337,7 @@ async function callGeminiWithGrounding(
   messages: Array<{ role: string; content: string }>,
 ): Promise<{ response: string; success: boolean }> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
+
   if (!LOVABLE_API_KEY) {
     console.warn(`[Gemini-Grounding-${moduleSlug}] LOVABLE_API_KEY não configurada`);
     return { response: "", success: false };
@@ -352,15 +351,17 @@ async function callGeminiWithGrounding(
       if (m.role === "system") {
         return {
           ...m,
-          content: m.content + `\n\n## INSTRUÇÃO CRÍTICA - VERIFICAÇÃO TEMPORAL OBRIGATÓRIA:
-- A data de HOJE é ${new Date().toLocaleDateString('pt-BR')} (${new Date().toISOString().split('T')[0]})
+          content:
+            m.content +
+            `\n\n## INSTRUÇÃO CRÍTICA - VERIFICAÇÃO TEMPORAL OBRIGATÓRIA:
+- A data de HOJE é ${new Date().toLocaleDateString("pt-BR")} (${new Date().toISOString().split("T")[0]})
 - Você TEM ACESSO a dados em tempo real via Google Search
 - OBRIGATÓRIO: Cite a DATA DE REFERÊNCIA de cada dado mencionado (ex: "segundo dados de janeiro/2026")
 - OBRIGATÓRIO: Cite a FONTE dos dados (IBGE, BCB, IPEA, portal de notícias)
 - Se não conseguir verificar a atualidade de uma informação, DECLARE EXPLICITAMENTE:
   "Esta informação pode não estar atualizada. Recomendo verificar fontes oficiais para dados mais recentes."
 - PROIBIDO: Usar dados sem indicar período/fonte
-- PROIBIDO: Inferir valores atuais a partir de tendências históricas sem declarar`
+- PROIBIDO: Inferir valores atuais a partir de tendências históricas sem declarar`,
         };
       }
       return m;
@@ -399,7 +400,6 @@ async function callGeminiWithGrounding(
 
     console.log(`[Gemini-Grounding-${moduleSlug}] Sucesso com Google Search - tamanho:`, sanitizedContent.length);
     return { response: sanitizedContent, success: true };
-
   } catch (error) {
     console.error(`[Gemini-Grounding-${moduleSlug}] Exceção:`, error);
     return { response: "", success: false };
@@ -464,13 +464,13 @@ Ao responder sobre dados econômicos, notícias ou eventos recentes:
     }
 
     console.log(`[ChatGPT-Fallback-${moduleSlug}] Sucesso - tamanho:`, sanitizedContent.length);
-    return { 
-      response: sanitizedContent, 
+    return {
+      response: sanitizedContent,
       success: true,
       hasRealtimeAccess: false,
-      disclaimer: "Resposta gerada sem acesso a dados em tempo real. Verifique fontes oficiais para informações atualizadas."
+      disclaimer:
+        "Resposta gerada sem acesso a dados em tempo real. Verifique fontes oficiais para informações atualizadas.",
     };
-
   } catch (error) {
     console.error(`[ChatGPT-Fallback-${moduleSlug}] Exceção:`, error);
     return { response: "", success: false, hasRealtimeAccess: false, disclaimer: null };
@@ -479,6 +479,33 @@ Ao responder sobre dados econômicos, notícias ou eventos recentes:
 
 // ===================== MODULE-SPECIFIC SYSTEM PROMPTS (GEMINI FALLBACK) =====================
 const MODULE_SYSTEM_PROMPTS: Record<string, string> = {
+  // CORRECAO v2.5.0: Adicionado prompt para "world" separado
+  world: `
+# MÓDULO MUNDO - Assistente Generalista
+
+## PERSONALIDADE:
+- Informativo e equilibrado
+- Analisa múltiplas perspectivas
+- Contextualiza para realidade brasileira
+
+## TÓPICOS:
+- Notícias e acontecimentos globais
+- Política nacional e internacional
+- Tendências sociais e tecnológicas
+- Cultura e sociedade
+
+## ESTRATÉGIA:
+1. Entenda o que o usuário quer saber
+2. Forneça informação clara e objetiva
+3. Cite fontes quando possível
+4. Mantenha imparcialidade
+
+## REGRAS:
+- Seja objetivo e equilibrado
+- Máximo 4-5 frases
+- Não seja tendencioso politicamente
+`,
+
   health: `
 # MÓDULO SAÚDE - Assistente de Orientação
 
@@ -611,7 +638,7 @@ interface AgentConfig {
 
 interface ChatRequest {
   messages?: Message[];
-  chatType?: "health" | "study" | "economia" | "general" | "ideias";
+  chatType?: "health" | "study" | "economia" | "general" | "ideias" | "world" | "ideas" | "help";
   region?: string;
   agentConfig?: AgentConfig;
   documentId?: string;
@@ -823,7 +850,8 @@ async function updateUserContextAfterInteraction(
           messages: [
             {
               role: "system",
-              content: "Resuma em NO MÁXIMO 15 palavras o tema principal da interação. Responda APENAS com o resumo, sem prefixos ou explicações.",
+              content:
+                "Resuma em NO MÁXIMO 15 palavras o tema principal da interação. Responda APENAS com o resumo, sem prefixos ou explicações.",
             },
             {
               role: "user",
@@ -867,20 +895,20 @@ async function updateUserContextAfterInteraction(
         })
         .eq("device_id", deviceId);
 
-      console.log(`[Context] Updated user context: ${deviceId.substring(0, 15)}... count=${existing.interaction_count + 1}`);
+      console.log(
+        `[Context] Updated user context: ${deviceId.substring(0, 15)}... count=${existing.interaction_count + 1}`,
+      );
     } else {
       // Criar novo registro
-      await supabase
-        .from("pwa_user_context")
-        .insert({
-          device_id: deviceId,
-          user_name: userName || null,
-          interaction_count: 1,
-          last_module: moduleId,
-          last_topic_summary: topicSummary,
-          last_user_message: userMessage.substring(0, 500),
-          last_interaction_at: new Date().toISOString(),
-        });
+      await supabase.from("pwa_user_context").insert({
+        device_id: deviceId,
+        user_name: userName || null,
+        interaction_count: 1,
+        last_module: moduleId,
+        last_topic_summary: topicSummary,
+        last_user_message: userMessage.substring(0, 500),
+        last_interaction_at: new Date().toISOString(),
+      });
 
       console.log(`[Context] Created user context: ${deviceId.substring(0, 15)}...`);
     }
@@ -957,12 +985,12 @@ async function fetchLatestIndicators(supabase: any, codes: string[]): Promise<Re
       if (data) {
         const refDate = new Date(data.reference_date);
         const daysSinceUpdate = Math.floor((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         results[code] = {
           ...data,
           daysSinceUpdate,
           isStale: daysSinceUpdate > MAX_INDICATOR_DAYS_OLD,
-          referenceFormatted: refDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+          referenceFormatted: refDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
         };
       }
     } catch (err) {
@@ -982,25 +1010,27 @@ function formatIndicatorsContext(indicators: Record<string, any>): string {
     const value = data.value;
     const variation = data.monthly_change_pct;
     const refDate = data.referenceFormatted || "data desconhecida";
-    
+
     let line = `- ${code}: ${value} (referência: ${refDate})`;
     if (variation !== null && variation !== undefined) {
       const arrow = variation >= 0 ? "↑" : "↓";
       line += ` | Variação: ${arrow} ${Math.abs(variation).toFixed(2)}% m/m`;
     }
-    
+
     // Marcar dados potencialmente desatualizados
     if (data.isStale) {
       line += " ⚠️ DADO PODE ESTAR DESATUALIZADO";
       staleWarnings.push(code);
     }
-    
+
     lines.push(line);
   }
 
   // Adicionar aviso consolidado se houver dados antigos
   if (staleWarnings.length > 0) {
-    lines.push(`\n⚠️ ATENÇÃO: Os indicadores ${staleWarnings.join(', ')} podem não refletir valores atuais. Recomende ao usuário verificar fontes oficiais.`);
+    lines.push(
+      `\n⚠️ ATENÇÃO: Os indicadores ${staleWarnings.join(", ")} podem não refletir valores atuais. Recomende ao usuário verificar fontes oficiais.`,
+    );
   }
 
   return lines.join("\n");
@@ -1124,12 +1154,14 @@ async function getCulturalToneRules(supabase: any, region?: string): Promise<str
   }
 }
 
+// CORRECAO v2.5.0: Guardrails específicos por módulo
 function getCategoryGuardrails(chatType: string): string {
   const guardrails: Record<string, string> = {
     health: `GUARDRAILS: NUNCA diagnostique. SEMPRE recomende médico para casos sérios.`,
     ideas: `GUARDRAILS: Seja duro. SEMPRE termine com pergunta desafiadora.`,
     economia: `GUARDRAILS: Use dados verificáveis. Relacione à economia brasileira.`,
-    world: `GUARDRAILS: Use dados verificáveis. Relacione à economia brasileira.`,
+    world: `GUARDRAILS: Seja objetivo e imparcial. Contextualize para realidade brasileira.`,
+    help: `GUARDRAILS: Seja claro e prestativo. Explique funcionalidades do app.`,
   };
   return guardrails[chatType] || "";
 }
@@ -1246,19 +1278,19 @@ async function getRecentHistory(
 }
 
 async function saveMessage(
-  supabase: any, 
-  sessionId: string, 
-  role: string, 
+  supabase: any,
+  sessionId: string,
+  role: string,
   content: string,
-  agentSlug?: string
+  agentSlug?: string,
 ): Promise<void> {
   if (sessionId.startsWith("temp-")) return;
   try {
-    await supabase.from("pwa_messages").insert({ 
-      session_id: sessionId, 
-      role, 
+    await supabase.from("pwa_messages").insert({
+      session_id: sessionId,
+      role,
       content,
-      agent_slug: agentSlug || null
+      agent_slug: agentSlug || null,
     });
   } catch {}
 }
@@ -1325,11 +1357,12 @@ serve(async (req: Request) => {
       logger.info("PWA mode", { agentSlug, deviceId: finalDeviceId.substring(0, 15) });
 
       // Access check
+      // CORRECAO v2.5.0: Usar chatType como fallback, não "economia"
       const isDevMode = finalDeviceId.startsWith("anonymous-") || finalDeviceId.startsWith("simulator-");
       if (!isDevMode) {
         const { data: accessCheck } = await supabase.rpc("check_pwa_access", {
           p_device_id: finalDeviceId,
-          p_agent_slug: agentSlug || "economia",
+          p_agent_slug: agentSlug || chatType || "general",
         });
 
         if (accessCheck && !accessCheck.has_access) {
@@ -1352,7 +1385,8 @@ serve(async (req: Request) => {
       await saveMessage(supabase, pwaSessionId, "user", pwaMessage, agentSlug);
 
       // ===== CHATGPT COMO FONTE PRIMÁRIA =====
-      const moduleSlug = agentSlug || "economia";
+      // CORRECAO v2.5.0: Usar agentSlug ou chatType, NUNCA hardcode "economia"
+      const moduleSlug = agentSlug || chatType || "general";
       logger.info(`[ChatGPT-Primary] Módulo: ${moduleSlug}`);
 
       const chatGPTResult = await callChatGPTForModule(pwaMessage, moduleSlug, history);
@@ -1379,8 +1413,8 @@ serve(async (req: Request) => {
             dataReliability: {
               hasRealtimeAccess: true,
               staleIndicators: [],
-              disclaimer: null
-            }
+              disclaimer: null,
+            },
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
@@ -1390,7 +1424,8 @@ serve(async (req: Request) => {
       logger.warn(`[ChatGPT-Primary] Falha, usando Gemini para ${moduleSlug}`);
 
       const orchestratedContext = await getOrchestratedContext(supabase, pwaMessage, agentSlug);
-      let contextCode = agentSlug || "economia";
+      // CORRECAO v2.5.0: Usar moduleSlug (já corrigido), não hardcode "economia"
+      let contextCode = moduleSlug;
       const moduleSpecificPrompt = getModuleSystemPrompt(contextCode);
       let systemPromptFromContext = "";
       let maieuticPrompt = "";
@@ -1408,10 +1443,11 @@ serve(async (req: Request) => {
         matchThreshold = orchestratedContext.matchThreshold;
         matchCount = orchestratedContext.matchCount;
       } else {
+        // CORRECAO v2.5.0: Usar moduleSlug, não hardcode "economia"
         const { data: agent } = await supabase
           .from("chat_agents")
           .select("*")
-          .eq("slug", agentSlug || "economia")
+          .eq("slug", moduleSlug)
           .eq("is_active", true)
           .single();
 
@@ -1419,7 +1455,7 @@ serve(async (req: Request) => {
           systemPromptFromContext = agent.system_prompt || "";
           matchThreshold = agent.match_threshold || 0.15;
           matchCount = agent.match_count || 5;
-          const agentTaxonomies = await getAgentTaxonomyCodes(supabase, agentSlug || "economia");
+          const agentTaxonomies = await getAgentTaxonomyCodes(supabase, moduleSlug);
           taxonomyCodes = agentTaxonomies.included;
         }
       }
@@ -1497,7 +1533,7 @@ serve(async (req: Request) => {
         const status = chatResponse.status;
         const errorBody = await chatResponse.text();
         console.error(`[Gemini-Fallback] Error ${status}:`, errorBody);
-        
+
         if (status === 429) {
           return new Response(JSON.stringify({ error: "Rate limit", response: "Aguarde um momento." }), {
             status: 429,
@@ -1531,7 +1567,14 @@ serve(async (req: Request) => {
       // Atualizar memória persistente para saudações contextuais
       if (finalDeviceId && agentSlug) {
         try {
-          await updateUserContextAfterInteraction(supabase, finalDeviceId, currentUserName || null, agentSlug, pwaMessage, response);
+          await updateUserContextAfterInteraction(
+            supabase,
+            finalDeviceId,
+            currentUserName || null,
+            agentSlug,
+            pwaMessage,
+            response,
+          );
         } catch (ctxError) {
           console.warn("[Context] Failed to update user context:", ctxError);
         }
@@ -1539,22 +1582,25 @@ serve(async (req: Request) => {
 
       // Identificar indicadores desatualizados para metadata
       const staleIndicatorCodes = Object.entries(
-        detectedIndicators.length > 0 ? await fetchLatestIndicators(supabase, detectedIndicators) : {}
-      ).filter(([_, data]) => data.isStale).map(([code]) => code);
+        detectedIndicators.length > 0 ? await fetchLatestIndicators(supabase, detectedIndicators) : {},
+      )
+        .filter(([_, data]) => data.isStale)
+        .map(([code]) => code);
 
       return new Response(
-        JSON.stringify({ 
-          response, 
-          sessionId: pwaSessionId, 
-          contextCode, 
+        JSON.stringify({
+          response,
+          sessionId: pwaSessionId,
+          contextCode,
           source: "gemini-fallback",
           dataReliability: {
             hasRealtimeAccess: true,
             staleIndicators: staleIndicatorCodes,
-            disclaimer: staleIndicatorCodes.length > 0 
-              ? "Alguns dados econômicos podem não refletir valores atuais. Verifique fontes oficiais." 
-              : null
-          }
+            disclaimer:
+              staleIndicatorCodes.length > 0
+                ? "Alguns dados econômicos podem não refletir valores atuais. Verifique fontes oficiais."
+                : null,
+          },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
