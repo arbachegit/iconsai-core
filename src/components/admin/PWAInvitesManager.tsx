@@ -302,8 +302,7 @@ export default function PWAInvitesManager() {
           to: user.phone,
           template: "resend_welcome",
           variables: { 
-            "1": user.name || "Usuário",
-            "2": "login"
+            "1": user.name || "Usuário"
           },
           channel: "whatsapp",
           userId: user.id,

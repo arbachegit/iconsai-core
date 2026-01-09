@@ -289,14 +289,13 @@ serve(async (req) => {
     if (hasAppAccess && registration.phone) {
       try {
         // Usar send-pwa-notification com template resend_welcome
-        // Template espera 2 variaveis: {{1}} = nome, {{2}} = path do botao
+        // Template espera 1 variavel: {{1}} = nome
         const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
           body: {
             to: registration.phone,
             template: "resend_welcome",
             variables: { 
-              "1": userName,
-              "2": "login"  // Path do botao no template
+              "1": userName
             },
             channel: "whatsapp"
           }
