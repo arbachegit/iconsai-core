@@ -55,8 +55,11 @@ import {
   TaxonomyDeleteModal,
 } from './taxonomy-manager';
 import { useDebounce } from '@/hooks/useDebounce';
+import { CSVImportButton, taxonomyImportConfig } from './csv-import';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function TaxonomyManagerTab() {
+  const queryClient = useQueryClient();
   const {
     tree,
     items,
@@ -263,6 +266,11 @@ export default function TaxonomyManagerTab() {
             <RefreshCw className="h-4 w-4" />
             Migrar Tags Legadas
           </Button>
+          <CSVImportButton
+            config={taxonomyImportConfig}
+            buttonVariant="outline"
+            onSuccess={() => queryClient.invalidateQueries({ queryKey: ['taxonomy'] })}
+          />
           <Button onClick={() => setIsFormOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
             Nova Tag
