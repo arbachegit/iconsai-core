@@ -1,0 +1,3 @@
+// PRD Microfone - Placeholder
+
+export {};
