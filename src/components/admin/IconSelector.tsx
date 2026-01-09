@@ -1,4 +1,4 @@
-import React, { useState, useMemo, lazy, Suspense } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,184 +12,109 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, X, Loader2, icons, LucideIcon } from "lucide-react";
+import { Search, X, Shapes, icons, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Complete list of all icons used in the application organized by category
-export const APPLICATION_ICONS = {
-  // Navegação
-  navigation: [
-    { name: "ArrowLeft", description: "Voltar à página anterior" },
-    { name: "ArrowRight", description: "Avançar, continuar, próximo" },
-    { name: "ArrowUp", description: "Voltar ao topo da página" },
-    { name: "ArrowDown", description: "Rolar para baixo" },
-    { name: "ArrowUpDown", description: "Ordenar/alternar direção" },
-    { name: "ChevronDown", description: "Expandir conteúdo colapsável" },
-    { name: "ChevronUp", description: "Colapsar conteúdo" },
-    { name: "ChevronLeft", description: "Navegação anterior em carrossel" },
-    { name: "ChevronRight", description: "Navegação próxima em carrossel" },
-    { name: "Menu", description: "Abrir menu mobile hamburger" },
-    { name: "X", description: "Fechar modal/drawer/painel" },
-    { name: "Home", description: "Ir para página inicial" },
-    { name: "PanelLeft", description: "Sidebar toggle" },
-    { name: "MoreHorizontal", description: "Menu de opções" },
-  ],
-  // Ação
-  action: [
-    { name: "Play", description: "Iniciar reprodução de áudio" },
-    { name: "Square", description: "Parar reprodução de áudio" },
-    { name: "StopCircle", description: "Parar processo" },
-    { name: "Download", description: "Baixar arquivo/áudio" },
-    { name: "Upload", description: "Enviar arquivo (drag & drop)" },
-    { name: "Send", description: "Enviar mensagem no chat" },
-    { name: "Mic", description: "Ativar gravação de voz" },
-    { name: "ImagePlus", description: "Gerar imagem (modo draw)" },
-    { name: "Search", description: "Buscar/filtrar conteúdo" },
-    { name: "RefreshCw", description: "Reprocessar documento" },
-    { name: "RotateCcw", description: "Desfazer/restaurar versão" },
-    { name: "RotateCw", description: "Refazer ação" },
-    { name: "Trash2", description: "Excluir item" },
-    { name: "Edit2", description: "Editar conteúdo" },
-    { name: "Edit3", description: "Editar alternativo" },
-    { name: "Pencil", description: "Edição de texto" },
-    { name: "Save", description: "Salvar alterações" },
-    { name: "Copy", description: "Copiar para clipboard" },
-    { name: "Plus", description: "Adicionar novo item" },
-    { name: "Minus", description: "Remover/decrementar" },
-    { name: "Merge", description: "Mesclar tags/itens" },
-    { name: "Filter", description: "Filtrar resultados" },
-    { name: "Maximize2", description: "Expandir/zoom" },
-    { name: "ZoomIn", description: "Aumentar zoom" },
-    { name: "ZoomOut", description: "Diminuir zoom" },
-    { name: "Target", description: "Foco/objetivo" },
-    { name: "Wand2", description: "Auto-detectar/magia IA" },
-  ],
-  // Status
-  status: [
-    { name: "Loader2", description: "Indicador de carregamento" },
-    { name: "Check", description: "Confirmação/seleção" },
-    { name: "CheckCircle2", description: "Documento processado com sucesso" },
-    { name: "XCircle", description: "Erro/falha no processamento" },
-    { name: "AlertCircle", description: "Aviso/atenção" },
-    { name: "AlertTriangle", description: "Alerta crítico" },
-    { name: "Clock", description: "Pendente/aguardando" },
-    { name: "Info", description: "Informação adicional" },
-    { name: "HelpCircle", description: "Ajuda/tooltip" },
-    { name: "Dot", description: "Indicador de ponto" },
-    { name: "Activity", description: "Atividade/monitoramento" },
-  ],
-  // Comunicação
-  communication: [
-    { name: "MessageCircle", description: "Botão flutuante de chat" },
-    { name: "MessageSquare", description: "Configuração de chat" },
-    { name: "Mail", description: "Configuração de email" },
-    { name: "Bell", description: "Notificações" },
-    { name: "Radio", description: "Transmissão/broadcast" },
-  ],
-  // Mídia
-  media: [
-    { name: "Youtube", description: "Cache de vídeos YouTube" },
-    { name: "Video", description: "Conteúdo de vídeo" },
-    { name: "Music", description: "Embed de podcast Spotify" },
-    { name: "Image", description: "Cache de imagens geradas" },
-    { name: "FileDown", description: "Download de arquivo" },
-  ],
-  // Data
-  data: [
-    { name: "BarChart3", description: "Métricas e analytics" },
-    { name: "TrendingUp", description: "Tendência positiva" },
-    { name: "TrendingDown", description: "Tendência negativa" },
-    { name: "Percent", description: "Porcentagem" },
-    { name: "Database", description: "Métricas RAG/banco de dados" },
-    { name: "FileText", description: "Documento/tooltip" },
-    { name: "FileCode", description: "Código/documentação técnica" },
-    { name: "FileSpreadsheet", description: "Exportar Excel" },
-    { name: "FileJson", description: "Exportar JSON" },
-    { name: "ClipboardList", description: "Logs/listagem" },
-    { name: "Table2", description: "Visualização de tabela" },
-    { name: "Package", description: "Documento empacotado" },
-    { name: "Boxes", description: "Múltiplos documentos (both)" },
-  ],
-  // Sistema
-  system: [
-    { name: "Brain", description: "Acesso ao painel admin" },
-    { name: "Languages", description: "Seletor de idioma" },
-    { name: "Sun", description: "Tema claro" },
-    { name: "Moon", description: "Tema escuro" },
-    { name: "Lock", description: "Autenticação admin" },
-    { name: "LogOut", description: "Sair do sistema" },
-    { name: "GitBranch", description: "Controle de versão" },
-    { name: "Tags", description: "Gerenciamento de tags" },
-    { name: "Tag", description: "Tag individual" },
-    { name: "Settings", description: "Configurações gerais" },
-    { name: "Settings2", description: "Configurações avançadas" },
-    { name: "Key", description: "Chave/autenticação" },
-    { name: "KeyRound", description: "Chave de recuperação" },
-    { name: "Shield", description: "Segurança/proteção" },
-    { name: "Globe", description: "Globalização/idiomas" },
-    { name: "Network", description: "Conexões/rede" },
-    { name: "Cpu", description: "Processamento/hardware" },
-    { name: "Zap", description: "Performance/velocidade" },
-    { name: "Layers", description: "Camadas/níveis" },
-    { name: "Layout", description: "Layout/estrutura" },
-    { name: "Shapes", description: "Formas/componentes" },
-    { name: "Component", description: "Componente reutilizável" },
-  ],
-  // Temático (AI History)
-  thematic: [
-    { name: "Baby", description: "Era: Nascimento (Anos 50)" },
-    { name: "Users", description: "Era: Infância (Anos 60-80)" },
-    { name: "User", description: "Usuário individual" },
-    { name: "GraduationCap", description: "Era: Fase Adulta (90s-2000s)" },
-    { name: "Rocket", description: "Era: Revolução Generativa" },
-    { name: "Bot", description: "Marcos de IA (chatbots, Siri)" },
-    { name: "Sparkles", description: "Momentos históricos/mágica" },
-    { name: "Lightbulb", description: "Insights/descobertas" },
-    { name: "Crown", description: "Vitórias (Deep Blue, AlphaGo)" },
-    { name: "Cat", description: "Deep Learning YouTube" },
-    { name: "Palette", description: "Era ChatGPT/Gemini criativa" },
-    { name: "Snowflake", description: "Inverno da IA" },
-    { name: "Skull", description: "Exterminador do Futuro" },
-    { name: "Heart", description: "Saúde/Healthcare" },
-    { name: "BookOpen", description: "Estudo/Educação" },
-    { name: "History", description: "Histórico/Timeline" },
-    { name: "Type", description: "Tipografia/Texto" },
-  ],
-  // Interação
-  interaction: [
-    { name: "GripVertical", description: "Arrastar verticalmente" },
-    { name: "GripHorizontal", description: "Arrastar horizontalmente" },
-    { name: "Eye", description: "Visualizar/mostrar" },
-    { name: "EyeOff", description: "Ocultar/esconder" },
-    { name: "Paperclip", description: "Anexar documento" },
-    { name: "Smile", description: "Sentimento positivo" },
-    { name: "Frown", description: "Sentimento negativo" },
-    { name: "Meh", description: "Sentimento neutro" },
-    { name: "MapPin", description: "Localização" },
-  ],
-};
+// Get all icon names from lucide-react (filter out internal exports)
+const ALL_ICON_NAMES = Object.keys(icons).filter(
+  (key) => key !== 'createLucideIcon' && key !== 'default' && typeof icons[key as keyof typeof icons] === 'function'
+) as Array<keyof typeof icons>;
 
-// Flatten all icons for easy access
-export const ALL_APPLICATION_ICONS = Object.entries(APPLICATION_ICONS).flatMap(
-  ([category, iconList]) =>
-    iconList.map((icon) => ({
-      ...icon,
-      category: category.charAt(0).toUpperCase() + category.slice(1),
-    }))
-);
+// Categorize icons by prefix/pattern for better organization
+const categorizeIcon = (name: string): string => {
+  const lowerName = name.toLowerCase();
+  
+  // Navigation
+  if (/^(arrow|chevron|corner|move|navigation|menu|panel|sidebar|layout|external|internal|log-in|log-out|door|exit|entry|import|export)/.test(lowerName)) return "navigation";
+  
+  // Actions
+  if (/^(plus|minus|x|check|edit|pencil|pen|trash|delete|save|copy|clipboard|download|upload|send|refresh|rotate|undo|redo|play|pause|stop|skip|fast|rewind|volume|mic|camera|scan|search|filter|sort|zoom|maximize|minimize|expand|shrink|grip|grab|hand|pointer|mouse|cursor|target|crosshair|aim|wand|magic|sparkle)/.test(lowerName)) return "action";
+  
+  // Status & Alerts
+  if (/^(alert|warning|error|info|help|question|circle-check|circle-x|circle-alert|badge|bell|notification|loader|loading|spinner|clock|timer|hourglass|calendar|schedule|check|x-circle|shield-check|shield-x)/.test(lowerName)) return "status";
+  
+  // Communication
+  if (/^(message|chat|comment|mail|email|inbox|send|share|forward|reply|at-sign|phone|call|video|broadcast|radio|rss|podcast|megaphone|speech|bubble|conversation)/.test(lowerName)) return "communication";
+  
+  // Media
+  if (/^(image|photo|picture|gallery|camera|video|film|movie|tv|monitor|screen|play|music|audio|headphone|speaker|mic|youtube|spotify|instagram|facebook|twitter|linkedin|github|aperture|focus|frame)/.test(lowerName)) return "media";
+  
+  // Files & Data
+  if (/^(file|document|folder|archive|zip|package|box|database|server|cloud|storage|hard-drive|disc|table|spreadsheet|chart|graph|bar|pie|line|trending|analytics|statistics|code|terminal|git|branch|merge|commit|json|csv|text|binary)/.test(lowerName)) return "data";
+  
+  // Users & People
+  if (/^(user|users|person|people|account|profile|avatar|contact|team|group|community|baby|child|accessibility|body|hand|footprint)/.test(lowerName)) return "users";
+  
+  // Business & Commerce
+  if (/^(building|office|store|shop|cart|shopping|bag|credit|card|wallet|money|dollar|euro|pound|bitcoin|coin|receipt|invoice|calculator|percent|tag|label|barcode|qr|briefcase|landmark|bank|factory)/.test(lowerName)) return "business";
+  
+  // Nature & Weather
+  if (/^(sun|moon|star|cloud|rain|snow|wind|storm|thunder|lightning|rainbow|umbrella|thermometer|droplet|wave|mountain|tree|leaf|flower|plant|seed|sprout|bug|bird|cat|dog|fish|rabbit|turtle|paw|feather|egg)/.test(lowerName)) return "nature";
+  
+  // Objects & Tools
+  if (/^(home|house|door|window|key|lock|unlock|shield|security|settings|gear|cog|wrench|hammer|screwdriver|tool|brush|paint|palette|ruler|compass|magnet|flashlight|lamp|light|bulb|plug|battery|power|zap|bolt|flame|fire|rocket|airplane|plane|car|truck|bus|train|bike|ship|anchor|crown|gift|glasses|watch|ring|gem|diamond)/.test(lowerName)) return "objects";
+  
+  // Health & Science
+  if (/^(heart|pulse|activity|stethoscope|syringe|pill|capsule|bandage|thermometer|hospital|ambulance|wheelchair|brain|eye|ear|bone|dna|atom|flask|beaker|microscope|telescope|test-tube|petri|radiation|biohazard)/.test(lowerName)) return "health";
+  
+  // Shapes & Symbols
+  if (/^(circle|square|triangle|rectangle|hexagon|octagon|pentagon|diamond|heart|star|asterisk|hash|at|ampersand|percent|slash|backslash|pipe|parenthes|bracket|brace|quote|apostrophe|shape|form|geometry)/.test(lowerName)) return "shapes";
+  
+  // Tech & Devices
+  if (/^(laptop|computer|desktop|keyboard|mouse|printer|scanner|monitor|tv|tablet|smartphone|watch|headset|gamepad|joystick|wifi|bluetooth|signal|antenna|satellite|cpu|chip|memory|ram|ssd|usb|hdmi|ethernet|qr-code|nfc|fingerprint|scan)/.test(lowerName)) return "tech";
+  
+  // Text & Typography
+  if (/^(type|text|font|bold|italic|underline|strikethrough|align|indent|list|heading|paragraph|quote|link|anchor|footnote|subscript|superscript|case|letter|word|spell|language|translate|globe|a-large|a-small|baseline|wrap|pilcrow|remove-formatting)/.test(lowerName)) return "typography";
+  
+  // Default
+  return "other";
+};
 
 // Category labels in Portuguese
 const CATEGORY_LABELS: Record<string, string> = {
+  all: "Todos",
   navigation: "Navegação",
-  action: "Ação",
+  action: "Ações",
   status: "Status",
   communication: "Comunicação",
   media: "Mídia",
-  data: "Data",
-  system: "Sistema",
-  thematic: "Temático",
-  interaction: "Interação",
+  data: "Dados & Arquivos",
+  users: "Usuários",
+  business: "Negócios",
+  nature: "Natureza",
+  objects: "Objetos",
+  health: "Saúde",
+  shapes: "Formas",
+  tech: "Tecnologia",
+  typography: "Tipografia",
+  other: "Outros",
 };
+
+// Pre-categorize all icons for performance
+const CATEGORIZED_ICONS = ALL_ICON_NAMES.reduce((acc, name) => {
+  const category = categorizeIcon(name);
+  if (!acc[category]) acc[category] = [];
+  acc[category].push(name);
+  return acc;
+}, {} as Record<string, Array<keyof typeof icons>>);
+
+// Count icons per category
+const CATEGORY_COUNTS = Object.entries(CATEGORIZED_ICONS).reduce((acc, [cat, iconList]) => {
+  acc[cat] = iconList.length;
+  return acc;
+}, {} as Record<string, number>);
+
+// Backward compatibility exports
+export const APPLICATION_ICONS = Object.entries(CATEGORIZED_ICONS).reduce((acc, [category, iconList]) => {
+  acc[category] = iconList.map(name => ({ name, description: name }));
+  return acc;
+}, {} as Record<string, Array<{ name: string; description: string }>>);
+
+export const ALL_APPLICATION_ICONS = ALL_ICON_NAMES.map(name => ({
+  name,
+  description: name,
+  category: categorizeIcon(name),
+}));
 
 interface IconSelectorProps {
   value?: string;
@@ -212,24 +137,21 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
 
   // Filter icons based on search and category
   const filteredIcons = useMemo(() => {
-    let result = ALL_APPLICATION_ICONS;
+    let result: Array<keyof typeof icons> = [...ALL_ICON_NAMES];
 
+    // Filter by category
     if (categoryFilter !== "all") {
-      result = result.filter(
-        (icon) => icon.category.toLowerCase() === categoryFilter.toLowerCase()
-      );
+      result = CATEGORIZED_ICONS[categoryFilter] || [];
     }
 
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (icon) =>
-          icon.name.toLowerCase().includes(query) ||
-          icon.description.toLowerCase().includes(query)
-      );
+      result = result.filter((name) => String(name).toLowerCase().includes(query));
     }
 
-    return result;
+    // Sort alphabetically
+    return result.sort((a, b) => String(a).localeCompare(String(b)));
   }, [searchQuery, categoryFilter]);
 
   // Get the selected icon component
@@ -259,12 +181,15 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[80vh]">
+      <DialogContent className="max-w-4xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Shapes className="h-5 w-5" />
-            Biblioteca de Ícones
-          </DialogTitle>
+            <DialogTitle>Biblioteca de Ícones Lucide</DialogTitle>
+            <Badge variant="secondary" className="ml-2">
+              {ALL_ICON_NAMES.length} ícones
+            </Badge>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -273,10 +198,11 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar ícone por nome ou descrição..."
+                placeholder="Buscar ícone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
+                autoFocus
               />
               {searchQuery && (
                 <Button
@@ -290,18 +216,21 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
               )}
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
-                  Todas ({ALL_APPLICATION_ICONS.length})
+                  Todos ({ALL_ICON_NAMES.length})
                 </SelectItem>
-                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label} ({APPLICATION_ICONS[key as keyof typeof APPLICATION_ICONS].length})
-                  </SelectItem>
-                ))}
+                {Object.entries(CATEGORY_LABELS)
+                  .filter(([key]) => key !== "all" && CATEGORY_COUNTS[key])
+                  .sort((a, b) => (CATEGORY_COUNTS[b[0]] || 0) - (CATEGORY_COUNTS[a[0]] || 0))
+                  .map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label} ({CATEGORY_COUNTS[key] || 0})
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -320,34 +249,31 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
 
           {/* Icon Grid */}
           <ScrollArea className="h-[400px] pr-4">
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-              {filteredIcons.map((iconData) => {
-                const IconComponent = icons[iconData.name as keyof typeof icons] as LucideIcon;
+            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-1.5">
+              {filteredIcons.map((iconName) => {
+                const IconComponent = icons[iconName] as LucideIcon;
                 if (!IconComponent) return null;
-                
-                const isSelected = value === iconData.name;
-                
+
+                const isSelected = value === iconName;
+
                 return (
                   <button
-                    key={iconData.name}
-                    onClick={() => handleSelect(iconData.name)}
+                    key={String(iconName)}
+                    onClick={() => handleSelect(String(iconName))}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-lg border transition-all group hover:border-primary hover:bg-primary/5",
+                      "flex flex-col items-center justify-center p-2 rounded-md border transition-all group hover:border-primary hover:bg-primary/5",
                       isSelected
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-background"
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "border-transparent bg-muted/30"
                     )}
-                    title={`${iconData.name}: ${iconData.description}`}
+                    title={String(iconName)}
                   >
                     <IconComponent
                       className={cn(
-                        "h-5 w-5 mb-1 transition-colors",
+                        "h-5 w-5 transition-colors",
                         isSelected ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                       )}
                     />
-                    <span className="text-[10px] text-muted-foreground truncate w-full text-center">
-                      {iconData.name}
-                    </span>
                   </button>
                 );
               })}
@@ -362,24 +288,26 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
             )}
           </ScrollArea>
 
-          {/* Usage Example */}
-          <div className="pt-4 border-t">
-            <Label className="text-xs text-muted-foreground">
-              Exemplo de uso:
-            </Label>
-            <pre className="mt-1 bg-muted p-2 rounded text-xs overflow-x-auto">
-              {value
-                ? `import { ${value} } from 'lucide-react';\n\n<${value} className="h-5 w-5" />`
-                : "// Selecione um ícone para ver o código"}
-            </pre>
-          </div>
+          {/* Selected Icon Preview */}
+          {value && SelectedIconComponent && (
+            <div className="pt-4 border-t flex items-start gap-4">
+              <div className="flex items-center justify-center h-16 w-16 rounded-lg bg-muted">
+                <SelectedIconComponent className="h-8 w-8" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <Label className="text-xs text-muted-foreground">
+                  Código:
+                </Label>
+                <pre className="mt-1 bg-muted p-2 rounded text-xs overflow-x-auto">
+                  {`import { ${value} } from 'lucide-react';\n<${value} className="h-5 w-5" />`}
+                </pre>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 };
-
-// Import the Shapes icon for the component
-import { Shapes } from "lucide-react";
 
 export default IconSelector;
