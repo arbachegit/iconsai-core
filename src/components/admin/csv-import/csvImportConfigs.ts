@@ -70,22 +70,57 @@ export const taxonomyImportConfig: CSVImportConfig = {
     const errors: string[] = [];
     let success = 0;
 
-    const parentCodes = [...new Set(data.map((d) => d.parent_code).filter(Boolean))];
-    const parentMap = new Map<string, string>();
-
-    if (parentCodes.length > 0) {
-      const { data: parents } = await supabase.from("global_taxonomy").select("id, code").in("code", parentCodes as string[]);
-      parents?.forEach((p) => parentMap.set(p.code, p.id));
+    // CORREÇÃO: Agrupar por nível e processar em ordem hierárquica
+    const byLevel = new Map<number, typeof data>();
+    for (const row of data) {
+      const level = asNumberOrDefault(row.level, 1);
+      if (!byLevel.has(level)) {
+        byLevel.set(level, []);
+      }
+      byLevel.get(level)!.push(row);
     }
 
-    const batchSize = 50;
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-      const insertData = batch.map((row) => ({
+    // Ordenar níveis (1, 2, 3, 4, 5)
+    const levels = Array.from(byLevel.keys()).sort((a, b) => a - b);
+
+    // Mapa de códigos → IDs (será atualizado a cada nível)
+    const codeToId = new Map<string, string>();
+
+    // Buscar códigos já existentes no banco
+    const allCodes = data.map(d => asString(d.code));
+    const { data: existing } = await supabase
+      .from("global_taxonomy")
+      .select("id, code")
+      .in("code", allCodes);
+    existing?.forEach((e) => codeToId.set(e.code, e.id));
+
+    // Processar cada nível em ordem
+    for (const level of levels) {
+      const levelData = byLevel.get(level)!;
+
+      // Buscar parent_ids para este nível
+      const parentCodes = [...new Set(
+        levelData.map(d => asString(d.parent_code)).filter(Boolean)
+      )];
+
+      // Se há parent_codes que ainda não estão no mapa, buscar do banco
+      const missingParents = parentCodes.filter(pc => !codeToId.has(pc));
+      if (missingParents.length > 0) {
+        const { data: parents } = await supabase
+          .from("global_taxonomy")
+          .select("id, code")
+          .in("code", missingParents);
+        parents?.forEach((p) => codeToId.set(p.code, p.id));
+      }
+
+      // Preparar dados para insert
+      const insertData = levelData.map((row) => ({
         code: asString(row.code),
         name: asString(row.name),
         description: asStringOrNull(row.description),
-        parent_id: row.parent_code ? parentMap.get(String(row.parent_code)) || null : null,
+        parent_id: row.parent_code 
+          ? codeToId.get(asString(row.parent_code)) || null 
+          : null,
         level: asNumberOrDefault(row.level, 1),
         icon: asStringOrNull(row.icon),
         color: asStringOrNull(row.color),
@@ -94,9 +129,36 @@ export const taxonomyImportConfig: CSVImportConfig = {
         keywords: asStringArrayOrNull(row.keywords),
       }));
 
-      const { error } = await supabase.from("global_taxonomy").upsert(insertData, { onConflict: "code" });
-      if (error) errors.push(`Lote ${Math.floor(i / batchSize) + 1}: ${error.message}`);
-      else success += batch.length;
+      // Verificar se há parent_code sem parent_id resolvido
+      for (let i = 0; i < levelData.length; i++) {
+        const row = levelData[i];
+        const parentCode = asString(row.parent_code);
+        if (parentCode && !insertData[i].parent_id) {
+          errors.push(
+            `Nível ${level}: Pai "${parentCode}" não encontrado para "${row.code}"`
+          );
+        }
+      }
+
+      // Inserir batch deste nível
+      const batchSize = 50;
+      for (let i = 0; i < insertData.length; i += batchSize) {
+        const batch = insertData.slice(i, i + batchSize);
+        const { data: inserted, error } = await supabase
+          .from("global_taxonomy")
+          .upsert(batch, { onConflict: "code" })
+          .select("id, code");
+
+        if (error) {
+          errors.push(
+            `Nível ${level}, Lote ${Math.floor(i / batchSize) + 1}: ${error.message}`
+          );
+        } else {
+          success += batch.length;
+          // CRUCIAL: Atualizar mapa com IDs dos recém-inseridos
+          inserted?.forEach((item) => codeToId.set(item.code, item.id));
+        }
+      }
     }
 
     return { success, errors };
