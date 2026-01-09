@@ -1,13 +1,16 @@
 // ============================================
-// VERSAO: 2.5.0 | DEPLOY: 2026-01-09
-// AUDITORIA: Remoção de hardcodes "economia"
-// MUDANCA: Cada módulo tem prompt específico
-// CORRECAO: world ≠ economia (separados)
+// VERSAO: 2.6.0 | DEPLOY: 2026-01-09
+// MUDANCA: Integração taxonomia + fonéticas inline
+// NOVO: classifyAndEnrichResponse retorna phoneticMap
+// NOVO: saveMessage retorna messageId
+// NOVO: Resposta PWA inclui taxonomyTags + phoneticMap
 // ============================================
 // CHANGELOG:
-// - Removido fallback "economia" em 3 lugares
-// - Separado prompt WORLD (geral) de ECONOMIA (específico)
-// - Fallback usa chatType quando agentSlug vazio
+// - Funções de classificação inline no chat-router
+// - saveMessage retorna ID da mensagem
+// - Resposta ChatGPT inclui messageId, taxonomyTags, phoneticMap
+// - Resposta Gemini inclui messageId, taxonomyTags, phoneticMap
+// - entity_tags salvo async para cada mensagem
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -42,6 +45,224 @@ function sanitizeBrandingResponse(text: string): string {
     sanitized = sanitized.replace(regex, "Arbache AI");
   });
   return sanitized;
+}
+
+// ===================== TAXONOMY CLASSIFICATION =====================
+// v2.6.0: Classificação taxonomia inline para fonéticas contextuais
+
+let taxonomyCache: Map<string, any[]> | null = null;
+let taxonomyCacheTime = 0;
+const TAXONOMY_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+interface TaxonomyTag {
+  code: string;
+  name: string;
+  confidence: number;
+}
+
+// Mapeamento de módulos PWA para prefixos de taxonomia
+const MODULE_TO_TAXONOMY_PREFIX: Record<string, string> = {
+  world: "economia",
+  health: "saude",
+  ideas: "ideias",
+  help: "conhecimento",
+  economia: "economia",
+  saude: "saude",
+  ideias: "ideias",
+};
+
+async function loadTaxonomyCache(supabase: any): Promise<any[]> {
+  const now = Date.now();
+
+  if (taxonomyCache && now - taxonomyCacheTime < TAXONOMY_CACHE_TTL) {
+    const allNodes: any[] = [];
+    taxonomyCache.forEach((nodes) => allNodes.push(...nodes));
+    return allNodes;
+  }
+
+  const { data, error } = await supabase
+    .from("global_taxonomy")
+    .select("id, code, name, keywords, synonyms, parent_id")
+    .eq("status", "approved");
+
+  if (error || !data) {
+    console.error("[Taxonomy Cache] Error:", error);
+    return [];
+  }
+
+  taxonomyCache = new Map();
+  for (const node of data) {
+    const prefix = node.code.split(".").slice(0, 2).join(".");
+    if (!taxonomyCache.has(prefix)) {
+      taxonomyCache.set(prefix, []);
+    }
+    taxonomyCache.get(prefix)!.push(node);
+  }
+  taxonomyCacheTime = now;
+
+  console.log(`[Taxonomy Cache] Loaded ${data.length} nodes`);
+  return data;
+}
+
+function classifyByKeywords(text: string, moduleType: string, taxonomy: any[]): TaxonomyTag[] {
+  const normalizedText = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const results: Array<{ code: string; name: string; confidence: number; matches: number }> = [];
+
+  const taxonomyPrefix = MODULE_TO_TAXONOMY_PREFIX[moduleType] || moduleType;
+  const relevantNodes = taxonomy.filter((t) => t.code.startsWith(taxonomyPrefix));
+
+  for (const node of relevantNodes) {
+    let matchCount = 0;
+    const keywords = node.keywords || [];
+    const synonyms = node.synonyms || [];
+    const totalKeywords = keywords.length + synonyms.length;
+
+    if (totalKeywords === 0) continue;
+
+    for (const keyword of keywords) {
+      if (normalizedText.includes(keyword.toLowerCase())) {
+        matchCount++;
+      }
+    }
+
+    for (const synonym of synonyms) {
+      if (normalizedText.includes(synonym.toLowerCase())) {
+        matchCount++;
+      }
+    }
+
+    if (matchCount > 0) {
+      const confidence = Math.min(matchCount / Math.max(totalKeywords, 1), 1);
+      results.push({
+        code: node.code,
+        name: node.name,
+        confidence,
+        matches: matchCount,
+      });
+    }
+  }
+
+  return results
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 3)
+    .map(({ code, name, confidence }) => ({ code, name, confidence }));
+}
+
+async function getPhoneticMap(
+  supabase: any,
+  moduleType: string,
+  taxonomyCodes: string[],
+): Promise<Record<string, string>> {
+  const phoneticMap: Record<string, string> = {};
+
+  try {
+    // 1. Léxico geral
+    const { data: lexiconTerms } = await supabase
+      .from("lexicon_terms")
+      .select("term, pronunciation_phonetic")
+      .eq("is_approved", true)
+      .not("pronunciation_phonetic", "is", null)
+      .limit(200);
+
+    if (lexiconTerms) {
+      for (const term of lexiconTerms) {
+        if (term.pronunciation_phonetic) {
+          phoneticMap[term.term] = term.pronunciation_phonetic;
+        }
+      }
+    }
+
+    // 2. Fonética específica da taxonomia (se tabela existir)
+    if (taxonomyCodes.length > 0) {
+      try {
+        const { data: taxonomyPhonetics } = await supabase
+          .from("taxonomy_phonetics")
+          .select("term, phonetic")
+          .in("taxonomy_code", taxonomyCodes)
+          .eq("is_active", true)
+          .order("priority", { ascending: false });
+
+        if (taxonomyPhonetics) {
+          for (const item of taxonomyPhonetics) {
+            phoneticMap[item.term] = item.phonetic;
+          }
+        }
+      } catch (err) {
+        // Tabela pode não existir ainda, ignorar
+        console.log("[Phonetics] taxonomy_phonetics table not available");
+      }
+    }
+  } catch (err) {
+    console.warn("[Phonetics] Error loading phonetic map:", err);
+  }
+
+  return phoneticMap;
+}
+
+async function saveEntityTags(supabase: any, messageId: string, taxonomyTags: TaxonomyTag[]): Promise<void> {
+  if (!messageId || taxonomyTags.length === 0) return;
+
+  try {
+    const codes = taxonomyTags.map((t) => t.code);
+    const { data: taxonomies } = await supabase.from("global_taxonomy").select("id, code").in("code", codes);
+
+    if (!taxonomies || taxonomies.length === 0) return;
+
+    const inserts = taxonomies.map((tax: any) => {
+      const tag = taxonomyTags.find((t) => t.code === tax.code);
+      return {
+        entity_id: messageId,
+        entity_type: "pwa_message",
+        taxonomy_id: tax.id,
+        confidence: tag?.confidence || 0.5,
+        source: "auto-classify",
+      };
+    });
+
+    await supabase.from("entity_tags").insert(inserts);
+    console.log(`[Entity Tags] Saved ${inserts.length} tags for message ${messageId}`);
+  } catch (err) {
+    console.error("[Entity Tags] Save error:", err);
+  }
+}
+
+// Função principal de classificação e enriquecimento
+async function classifyAndEnrichResponse(
+  supabase: any,
+  responseText: string,
+  moduleType: string,
+  messageId?: string,
+): Promise<{ taxonomyTags: TaxonomyTag[]; phoneticMap: Record<string, string> }> {
+  try {
+    // 1. Carregar taxonomia
+    const taxonomy = await loadTaxonomyCache(supabase);
+
+    // 2. Classificar
+    const taxonomyTags = classifyByKeywords(responseText, moduleType, taxonomy);
+    const taxonomyCodes = taxonomyTags.map((t) => t.code);
+
+    // 3. Buscar fonéticas
+    const phoneticMap = await getPhoneticMap(supabase, moduleType, taxonomyCodes);
+
+    // 4. Salvar tags (async, não bloqueia)
+    if (messageId) {
+      saveEntityTags(supabase, messageId, taxonomyTags).catch((err) => {
+        console.warn("[Entity Tags] Background save failed:", err);
+      });
+    }
+
+    console.log(
+      `[Classify] ${moduleType} | ${taxonomyTags.length} tags | ${Object.keys(phoneticMap).length} phonetics`,
+    );
+
+    return { taxonomyTags, phoneticMap };
+  } catch (err) {
+    console.error("[Classify] Error:", err);
+    return { taxonomyTags: [], phoneticMap: {} };
+  }
 }
 
 // ===================== CHATGPT MODULE-SPECIFIC PROMPTS =====================
@@ -1283,16 +1504,29 @@ async function saveMessage(
   role: string,
   content: string,
   agentSlug?: string,
-): Promise<void> {
-  if (sessionId.startsWith("temp-")) return;
+): Promise<string | null> {
+  if (sessionId.startsWith("temp-")) return null;
   try {
-    await supabase.from("pwa_messages").insert({
-      session_id: sessionId,
-      role,
-      content,
-      agent_slug: agentSlug || null,
-    });
-  } catch {}
+    const { data, error } = await supabase
+      .from("pwa_messages")
+      .insert({
+        session_id: sessionId,
+        role,
+        content,
+        agent_slug: agentSlug || null,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.warn("[SaveMessage] Error:", error);
+      return null;
+    }
+    return data?.id || null;
+  } catch (err) {
+    console.warn("[SaveMessage] Exception:", err);
+    return null;
+  }
 }
 
 async function detectAndSaveName(
@@ -1394,12 +1628,22 @@ serve(async (req: Request) => {
       if (chatGPTResult.success && chatGPTResult.response) {
         logger.info(`[ChatGPT-Primary] Sucesso para ${moduleSlug}`);
 
-        await saveMessage(supabase, pwaSessionId, "assistant", chatGPTResult.response, agentSlug);
+        // Salvar mensagem e obter ID
+        const messageId = await saveMessage(supabase, pwaSessionId, "assistant", chatGPTResult.response, agentSlug);
+
+        // NOVO v2.6.0: Classificar e enriquecer resposta
+        const { taxonomyTags, phoneticMap } = await classifyAndEnrichResponse(
+          supabase,
+          chatGPTResult.response,
+          moduleSlug,
+          messageId || undefined,
+        );
+
         await logMaieuticMetrics(
           supabase,
           pwaSessionId,
           "chatgpt-primary",
-          [moduleSlug],
+          taxonomyTags.length > 0 ? taxonomyTags.map((t) => t.code) : [moduleSlug],
           chatGPTResult.response,
           moduleSlug,
         );
@@ -1410,6 +1654,9 @@ serve(async (req: Request) => {
             sessionId: pwaSessionId,
             contextCode: moduleSlug,
             source: "chatgpt",
+            messageId: messageId,
+            taxonomyTags: taxonomyTags,
+            phoneticMap: phoneticMap,
             dataReliability: {
               hasRealtimeAccess: true,
               staleIndicators: [],
@@ -1553,12 +1800,22 @@ serve(async (req: Request) => {
       const rawResponse = chatData.choices?.[0]?.message?.content || "Erro ao processar.";
       const response = sanitizeBrandingResponse(rawResponse);
 
-      await saveMessage(supabase, pwaSessionId, "assistant", response, agentSlug);
+      // Salvar mensagem e obter ID
+      const messageId = await saveMessage(supabase, pwaSessionId, "assistant", response, agentSlug);
+
+      // NOVO v2.6.0: Classificar e enriquecer resposta
+      const { taxonomyTags, phoneticMap } = await classifyAndEnrichResponse(
+        supabase,
+        response,
+        contextCode,
+        messageId || undefined,
+      );
+
       await logMaieuticMetrics(
         supabase,
         pwaSessionId,
         orchestratedContext?.cognitiveMode || "normal",
-        orchestratedContext?.taxonomyCodes || [],
+        taxonomyTags.length > 0 ? taxonomyTags.map((t) => t.code) : orchestratedContext?.taxonomyCodes || [],
         response,
         contextCode,
       );
@@ -1593,6 +1850,9 @@ serve(async (req: Request) => {
           sessionId: pwaSessionId,
           contextCode,
           source: "gemini-fallback",
+          messageId: messageId,
+          taxonomyTags: taxonomyTags,
+          phoneticMap: phoneticMap,
           dataReliability: {
             hasRealtimeAccess: true,
             staleIndicators: staleIndicatorCodes,
