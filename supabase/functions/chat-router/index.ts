@@ -1,15 +1,15 @@
 // ============================================
-// VERSAO: 2.6.0 | DEPLOY: 2026-01-09
-// MUDANCA: Integração taxonomia + fonéticas inline
-// NOVO: classifyAndEnrichResponse retorna phoneticMap
-// NOVO: saveMessage retorna messageId
-// NOVO: Resposta PWA inclui taxonomyTags + phoneticMap
+// VERSAO: 2.6.1 | DEPLOY: 2026-01-09
+// MUDANCA: Busca fonéticas em códigos ancestrais
+// FIX: getPhoneticMap expande códigos hierárquicos
 // ============================================
-// CHANGELOG:
+// CHANGELOG v2.6.1:
+// - getPhoneticMap agora busca em códigos ancestrais
+// - Ex: "economia.indicadores.monetarios.selic" → busca também em "economia.indicadores.monetarios"
+// CHANGELOG v2.6.0:
 // - Funções de classificação inline no chat-router
 // - saveMessage retorna ID da mensagem
-// - Resposta ChatGPT inclui messageId, taxonomyTags, phoneticMap
-// - Resposta Gemini inclui messageId, taxonomyTags, phoneticMap
+// - Resposta ChatGPT/Gemini inclui messageId, taxonomyTags, phoneticMap
 // - entity_tags salvo async para cada mensagem
 // ============================================
 
@@ -178,10 +178,25 @@ async function getPhoneticMap(
     // 2. Fonética específica da taxonomia (se tabela existir)
     if (taxonomyCodes.length > 0) {
       try {
+        // Expandir códigos para incluir ancestrais hierárquicos
+        const expandedCodes = new Set<string>();
+        for (const code of taxonomyCodes) {
+          expandedCodes.add(code);
+          const parts = code.split(".");
+          // Adicionar códigos ancestrais (mínimo 2 partes: ex: "economia.indicadores")
+          for (let i = 2; i < parts.length; i++) {
+            expandedCodes.add(parts.slice(0, i).join("."));
+          }
+        }
+
+        console.log(
+          `[Phonetics] Expanded ${taxonomyCodes.length} codes to ${expandedCodes.size}: ${Array.from(expandedCodes).slice(0, 5).join(", ")}...`,
+        );
+
         const { data: taxonomyPhonetics } = await supabase
           .from("taxonomy_phonetics")
           .select("term, phonetic")
-          .in("taxonomy_code", taxonomyCodes)
+          .in("taxonomy_code", Array.from(expandedCodes))
           .eq("is_active", true)
           .order("priority", { ascending: false });
 
@@ -189,6 +204,7 @@ async function getPhoneticMap(
           for (const item of taxonomyPhonetics) {
             phoneticMap[item.term] = item.phonetic;
           }
+          console.log(`[Phonetics] Found ${taxonomyPhonetics.length} taxonomy-specific phonetics`);
         }
       } catch (err) {
         // Tabela pode não existir ainda, ignorar
