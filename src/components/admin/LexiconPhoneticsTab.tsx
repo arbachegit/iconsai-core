@@ -53,6 +53,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { CSVImportButton, lexiconImportConfig, regionalPhoneticsImportConfig } from "./csv-import";
 
 // Domain options for lexicon terms
 const DOMAIN_OPTIONS = [
@@ -435,6 +436,11 @@ export const LexiconPhoneticsTab = () => {
                   className="pl-8 w-[180px]"
                 />
               </div>
+              <CSVImportButton
+                config={lexiconImportConfig}
+                buttonVariant="outline"
+                onSuccess={() => refetchTerms()}
+              />
               <Button onClick={handleNewTerm} className="bg-amber-600 hover:bg-amber-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Termo
@@ -521,6 +527,12 @@ export const LexiconPhoneticsTab = () => {
               <Volume2 className="h-5 w-5 text-orange-500" />
               <CardTitle>Fonética por Região (TTS)</CardTitle>
             </div>
+            <CSVImportButton
+              config={regionalPhoneticsImportConfig}
+              buttonVariant="outline"
+              buttonSize="sm"
+              onSuccess={() => refetchRegions()}
+            />
             <Button 
               variant="outline" 
               size="sm"

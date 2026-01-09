@@ -52,6 +52,7 @@ import {
   Loader2,
   ArrowRight,
 } from "lucide-react";
+import { CSVImportButton, ontologyImportConfig, ontologyRelationsImportConfig } from "./csv-import";
 
 interface OntologyConcept {
   id: string;
@@ -420,6 +421,11 @@ export function OntologyConceptsTab() {
                   className="pl-9 w-[200px]"
                 />
               </div>
+              <CSVImportButton
+                config={ontologyImportConfig}
+                buttonVariant="outline"
+                onSuccess={() => queryClient.invalidateQueries({ queryKey: ["ontology-concepts"] })}
+              />
               <Button
                 onClick={() => {
                   setEditingConcept(null);
@@ -505,6 +511,11 @@ export function OntologyConceptsTab() {
               <Network className="w-5 h-5 text-purple-500" />
               <CardTitle className="text-lg">Relações Semânticas</CardTitle>
             </div>
+            <CSVImportButton
+              config={ontologyRelationsImportConfig}
+              buttonVariant="outline"
+              onSuccess={() => queryClient.invalidateQueries({ queryKey: ["ontology-relations"] })}
+            />
             <Button
               onClick={() => {
                 resetRelationForm();
