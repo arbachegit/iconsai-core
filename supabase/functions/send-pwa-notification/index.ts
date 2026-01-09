@@ -1,11 +1,12 @@
 // ============================================
-// VERSAO: 5.1.0 | DEPLOY: 2026-01-09
+// VERSAO: 5.2.0 | DEPLOY: 2026-01-09
 // FIX: OTP sempre via SMS (Authentication não aceita variáveis)
-// FIX: Templates Utility com variáveis corretas
+// FIX: Templates Utility com variáveis SEQUENCIAIS corretas
 // FIX: invitation_v3 com URL dinâmica no botão ({{3}})
+// REF: https://www.twilio.com/docs/content/using-variables-with-content-api
 // ============================================
 
-const FUNCTION_VERSION = "5.1.0";
+const FUNCTION_VERSION = "5.2.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,52 +22,55 @@ const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
 const TWILIO_WHATSAPP_NUMBER = "+16039454873";
 
 // ===========================================
-// TEMPLATES - CONFIGURAÇÃO CORRETA
-// Baseado nos prints de tela do Twilio Console
+// TEMPLATES - CONFIGURAÇÃO BASEADA NOS PRINTS DO TWILIO CONSOLE
+//
+// IMPORTANTE: As variáveis são SEQUENCIAIS em todo o template
+// Body usa {{1}}, {{2}}, etc.
+// Button URL continua a sequência: {{3}}, {{4}}, etc.
 // ===========================================
 interface TemplateConfig {
   sid: string;
   description: string;
   type: "authentication" | "utility";
-  bodyVariables: number; // Quantas variáveis o body aceita
-  buttonVariables: number; // Quantas variáveis o botão aceita (URL dinâmica)
+  totalVariables: number; // Total de variáveis no template (body + button)
+  variableNames: string[]; // Nomes descritivos para log
 }
 
 const TEMPLATES: Record<string, TemplateConfig> = {
   otp: {
     sid: "HX15dbff375b023b2d1514038027db6ad0",
-    description: "Código de verificação OTP",
+    description: "Código de verificação OTP (knowyou_otp)",
     type: "authentication",
-    bodyVariables: 0, // ❌ Authentication: código hardcoded "403239"
-    buttonVariables: 0,
+    totalVariables: 0, // Authentication: código hardcoded "403239"
+    variableNames: [],
   },
   resend_code: {
     sid: "HX026907ac8e769389acfda75829c5d543",
-    description: "Reenvio de código OTP",
+    description: "Reenvio de código OTP (knowyou_resend_code)",
     type: "authentication",
-    bodyVariables: 0, // ❌ Authentication: código hardcoded "403239"
-    buttonVariables: 0,
+    totalVariables: 0, // Authentication: código hardcoded "403239"
+    variableNames: [],
   },
   welcome: {
     sid: "HX35461ac69adc68257f54eb030fafe4b1",
-    description: "Boas-vindas após verificação",
+    description: "Boas-vindas após verificação (knowyou_welcome)",
     type: "utility",
-    bodyVariables: 1, // {{1}} = nome
-    buttonVariables: 0,
+    totalVariables: 1, // {{1}} = nome
+    variableNames: ["nome"],
   },
   invitation: {
     sid: "HX76217d9d436086e8adc6d1e185c7e2ee",
     description: "Convite de acesso ao PWA (knowyou_invitation_v3)",
     type: "utility",
-    bodyVariables: 2, // {{1}} = nome, {{2}} = quem convidou
-    buttonVariables: 1, // {{3}} = path da URL do botão
+    totalVariables: 3, // {{1}} = nome, {{2}} = quem convidou, {{3}} = path URL
+    variableNames: ["nome", "quem_convidou", "path_url"],
   },
   resend_welcome: {
     sid: "HX9ccbe49ea4063c9155c3ebd67738556e",
-    description: "Reenvio de boas-vindas",
+    description: "Reenvio de boas-vindas (knowyou_resend_welcome)",
     type: "utility",
-    bodyVariables: 1, // {{1}} = nome
-    buttonVariables: 0,
+    totalVariables: 1, // {{1}} = nome
+    variableNames: ["nome"],
   },
 };
 
@@ -113,6 +117,7 @@ const TWILIO_ERROR_MESSAGES: Record<number, string> = {
   21608: "Número não registrado no WhatsApp.",
   21610: "Número bloqueado.",
   21614: "Número de destino inválido.",
+  21656: "ContentVariables inválido - verifique formato JSON.",
 };
 
 // ===========================================
@@ -144,7 +149,8 @@ async function sendSmsViaInfobip(
       smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Seu acesso esta ativo. Entre em: https://hmv.knowyou.app/pwa`;
       break;
     case "invitation":
-      smsText = `KnowYOU: ${variables["1"] || "Voce"} foi convidado por ${variables["2"] || "Equipe KnowYOU"}! Acesse: https://hmv.knowyou.app/pwa-register`;
+      const path = variables["3"] || "pwa-register";
+      smsText = `KnowYOU: Ola ${variables["1"] || "Voce"}! ${variables["2"] || "Equipe KnowYOU"} te convidou. Acesse: https://hmv.knowyou.app/${path}`;
       break;
     default:
       smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
@@ -152,7 +158,7 @@ async function sendSmsViaInfobip(
 
   console.log(`[SMS-INFOBIP] To: ${to.slice(0, 5)}***`);
   console.log(`[SMS-INFOBIP] Template: ${templateName}`);
-  console.log(`[SMS-INFOBIP] Texto: ${smsText.slice(0, 50)}...`);
+  console.log(`[SMS-INFOBIP] Texto: ${smsText.slice(0, 60)}...`);
   console.log("[SMS-INFOBIP] ========================================\n");
 
   try {
@@ -191,6 +197,10 @@ async function sendSmsViaInfobip(
 
 // ===========================================
 // ENVIO WHATSAPP VIA TWILIO
+//
+// IMPORTANTE: ContentVariables deve conter TODAS as variáveis
+// sequencialmente (1, 2, 3, ...) conforme definido no template.
+// Ref: https://www.twilio.com/docs/content/using-variables-with-content-api
 // ===========================================
 async function sendWhatsAppViaTwilio(
   to: string,
@@ -206,11 +216,14 @@ async function sendWhatsAppViaTwilio(
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-status-callback`;
 
+  // ContentVariables deve ser um JSON string
+  const contentVariablesJson = JSON.stringify(contentVariables);
+
   const body = new URLSearchParams({
     From: fromNumber,
     To: toNumber,
     ContentSid: templateSid,
-    ContentVariables: JSON.stringify(contentVariables),
+    ContentVariables: contentVariablesJson,
     StatusCallback: statusCallbackUrl,
   });
 
@@ -218,7 +231,7 @@ async function sendWhatsAppViaTwilio(
   console.log(`[WHATSAPP] From: ${fromNumber}`);
   console.log(`[WHATSAPP] To: ${toNumber}`);
   console.log(`[WHATSAPP] ContentSid: ${templateSid}`);
-  console.log(`[WHATSAPP] ContentVariables: ${JSON.stringify(contentVariables)}`);
+  console.log(`[WHATSAPP] ContentVariables: ${contentVariablesJson}`);
   console.log(`[WHATSAPP] ========================================\n`);
 
   try {
@@ -236,6 +249,7 @@ async function sendWhatsAppViaTwilio(
     if (response.ok && data.sid) {
       console.log(`[WHATSAPP] ✅ ACEITO`);
       console.log(`[WHATSAPP] Message SID: ${data.sid}`);
+      console.log(`[WHATSAPP] Status: ${data.status}`);
       return {
         success: true,
         channel: "whatsapp",
@@ -246,8 +260,10 @@ async function sendWhatsAppViaTwilio(
       const friendlyError = TWILIO_ERROR_MESSAGES[errorCode] || data.message || "Erro desconhecido";
 
       console.error(`[WHATSAPP] ❌ FALHA`);
+      console.error(`[WHATSAPP] HTTP Status: ${response.status}`);
       console.error(`[WHATSAPP] Error Code: ${errorCode}`);
       console.error(`[WHATSAPP] Error: ${data.message}`);
+      console.error(`[WHATSAPP] More Info: ${data.more_info || "N/A"}`);
 
       return {
         success: false,
@@ -285,9 +301,9 @@ serve(async (req) => {
     const { to, template, variables, channel = "whatsapp", userId } = body;
 
     console.log(`[REQUEST] Template: ${template}`);
-    console.log(`[REQUEST] Canal: ${channel}`);
+    console.log(`[REQUEST] Canal solicitado: ${channel}`);
     console.log(`[REQUEST] Telefone: ${to?.slice(0, 5)}***`);
-    console.log(`[REQUEST] Variáveis: ${JSON.stringify(variables)}`);
+    console.log(`[REQUEST] Variáveis recebidas: ${JSON.stringify(variables)}`);
 
     // Validações
     if (!to) {
@@ -316,8 +332,10 @@ serve(async (req) => {
     }
 
     console.log(`[TEMPLATE] Nome: ${template}`);
+    console.log(`[TEMPLATE] Descrição: ${templateConfig.description}`);
     console.log(`[TEMPLATE] Tipo: ${templateConfig.type}`);
-    console.log(`[TEMPLATE] Variáveis esperadas: ${templateConfig.bodyVariables}`);
+    console.log(`[TEMPLATE] Total de variáveis esperadas: ${templateConfig.totalVariables}`);
+    console.log(`[TEMPLATE] Nomes das variáveis: ${templateConfig.variableNames.join(", ") || "nenhuma"}`);
 
     // Normalizar telefone
     const phone = normalizePhone(to);
@@ -328,6 +346,34 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ===========================================
+    // VALIDAR VARIÁVEIS ANTES DE ENVIAR
+    // ===========================================
+    if (templateConfig.type === "utility" && templateConfig.totalVariables > 0) {
+      const missingVars: string[] = [];
+      for (let i = 1; i <= templateConfig.totalVariables; i++) {
+        if (!variables[String(i)] || variables[String(i)].trim() === "") {
+          const varName = templateConfig.variableNames[i - 1] || `var${i}`;
+          missingVars.push(`{{${i}}} (${varName})`);
+        }
+      }
+
+      if (missingVars.length > 0) {
+        const errorMsg = `Variáveis faltando para template '${template}': ${missingVars.join(", ")}`;
+        console.error(`[VALIDAÇÃO] ${errorMsg}`);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: errorMsg,
+            expected: templateConfig.totalVariables,
+            expectedNames: templateConfig.variableNames,
+            received: Object.keys(variables).length,
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     // ===========================================
@@ -342,17 +388,15 @@ serve(async (req) => {
       // ============================================
       // OTP/CÓDIGOS: SEMPRE VIA SMS
       // Templates Authentication não aceitam variáveis customizadas
-      // O código no template é hardcoded "403239"
       // ============================================
       console.log("\n[ESTRATÉGIA] Template AUTHENTICATION - FORÇANDO SMS");
       console.log("[MOTIVO] WhatsApp Authentication templates têm código hardcoded");
-      console.log("[SOLUÇÃO] Enviando código real via SMS Infobip");
 
       result = await sendSmsViaInfobip(phone, template, variables);
       attempts.push(result);
     } else if (channel === "sms") {
       // Canal SMS explicitamente solicitado
-      console.log("\n[ESTRATÉGIA] Canal SMS solicitado");
+      console.log("\n[ESTRATÉGIA] Canal SMS solicitado explicitamente");
 
       result = await sendSmsViaInfobip(phone, template, variables);
       attempts.push(result);
@@ -362,43 +406,14 @@ serve(async (req) => {
       // ============================================
       console.log("\n[ESTRATÉGIA] Template UTILITY - WhatsApp primeiro");
 
-      // Montar variáveis para body E botão
-      // Twilio Content API: variáveis são SEQUENCIAIS
-      // Body: {{1}}, {{2}} | Button: {{3}} (continua a sequência)
+      // Montar ContentVariables com TODAS as variáveis sequenciais
+      // O Twilio espera {"1": "valor1", "2": "valor2", "3": "valor3"}
       const contentVariables: Record<string, string> = {};
-
-      // Variáveis do body
-      for (let i = 1; i <= templateConfig.bodyVariables; i++) {
+      for (let i = 1; i <= templateConfig.totalVariables; i++) {
         contentVariables[String(i)] = variables[String(i)] || "";
       }
 
-      // Variáveis do botão (continuam a numeração)
-      for (let i = 1; i <= templateConfig.buttonVariables; i++) {
-        const varIndex = templateConfig.bodyVariables + i;
-        contentVariables[String(varIndex)] = variables[String(varIndex)] || "";
-      }
-
-      const totalVars = templateConfig.bodyVariables + templateConfig.buttonVariables;
-      console.log(
-        `[VARIÁVEIS] Body: ${templateConfig.bodyVariables}, Button: ${templateConfig.buttonVariables}, Total: ${totalVars}`,
-      );
-      console.log(`[VARIÁVEIS] ${JSON.stringify(contentVariables)}`);
-
-      // Validar se todas as variáveis foram fornecidas
-      const missingVars = [];
-      for (let i = 1; i <= totalVars; i++) {
-        if (!contentVariables[String(i)]) {
-          missingVars.push(`{{${i}}}`);
-        }
-      }
-
-      if (missingVars.length > 0) {
-        console.warn(`[AVISO] Variáveis faltando: ${missingVars.join(", ")}`);
-      }
-
-      if (missingVars.length > 0) {
-        console.warn(`[AVISO] Variáveis faltando: ${missingVars.join(", ")}`);
-      }
+      console.log(`[VARIÁVEIS] ContentVariables: ${JSON.stringify(contentVariables)}`);
 
       // Tentativa 1: WhatsApp
       console.log("\n[TENTATIVA 1] WhatsApp via Twilio");
@@ -434,11 +449,14 @@ serve(async (req) => {
           user_id: userId || null,
           template,
           templateType: templateConfig.type,
+          templateSid: templateConfig.sid,
           variables,
+          totalVariablesExpected: templateConfig.totalVariables,
           attempts: attempts.map((a) => ({
             channel: a.channel,
             success: a.success,
             error: a.error || null,
+            errorCode: a.errorCode || null,
           })),
           version: FUNCTION_VERSION,
           processingTimeMs: Date.now() - startTime,
@@ -459,6 +477,9 @@ serve(async (req) => {
     console.log(`Canal: ${result.channel}`);
     console.log(`Tentativas: ${attempts.length}`);
     console.log(`Tempo: ${processingTime}ms`);
+    if (result.error) {
+      console.log(`Erro: ${result.error}`);
+    }
     console.log(`${"=".repeat(60)}\n`);
 
     return new Response(
