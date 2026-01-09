@@ -274,7 +274,10 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ module
         throw new Error("CHAT_EMPTY: Resposta vazia");
       }
 
-      await speak(aiResponse, moduleType);
+      // NOVO v2.6.0: Usar phoneticMap retornado pelo chat-router
+      const phoneticMap = chatData?.phoneticMap || {};
+
+      await speak(aiResponse, moduleType, { phoneticMapOverride: phoneticMap });
     } catch (error: any) {
       console.error(`[Module-${moduleType}] ERRO:`, error);
 
