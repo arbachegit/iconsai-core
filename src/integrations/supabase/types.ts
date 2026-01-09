@@ -3529,12 +3529,15 @@ export type Database = {
       }
       pwa_conversation_messages: {
         Row: {
-          audio_duration_seconds: number | null
+          audio_duration: number | null
           audio_url: string | null
           content: string
+          conversation_id: string | null
           created_at: string | null
+          device_id: string | null
           id: string
           key_topics: Json | null
+          metadata: Json | null
           role: string
           session_id: string
           taxonomy_tags: string[] | null
@@ -3542,12 +3545,15 @@ export type Database = {
           transcription: string | null
         }
         Insert: {
-          audio_duration_seconds?: number | null
+          audio_duration?: number | null
           audio_url?: string | null
           content: string
+          conversation_id?: string | null
           created_at?: string | null
+          device_id?: string | null
           id?: string
           key_topics?: Json | null
+          metadata?: Json | null
           role: string
           session_id: string
           taxonomy_tags?: string[] | null
@@ -3555,12 +3561,15 @@ export type Database = {
           transcription?: string | null
         }
         Update: {
-          audio_duration_seconds?: number | null
+          audio_duration?: number | null
           audio_url?: string | null
           content?: string
+          conversation_id?: string | null
           created_at?: string | null
+          device_id?: string | null
           id?: string
           key_topics?: Json | null
+          metadata?: Json | null
           role?: string
           session_id?: string
           taxonomy_tags?: string[] | null
@@ -3569,7 +3578,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "pwa_conversation_messages_session_id_fkey"
+            foreignKeyName: "fk_pwa_messages_session"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "pwa_conversation_sessions"
@@ -3587,8 +3596,12 @@ export type Database = {
           device_id: string
           ended_at: string | null
           id: string
+          is_active: boolean | null
+          last_message_at: string | null
           latitude: number | null
           longitude: number | null
+          message_count: number | null
+          metadata: Json | null
           module_type: string
           started_at: string
           updated_at: string | null
@@ -3604,8 +3617,12 @@ export type Database = {
           device_id: string
           ended_at?: string | null
           id?: string
+          is_active?: boolean | null
+          last_message_at?: string | null
           latitude?: number | null
           longitude?: number | null
+          message_count?: number | null
+          metadata?: Json | null
           module_type: string
           started_at?: string
           updated_at?: string | null
@@ -3621,8 +3638,12 @@ export type Database = {
           device_id?: string
           ended_at?: string | null
           id?: string
+          is_active?: boolean | null
+          last_message_at?: string | null
           latitude?: number | null
           longitude?: number | null
+          message_count?: number | null
+          metadata?: Json | null
           module_type?: string
           started_at?: string
           updated_at?: string | null
