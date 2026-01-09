@@ -1,9 +1,12 @@
 /**
  * ============================================================
- * HealthModuleContainer.tsx - v5.4.0
+ * HealthModuleContainer.tsx - Container INDEPENDENTE para Saúde
  * ============================================================
- * Container INDEPENDENTE do módulo Saúde
- * CORREÇÃO: Adiciona salvamento no historyStore (addMessage)
+ * Versão: 5.5.0 - 2026-01-09
+ * FIX: Verificação de deviceId vazio antes de chamar API
+ * ============================================================
+ * CHANGELOG v5.5.0:
+ * - Adicionado if (!deviceId) return; para evitar erro 400
  * ============================================================
  */
 
@@ -15,7 +18,7 @@ import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
-import { useHistoryStore } from "@/stores/historyStore"; // ✅ ADICIONADO
+import { useHistoryStore } from "@/stores/historyStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +41,7 @@ interface HealthModuleContainerProps {
 export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { addMessage } = useHistoryStore(); // ✅ ADICIONADO
+  const { addMessage } = useHistoryStore();
   const { config: pwaConfig } = useConfigPWA();
   const { userName } = usePWAVoiceStore();
 
@@ -57,6 +60,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   // ============================================================
   useEffect(() => {
     if (isGreetingReady) return;
+    if (!deviceId) return; // FIX v5.5.0: Evitar chamada com deviceId vazio
 
     const fetchGreeting = async () => {
       try {
@@ -182,10 +186,8 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
 
-      // ✅ Salvar mensagem do usuário no estado local
       setMessages((prev) => [...prev, { role: "user", content: userText }]);
 
-      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.moduleType, {
         role: "user",
         title: userText,
@@ -209,10 +211,8 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 
-      // ✅ Salvar resposta do assistente no estado local
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
 
-      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.moduleType, {
         role: "assistant",
         title: aiResponse,
