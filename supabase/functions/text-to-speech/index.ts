@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 2.1.0 | DEPLOY: 2026-01-09
+// INTEGRACAO: lexicon_terms + regional_tone_rules
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -345,7 +345,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, chatType, agentSlug, voice = "fernando" } = await req.json();
+    const { text, chatType, agentSlug, voice = "fernando", userRegion } = await req.json();
     
     if (!text) {
       throw new Error("Texto é obrigatório");
@@ -386,6 +386,30 @@ serve(async (req) => {
     } catch (err) {
       console.log("Usando fonéticas padrão hardcoded:", err);
     }
+
+    // 2.5 Carregar pronúncias do lexicon_terms (dicionário de termos)
+    try {
+      const { data: lexiconTerms } = await supabase
+        .from("lexicon_terms")
+        .select("term, pronunciation_phonetic")
+        .eq("is_approved", true)
+        .not("pronunciation_phonetic", "is", null);
+
+      if (lexiconTerms && lexiconTerms.length > 0) {
+        for (const term of lexiconTerms) {
+          if (term.pronunciation_phonetic) {
+            // Léxico tem prioridade menor que phonetic_rules
+            // Só adiciona se não existir no mapa
+            if (!phoneticMap[term.term]) {
+              phoneticMap[term.term] = term.pronunciation_phonetic;
+            }
+          }
+        }
+        console.log(`Carregados ${lexiconTerms.length} termos do léxico`);
+      }
+    } catch (err) {
+      console.log("Erro ao carregar léxico:", err);
+    }
     
     // 3. Carregar pronúncias do chat_config (se existir)
     if (chatType) {
@@ -402,6 +426,26 @@ serve(async (req) => {
         }
       } catch (dbError) {
         console.log("Nenhum mapa fonético no chat_config para:", chatType);
+      }
+    }
+
+    // 3.5 Carregar pronúncias regionais (regional_tone_rules)
+    if (userRegion) {
+      try {
+        const { data: regionRules } = await supabase
+          .from("regional_tone_rules")
+          .select("preferred_terms")
+          .eq("region_code", userRegion)
+          .eq("is_active", true)
+          .single();
+
+        if (regionRules?.preferred_terms && typeof regionRules.preferred_terms === 'object') {
+          // Pronúncias regionais têm alta prioridade (sobrescrevem outras)
+          phoneticMap = { ...phoneticMap, ...(regionRules.preferred_terms as Record<string, string>) };
+          console.log(`Carregadas pronúncias da região: ${userRegion}`);
+        }
+      } catch (err) {
+        console.log("Região não encontrada ou inativa:", userRegion);
       }
     }
     
