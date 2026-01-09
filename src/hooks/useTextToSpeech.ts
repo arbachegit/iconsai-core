@@ -2,10 +2,12 @@
  * ============================================================
  * useTextToSpeech.ts - Hook de Text-to-Speech
  * ============================================================
- * Versão: 2.0.0
- * Data: 2026-01-04
+ * Versão: 3.0.0
+ * Data: 2026-01-09
  * 
  * Changelog:
+ * - v3.0.0: Suporte a phoneticMapOverride e userRegion
+ *           para integração com classify-and-enrich
  * - v2.0.0: Integração com AudioManager global para evitar
  *           sobreposição de áudio entre módulos
  * ============================================================
@@ -16,10 +18,15 @@ import { useAudioManager } from "@/stores/audioManagerStore";
 
 interface UseTextToSpeechOptions {
   voice?: string;
+  userRegion?: string;
+}
+
+interface SpeakOverrideOptions {
+  phoneticMapOverride?: Record<string, string>;
 }
 
 interface UseTextToSpeechReturn {
-  speak: (text: string, source?: string) => Promise<void>;
+  speak: (text: string, source?: string, overrideOptions?: SpeakOverrideOptions) => Promise<void>;
   stop: () => void;
   pause: () => void;
   resume: () => void;
@@ -41,8 +48,12 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
   // Usar o AudioManager global
   const audioManager = useAudioManager();
 
-  // v5.1.0: Remover audioManager das deps - usar getState() dentro
-  const speak = useCallback(async (text: string, source: string = "default") => {
+  // v3.0.0: Aceita overrideOptions com phoneticMapOverride
+  const speak = useCallback(async (
+    text: string, 
+    source: string = "default",
+    overrideOptions?: SpeakOverrideOptions
+  ) => {
     if (!text.trim()) return;
     
     // Gerar ID único para este áudio
@@ -53,6 +64,17 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
     setIsPaused(false);
 
     try {
+      // v3.0.0: Incluir phoneticMapOverride se fornecido
+      const bodyPayload: Record<string, unknown> = { text, voice };
+      
+      if (options?.userRegion) {
+        bodyPayload.userRegion = options.userRegion;
+      }
+      
+      if (overrideOptions?.phoneticMapOverride) {
+        bodyPayload.phoneticMapOverride = overrideOptions.phoneticMapOverride;
+      }
+
       // Use fetch directly because the edge function returns streaming audio
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
@@ -63,7 +85,7 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ text, voice }),
+          body: JSON.stringify(bodyPayload),
         }
       );
 
@@ -86,7 +108,7 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
       setError(err instanceof Error ? err.message : "Falha ao gerar fala");
       setLocalLoading(false);
     }
-  }, [voice]);
+  }, [voice, options?.userRegion]);
 
   // v5.1.0: Todas as funções usam getState() - deps: []
   const stop = useCallback(() => {

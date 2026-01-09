@@ -37,6 +37,12 @@ verify_jwt = false
 verify_jwt = false
 
 # ============================================
+# CLASSIFY AND ENRICH - Taxonomy + Phonetics
+# ============================================
+[functions.classify-and-enrich]
+verify_jwt = false
+
+# ============================================
 # EMAIL & NOTIFICATIONS - Public (for forms)
 # ============================================
 [functions.send-email]

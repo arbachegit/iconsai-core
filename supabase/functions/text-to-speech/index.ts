@@ -1,6 +1,7 @@
 // ============================================
-// VERSAO: 2.1.0 | DEPLOY: 2026-01-09
+// VERSAO: 2.2.0 | DEPLOY: 2026-01-09
 // INTEGRACAO: lexicon_terms + regional_tone_rules
+// NOVO: phoneticMapOverride do classify-and-enrich
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -345,7 +346,14 @@ serve(async (req) => {
   }
 
   try {
-    const { text, chatType, agentSlug, voice = "fernando", userRegion } = await req.json();
+    const { 
+      text, 
+      chatType, 
+      agentSlug, 
+      voice = "fernando", 
+      userRegion,
+      phoneticMapOverride  // v2.2.0: Mapa pré-carregado do classify-and-enrich
+    } = await req.json();
     
     if (!text) {
       throw new Error("Texto é obrigatório");
@@ -368,104 +376,113 @@ serve(async (req) => {
     // 1. Carregar mapa fonético base (hardcoded como fallback)
     let phoneticMap = { ...DEFAULT_PHONETIC_MAP };
     
-    // 2. Carregar regras fonéticas do banco de dados (sobrescreve as padrão)
-    try {
-      const { data: phoneticRules } = await supabase
-        .from("phonetic_rules")
-        .select("term, phonetic")
-        .eq("is_active", true)
-        .is("region", null)  // Pega apenas as globais (sem região)
-        .order("priority", { ascending: false });
-      
-      if (phoneticRules && phoneticRules.length > 0) {
-        for (const rule of phoneticRules) {
-          phoneticMap[rule.term] = rule.phonetic;
+    // v2.2.0: Se recebeu phoneticMapOverride, usar diretamente (pula consultas ao banco)
+    const hasPreloadedPhonetics = phoneticMapOverride && typeof phoneticMapOverride === 'object' && Object.keys(phoneticMapOverride).length > 0;
+    
+    if (hasPreloadedPhonetics) {
+      phoneticMap = { ...phoneticMap, ...phoneticMapOverride };
+      console.log(`[TTS v2.2.0] Usando ${Object.keys(phoneticMapOverride).length} fonéticas pré-carregadas do classify-and-enrich`);
+    } else {
+      // Fluxo tradicional: carregar do banco de dados
+      // 2. Carregar regras fonéticas do banco de dados (sobrescreve as padrão)
+      try {
+        const { data: phoneticRules } = await supabase
+          .from("phonetic_rules")
+          .select("term, phonetic")
+          .eq("is_active", true)
+          .is("region", null)  // Pega apenas as globais (sem região)
+          .order("priority", { ascending: false });
+        
+        if (phoneticRules && phoneticRules.length > 0) {
+          for (const rule of phoneticRules) {
+            phoneticMap[rule.term] = rule.phonetic;
+          }
+          console.log(`Carregadas ${phoneticRules.length} regras fonéticas do banco`);
         }
-        console.log(`Carregadas ${phoneticRules.length} regras fonéticas do banco`);
+      } catch (err) {
+        console.log("Usando fonéticas padrão hardcoded:", err);
       }
-    } catch (err) {
-      console.log("Usando fonéticas padrão hardcoded:", err);
-    }
 
-    // 2.5 Carregar pronúncias do lexicon_terms (dicionário de termos)
-    try {
-      const { data: lexiconTerms } = await supabase
-        .from("lexicon_terms")
-        .select("term, pronunciation_phonetic")
-        .eq("is_approved", true)
-        .not("pronunciation_phonetic", "is", null);
+      // 2.5 Carregar pronúncias do lexicon_terms (dicionário de termos)
+      try {
+        const { data: lexiconTerms } = await supabase
+          .from("lexicon_terms")
+          .select("term, pronunciation_phonetic")
+          .eq("is_approved", true)
+          .not("pronunciation_phonetic", "is", null);
 
-      if (lexiconTerms && lexiconTerms.length > 0) {
-        for (const term of lexiconTerms) {
-          if (term.pronunciation_phonetic) {
-            // Léxico tem prioridade menor que phonetic_rules
-            // Só adiciona se não existir no mapa
-            if (!phoneticMap[term.term]) {
-              phoneticMap[term.term] = term.pronunciation_phonetic;
+        if (lexiconTerms && lexiconTerms.length > 0) {
+          for (const term of lexiconTerms) {
+            if (term.pronunciation_phonetic) {
+              // Léxico tem prioridade menor que phonetic_rules
+              // Só adiciona se não existir no mapa
+              if (!phoneticMap[term.term]) {
+                phoneticMap[term.term] = term.pronunciation_phonetic;
+              }
             }
           }
-        }
-        console.log(`Carregados ${lexiconTerms.length} termos do léxico`);
-      }
-    } catch (err) {
-      console.log("Erro ao carregar léxico:", err);
-    }
-    
-    // 3. Carregar pronúncias do chat_config (se existir)
-    if (chatType) {
-      try {
-        const { data } = await supabase
-          .from("chat_config")
-          .select("phonetic_map")
-          .eq("chat_type", chatType)
-          .single();
-        
-        if (data?.phonetic_map && Object.keys(data.phonetic_map).length > 0) {
-          phoneticMap = { ...phoneticMap, ...data.phonetic_map };
-          console.log(`Mapa fonético do chat_config ${chatType}:`, Object.keys(data.phonetic_map).length, "termos");
-        }
-      } catch (dbError) {
-        console.log("Nenhum mapa fonético no chat_config para:", chatType);
-      }
-    }
-
-    // 3.5 Carregar pronúncias regionais (regional_tone_rules)
-    if (userRegion) {
-      try {
-        const { data: regionRules } = await supabase
-          .from("regional_tone_rules")
-          .select("preferred_terms")
-          .eq("region_code", userRegion)
-          .eq("is_active", true)
-          .single();
-
-        if (regionRules?.preferred_terms && typeof regionRules.preferred_terms === 'object') {
-          // Pronúncias regionais têm alta prioridade (sobrescrevem outras)
-          phoneticMap = { ...phoneticMap, ...(regionRules.preferred_terms as Record<string, string>) };
-          console.log(`Carregadas pronúncias da região: ${userRegion}`);
+          console.log(`Carregados ${lexiconTerms.length} termos do léxico`);
         }
       } catch (err) {
-        console.log("Região não encontrada ou inativa:", userRegion);
+        console.log("Erro ao carregar léxico:", err);
       }
-    }
-    
-    // 4. Carregar pronúncias customizadas do agente (se existir)
-    if (agentSlug) {
-      try {
-        const { data: agent } = await supabase
-          .from("chat_agents")
-          .select("pronunciation_rules")
-          .eq("slug", agentSlug)
-          .single();
-        
-        if (agent?.pronunciation_rules && typeof agent.pronunciation_rules === 'object' && Object.keys(agent.pronunciation_rules).length > 0) {
-          phoneticMap = { ...phoneticMap, ...(agent.pronunciation_rules as Record<string, string>) };
-          console.log(`Carregadas ${Object.keys(agent.pronunciation_rules).length} pronúncias do agente ${agentSlug}`);
+      
+      // 3. Carregar pronúncias do chat_config (se existir)
+      if (chatType) {
+        try {
+          const { data } = await supabase
+            .from("chat_config")
+            .select("phonetic_map")
+            .eq("chat_type", chatType)
+            .single();
+          
+          if (data?.phonetic_map && Object.keys(data.phonetic_map).length > 0) {
+            phoneticMap = { ...phoneticMap, ...data.phonetic_map };
+            console.log(`Mapa fonético do chat_config ${chatType}:`, Object.keys(data.phonetic_map).length, "termos");
+          }
+        } catch (dbError) {
+          console.log("Nenhum mapa fonético no chat_config para:", chatType);
         }
-      } catch (err) {
-        console.log("Erro ao carregar pronúncias do agente:", err);
       }
-    }
+
+      // 3.5 Carregar pronúncias regionais (regional_tone_rules)
+      if (userRegion) {
+        try {
+          const { data: regionRules } = await supabase
+            .from("regional_tone_rules")
+            .select("preferred_terms")
+            .eq("region_code", userRegion)
+            .eq("is_active", true)
+            .single();
+
+          if (regionRules?.preferred_terms && typeof regionRules.preferred_terms === 'object') {
+            // Pronúncias regionais têm alta prioridade (sobrescrevem outras)
+            phoneticMap = { ...phoneticMap, ...(regionRules.preferred_terms as Record<string, string>) };
+            console.log(`Carregadas pronúncias da região: ${userRegion}`);
+          }
+        } catch (err) {
+          console.log("Região não encontrada ou inativa:", userRegion);
+        }
+      }
+      
+      // 4. Carregar pronúncias customizadas do agente (se existir)
+      if (agentSlug) {
+        try {
+          const { data: agent } = await supabase
+            .from("chat_agents")
+            .select("pronunciation_rules")
+            .eq("slug", agentSlug)
+            .single();
+          
+          if (agent?.pronunciation_rules && typeof agent.pronunciation_rules === 'object' && Object.keys(agent.pronunciation_rules).length > 0) {
+            phoneticMap = { ...phoneticMap, ...(agent.pronunciation_rules as Record<string, string>) };
+            console.log(`Carregadas ${Object.keys(agent.pronunciation_rules).length} pronúncias do agente ${agentSlug}`);
+          }
+        } catch (err) {
+          console.log("Erro ao carregar pronúncias do agente:", err);
+        }
+      }
+    } // Fim do else (hasPreloadedPhonetics)
     
     // 5. NORMALIZAR NÚMEROS PRIMEIRO (antes do mapa fonético)
     let normalizedText = normalizeNumbers(sanitizedText);

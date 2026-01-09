@@ -5304,6 +5304,39 @@ export type Database = {
         }
         Relationships: []
       }
+      taxonomy_phonetics: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          phonetic: string
+          priority: number | null
+          taxonomy_code: string
+          term: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          phonetic: string
+          priority?: number | null
+          taxonomy_code: string
+          term: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          phonetic?: string
+          priority?: number | null
+          taxonomy_code?: string
+          term?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       taxonomy_suggestions: {
         Row: {
           based_on_documents: string[] | null
