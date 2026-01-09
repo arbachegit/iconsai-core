@@ -2,8 +2,12 @@
  * ============================================================
  * WorldModuleContainer.tsx - Container INDEPENDENTE para Mundo
  * ============================================================
- * Versão: 5.4.0 - 2026-01-08
- * CORREÇÃO: Adiciona salvamento no historyStore (addMessage)
+ * Versão: 5.5.0 - 2026-01-09
+ * CORREÇÃO: defaultWelcome corrigido (MUNDO ≠ ECONOMIA)
+ * ============================================================
+ * CHANGELOG v5.5.0:
+ * - defaultWelcome agora reflete módulo MUNDO (generalista)
+ * - Removida menção a "analista de economia"
  * ============================================================
  */
 
@@ -15,17 +19,21 @@ import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
-import { useHistoryStore } from "@/stores/historyStore"; // ✅ ADICIONADO
+import { useHistoryStore } from "@/stores/historyStore";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
+// ============================================================
+// CORREÇÃO v5.5.0: defaultWelcome reflete módulo MUNDO
+// ============================================================
 const MODULE_CONFIG = {
   type: "world" as const,
   name: "Mundo",
   color: "#10B981",
   bgColor: "bg-emerald-500/20",
+  // CORRIGIDO: Mensagem genérica para módulo MUNDO (não economia)
   defaultWelcome:
-    "Olá! Sou seu analista de economia. Posso te atualizar sobre indicadores, mercado e notícias econômicas do Brasil e do mundo. O que gostaria de saber?",
+    "Olá! Sou seu assistente do módulo Mundo. Posso te ajudar com notícias, acontecimentos globais, política, tecnologia e muito mais. O que gostaria de saber?",
 };
 
 interface WorldModuleContainerProps {
@@ -37,7 +45,7 @@ interface WorldModuleContainerProps {
 export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
-  const { addMessage } = useHistoryStore(); // ✅ ADICIONADO
+  const { addMessage } = useHistoryStore();
   const { userName } = usePWAVoiceStore();
 
   const [greeting, setGreeting] = useState<string | null>(null);
@@ -179,10 +187,10 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
 
-      // ✅ Salvar mensagem do usuário no estado local
+      // Salvar mensagem do usuário no estado local
       setMessages((prev) => [...prev, { role: "user", content: userText }]);
 
-      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      // Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.type, {
         role: "user",
         title: userText,
@@ -206,10 +214,10 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 
-      // ✅ Salvar resposta do assistente no estado local
+      // Salvar resposta do assistente no estado local
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
 
-      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      // Salvar no historyStore para aparecer no histórico
       addMessage(MODULE_CONFIG.type, {
         role: "assistant",
         title: aiResponse,
