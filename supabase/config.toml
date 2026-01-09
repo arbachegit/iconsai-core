@@ -332,3 +332,9 @@ verify_jwt = false
 # ============================================
 [functions.pwa-contextual-memory]
 verify_jwt = false
+
+# ============================================
+# PWA MESSAGE STORAGE - Public (PWA anonymous)
+# ============================================
+[functions.pwa-save-message]
+verify_jwt = false
