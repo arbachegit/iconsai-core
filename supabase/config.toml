@@ -341,3 +341,9 @@ verify_jwt = false
 
 [functions.pwa-get-history]
 verify_jwt = false
+
+# ============================================
+# CONTENT ORCHESTRATOR - AI content generation
+# ============================================
+[functions.content-orchestrator]
+verify_jwt = false
