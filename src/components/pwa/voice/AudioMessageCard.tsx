@@ -2,21 +2,37 @@
  * ============================================================
  * AudioMessageCard.tsx - Card de Mensagem de Áudio/Texto
  * ============================================================
- * Versão: 2.0.0 - 2026-01-09
- * CORREÇÃO: Funciona com ou sem audioUrl
+ * Versão: 2.1.0 - 2026-01-09
+ * NOVO: Botão Play TTS no footer para ler texto em voz alta
  * ============================================================
- * CHANGELOG v2.0.0:
- * - Renderiza como texto quando audioUrl está vazio
- * - Player de áudio só aparece quando há audioUrl válido
- * - Layout adaptativo baseado no conteúdo disponível
+ * CHANGELOG v2.1.0:
+ * - Adicionado botão Play/Stop TTS no footer do card de texto
+ * - Usa hook useTextToSpeech para síntese de voz
+ * - Ícone muda entre Play/Pause/Loading conforme estado
  * ============================================================
  */
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Share2, FileText, Send, Download, Bot, Loader2, X, User, Copy, Check } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Share2,
+  FileText,
+  Send,
+  Download,
+  Bot,
+  Loader2,
+  X,
+  User,
+  Copy,
+  Check,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import type { AudioMessage } from "@/components/pwa/types";
 import { supabase } from "@/integrations/supabase/client";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 interface AudioMessageCardProps {
   message: AudioMessage;
@@ -34,6 +50,9 @@ export const AudioMessageCard: React.FC<AudioMessageCardProps> = ({ message, use
   const [copied, setCopied] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Hook TTS para ler texto em voz alta
+  const { speak, stop, isPlaying: isTTSPlaying, isLoading: isTTSLoading } = useTextToSpeech();
 
   const isAssistant = message.role === "assistant";
 
@@ -127,6 +146,17 @@ export const AudioMessageCard: React.FC<AudioMessageCardProps> = ({ message, use
       }
     } catch (error) {
       console.error("Erro ao compartilhar:", error);
+    }
+  };
+
+  // NOVO v2.1.0: Ação Play TTS - ler texto em voz alta
+  const handlePlayTTS = async () => {
+    if (isTTSPlaying) {
+      stop();
+    } else if (textContent) {
+      // Usar moduleType da mensagem se disponível
+      const moduleType = message.moduleType || "world";
+      await speak(textContent, moduleType);
     }
   };
 
@@ -238,6 +268,24 @@ export const AudioMessageCard: React.FC<AudioMessageCardProps> = ({ message, use
             </span>
 
             <div className="flex gap-1">
+              {/* NOVO v2.1.0: Botão Play TTS */}
+              <button
+                onClick={handlePlayTTS}
+                disabled={isTTSLoading}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  isTTSPlaying ? "bg-primary/20 text-primary" : "hover:bg-white/10"
+                }`}
+                title={isTTSPlaying ? "Parar" : "Ouvir"}
+              >
+                {isTTSLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+                ) : isTTSPlaying ? (
+                  <VolumeX className="w-3.5 h-3.5 text-primary" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </button>
+
               {/* Copiar */}
               <button
                 onClick={handleCopyText}
