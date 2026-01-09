@@ -183,7 +183,7 @@ export const PWAConversationBlocks = ({
                         role: 'assistant',
                         content: session.summary.summary_text,
                         audio_url: session.summary.summary_audio_url,
-                        audio_duration_seconds: null,
+                        audio_duration: null,
                         transcription: session.summary.summary_text,
                         timestamp: session.summary.generated_at,
                         taxonomy_tags: session.summary.taxonomy_tags || [],

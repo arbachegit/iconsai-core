@@ -41,7 +41,7 @@ export interface PWAConversationMessage {
   role: MessageRole;
   content: string;
   audio_url: string | null;
-  audio_duration_seconds: number | null;
+  audio_duration: number | null;
   transcription: string | null;
   timestamp: string;
   taxonomy_tags: string[];

@@ -1,5 +1,5 @@
 // ============================================
-// VERSAO: 1.0.0 | DEPLOY: 2026-01-09
+// VERSAO: 1.0.1 | DEPLOY: 2026-01-09
 // Salva mensagens de conversa do PWA
 // ============================================
 
@@ -120,18 +120,19 @@ serve(async (req: Request) => {
     }
 
     // Save message
-    const { data: message, error: messageError } = await supabase
-      .from("pwa_conversation_messages")
-      .insert({
-        session_id: sessionId,
-        role: body.role,
-        content: body.content,
-        transcription: body.transcription || null,
-        audio_url: body.audioUrl || null,
-        audio_duration_seconds: body.audioDuration || null,
-      })
-      .select("id, created_at")
-      .single();
+  const { data: message, error: messageError } = await supabase
+    .from("pwa_conversation_messages")
+    .insert({
+      session_id: sessionId,
+      device_id: body.deviceId,
+      role: body.role,
+      content: body.content,
+      transcription: body.transcription || null,
+      audio_url: body.audioUrl || null,
+      audio_duration: body.audioDuration || null,
+    })
+    .select("id, created_at")
+    .single();
 
     if (messageError || !message) {
       console.error("[pwa-save-message] Erro ao salvar mensagem:", messageError);

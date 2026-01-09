@@ -1,4 +1,4 @@
-// VERSAO: 1.0.0 | DEPLOY: 2026-01-09
+// VERSAO: 1.0.1 | DEPLOY: 2026-01-09
 // Busca histórico de mensagens do PWA
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -122,7 +122,7 @@ serve(async (req: Request) => {
     // 6. Get messages with pagination
     const { data: messages, error: messagesError } = await supabase
       .from("pwa_conversation_messages")
-      .select("id, session_id, role, content, transcription, audio_url, audio_duration_seconds, timestamp, created_at")
+      .select("id, session_id, role, content, transcription, audio_url, audio_duration, created_at")
       .in("session_id", sessionIds)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -162,8 +162,8 @@ serve(async (req: Request) => {
         content: msg.content,
         transcription: msg.transcription,
         audioUrl: msg.audio_url,
-        audioDuration: msg.audio_duration_seconds,
-        timestamp: msg.timestamp || msg.created_at,
+        audioDuration: msg.audio_duration,
+        timestamp: msg.created_at,
         sessionId: msg.session_id,
         city: sessionInfo?.city || null,
         moduleType: sessionInfo?.moduleType || "world"

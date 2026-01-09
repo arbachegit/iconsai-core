@@ -23,7 +23,7 @@ export const PWAAudioMessage = ({
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(message.audio_duration_seconds || 0);
+  const [duration, setDuration] = useState(message.audio_duration || 0);
   const [showTranscription, setShowTranscription] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
