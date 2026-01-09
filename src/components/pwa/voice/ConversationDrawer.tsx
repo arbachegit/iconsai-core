@@ -1,10 +1,24 @@
+/**
+ * ============================================================
+ * ConversationDrawer.tsx - Drawer de Conversas PWA
+ * ============================================================
+ * Versão: 2.0.0 - 2026-01-09
+ * PADRONIZAÇÃO: Footer com 3 botões (Play TTS, Copiar, Compartilhar)
+ * ============================================================
+ * CHANGELOG v2.0.0:
+ * - Removido botão Download (não há áudio salvo)
+ * - Adicionado botão Play TTS com useTextToSpeech
+ * - Adicionado botão Copiar texto
+ * - Footer padronizado igual ao AudioMessageCard
+ * - Estados visuais consistentes (loading/playing/idle)
+ * ============================================================
+ */
+
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  X, Play, Pause, Share2, Download, FileText, 
-  MessageSquare 
-} from "lucide-react";
+import { X, MessageSquare, Volume2, VolumeX, Copy, Check, Share2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 interface Conversation {
   id: string;
@@ -13,6 +27,7 @@ interface Conversation {
   transcript?: string;
   audioUrl?: string;
   summary?: string;
+  moduleType?: string;
 }
 
 interface ConversationDrawerProps {
@@ -28,67 +43,93 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   conversations,
   embedded = false,
 }) => {
-  const [playingId, setPlayingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [audioElements] = useState<Map<string, HTMLAudioElement>>(new Map());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
 
-  const handlePlayPause = (id: string, audioUrl?: string) => {
-    if (!audioUrl) return;
+  // Hook TTS para ler texto em voz alta
+  const { speak, stop, isPlaying: isTTSPlaying, isLoading: isTTSLoading } = useTextToSpeech();
 
-    if (playingId === id) {
-      audioElements.get(id)?.pause();
+  // Obter texto da conversa
+  const getConversationText = (conv: Conversation): string => {
+    return conv.transcript || conv.summary || "";
+  };
+
+  // Ação: Play TTS
+  const handlePlayTTS = async (conv: Conversation) => {
+    const text = getConversationText(conv);
+    if (!text) return;
+
+    if (isTTSPlaying && playingId === conv.id) {
+      stop();
       setPlayingId(null);
     } else {
-      if (playingId) {
-        audioElements.get(playingId)?.pause();
+      // Parar qualquer TTS anterior
+      if (isTTSPlaying) {
+        stop();
       }
-
-      let audio = audioElements.get(id);
-      if (!audio) {
-        audio = new Audio(audioUrl);
-        audio.onended = () => setPlayingId(null);
-        audioElements.set(id, audio);
-      }
-      audio.play();
-      setPlayingId(id);
+      setPlayingId(conv.id);
+      const moduleType = conv.moduleType || "world";
+      await speak(text, moduleType);
+      setPlayingId(null);
     }
   };
 
+  // Ação: Copiar texto
+  const handleCopy = async (conv: Conversation) => {
+    const text = getConversationText(conv);
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(conv.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      console.error("Erro ao copiar:", error);
+    }
+  };
+
+  // Ação: Compartilhar
   const handleShare = async (conv: Conversation) => {
+    const text = getConversationText(conv);
+    if (!text) return;
+
     const dateStr = conv.createdAt.toLocaleDateString("pt-BR");
-    const text = `KnowYOU - Conversa de ${dateStr}:\n\n${conv.transcript || conv.summary || "Sem transcrição disponível"}`;
-    
+    const fullText = `KnowYOU - ${dateStr}:\n\n${text}`;
+
     if (navigator.share) {
       try {
-        await navigator.share({ text });
+        await navigator.share({ text: fullText });
       } catch (e) {
-        // User cancelled or error
         console.log("Share cancelled");
       }
     } else {
-      const encoded = encodeURIComponent(text);
-      window.open(`https://wa.me/?text=${encoded}`, "_blank");
+      // Fallback: copiar para clipboard
+      try {
+        await navigator.clipboard.writeText(fullText);
+        setCopiedId(conv.id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } catch (error) {
+        console.error("Erro ao compartilhar:", error);
+      }
     }
   };
 
-  const handleDownload = (conv: Conversation) => {
-    if (!conv.audioUrl) return;
-    
-    const a = document.createElement("a");
-    a.href = conv.audioUrl;
-    a.download = `knowyou-${conv.id}.mp3`;
-    a.click();
-  };
-
-  const handleTranscribe = (id: string) => {
+  // Toggle expandir/colapsar
+  const handleToggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  // Formatar duração
   const formatDuration = (start: Date, end: Date) => {
     const seconds = Math.round((end.getTime() - start.getTime()) / 1000);
     if (seconds < 60) return `${seconds}s`;
     return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
   };
+
+  // Verificar se esta tocando esta conversa
+  const isPlayingThis = (convId: string) => isTTSPlaying && playingId === convId;
+  const isLoadingThis = (convId: string) => isTTSLoading && playingId === convId;
 
   return (
     <AnimatePresence>
@@ -96,7 +137,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         <>
           {/* Backdrop */}
           <motion.div
-            className={`${embedded ? 'absolute' : 'fixed'} inset-0 bg-black/60 backdrop-blur-sm z-50`}
+            className={`${embedded ? "absolute" : "fixed"} inset-0 bg-black/60 backdrop-blur-sm z-50`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -105,7 +146,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
 
           {/* Drawer - slides from top */}
           <motion.div
-            className={`${embedded ? 'absolute' : 'fixed'} inset-x-0 top-0 z-50 bg-background rounded-b-2xl shadow-2xl max-h-[80vh] flex flex-col`}
+            className={`${embedded ? "absolute" : "fixed"} inset-x-0 top-0 z-50 bg-background rounded-b-2xl shadow-2xl max-h-[80vh] flex flex-col`}
             initial={{ y: "-100%" }}
             animate={{ y: 0 }}
             exit={{ y: "-100%" }}
@@ -124,12 +165,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   </p>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={onClose}
-                className="rounded-full"
-              >
+              <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -142,94 +178,99 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   <p className="text-muted-foreground">Nenhuma conversa ainda</p>
                 </div>
               ) : (
-                conversations.map((conv) => (
-                  <motion.div
-                    key={conv.id}
-                    layout
-                    className="bg-card/50 rounded-xl border border-border/30 overflow-hidden"
-                  >
-                    {/* Conversation header */}
-                    <div className="flex items-center gap-3 p-3">
-                      {/* Play/Pause button */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-full bg-primary/10 hover:bg-primary/20"
-                        onClick={() => handlePlayPause(conv.id, conv.audioUrl)}
-                        disabled={!conv.audioUrl}
-                      >
-                        {playingId === conv.id ? (
-                          <Pause className="w-5 h-5 text-primary" />
-                        ) : (
-                          <Play className="w-5 h-5 text-primary ml-0.5" />
-                        )}
-                      </Button>
+                conversations.map((conv) => {
+                  const text = getConversationText(conv);
+                  const hasText = text.length > 0;
+                  const isExpanded = expandedId === conv.id;
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground truncate">
-                          {conv.summary || conv.transcript?.slice(0, 50) || "Conversa sem resumo"}
-                          {conv.transcript && conv.transcript.length > 50 ? "..." : ""}
+                  return (
+                    <motion.div
+                      key={conv.id}
+                      layout
+                      className="bg-card/50 rounded-xl border border-border/30 overflow-hidden"
+                    >
+                      {/* Conversation content */}
+                      <div className="p-3 cursor-pointer" onClick={() => handleToggleExpand(conv.id)}>
+                        {/* Preview text */}
+                        <p className={`text-sm text-foreground ${isExpanded ? "" : "line-clamp-2"}`}>
+                          {text || "Conversa sem conteúdo"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {conv.createdAt.toLocaleDateString("pt-BR")} • {conv.createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                          {` • ${formatDuration(conv.createdAt, conv.updatedAt)}`}
-                        </p>
+
+                        {/* Meta info */}
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-muted-foreground">
+                            {conv.createdAt.toLocaleDateString("pt-BR")} •{" "}
+                            {conv.createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            {` • ${formatDuration(conv.createdAt, conv.updatedAt)}`}
+                          </p>
+
+                          {/* Expand indicator */}
+                          {hasText && text.length > 100 && (
+                            <button className="p-1 text-muted-foreground">
+                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          onClick={() => handleShare(conv)}
-                          title="Compartilhar"
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          onClick={() => handleDownload(conv)}
-                          disabled={!conv.audioUrl}
-                          title="Baixar áudio"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          onClick={() => handleTranscribe(conv.id)}
-                          title="Ver transcrição"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+                      {/* Footer padronizado: 3 botões */}
+                      {hasText && (
+                        <div className="flex items-center justify-end gap-1 px-3 pb-3 pt-1 border-t border-border/20">
+                          {/* Botão Play TTS */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlayTTS(conv);
+                            }}
+                            disabled={isLoadingThis(conv.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isPlayingThis(conv.id)
+                                ? "bg-primary/20 text-primary"
+                                : "hover:bg-white/10 text-muted-foreground"
+                            }`}
+                            title={isPlayingThis(conv.id) ? "Parar" : "Ouvir"}
+                          >
+                            {isLoadingThis(conv.id) ? (
+                              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                            ) : isPlayingThis(conv.id) ? (
+                              <VolumeX className="w-4 h-4 text-primary" />
+                            ) : (
+                              <Volume2 className="w-4 h-4" />
+                            )}
+                          </button>
 
-                    {/* Expanded transcript */}
-                    <AnimatePresence>
-                      {expandedId === conv.id && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-3 pb-3 pt-0">
-                            <div className="bg-background/50 rounded-lg p-3 text-sm text-muted-foreground">
-                              {conv.transcript || "Transcrição não disponível"}
-                            </div>
-                          </div>
-                        </motion.div>
+                          {/* Botão Copiar */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopy(conv);
+                            }}
+                            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground"
+                            title="Copiar"
+                          >
+                            {copiedId === conv.id ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+
+                          {/* Botão Compartilhar */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShare(conv);
+                            }}
+                            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground"
+                            title="Compartilhar"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
-                    </AnimatePresence>
-                  </motion.div>
-                ))
+                    </motion.div>
+                  );
+                })
               )}
             </div>
 
