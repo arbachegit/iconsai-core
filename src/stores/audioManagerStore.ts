@@ -2,8 +2,8 @@
  * ============================================================
  * audioManagerStore.ts - Gerenciador Global de Áudio
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-04
+ * Versão: 2.0.0 - 2026-01-10
+ * Safari/iOS: Usa getAudioContext() para webkit prefix
  * 
  * Descrição: Store Zustand que gerencia o áudio globalmente,
  * garantindo que apenas UM áudio toque por vez.
@@ -11,6 +11,7 @@
  */
 
 import { create } from "zustand";
+import { getAudioContext } from '@/utils/safari-audio';
 
 interface AudioInstance {
   id: string;
@@ -113,8 +114,9 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       });
 
       // Configurar Web Audio API para análise de frequência
+      // Usa getAudioContext() que trata webkit prefix para Safari
       try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioContext = getAudioContext();
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 64; // 32 barras de frequência
         analyser.smoothingTimeConstant = 0.8;
