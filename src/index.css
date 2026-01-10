@@ -818,3 +818,68 @@ body.pwa-scroll-lock .pwa-scrollable-area,
 .animate-pulse-red {
   animation: pulse-red 1.5s ease-in-out infinite;
 }
+
+/* ============================================
+   SAFARI/iOS COMPATIBILITY
+   ============================================ */
+
+/* Safe Area Insets para iPhone com notch */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Altura mínima considerando safe area */
+.min-h-screen-safe {
+  min-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+/* Fix para bounce no Safari iOS */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Fix para input zoom no iOS (fonte < 16px causa zoom) */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Fix para botões no iOS */
+button {
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch action para melhor responsividade */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Prevenir seleção de texto em elementos interativos */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Fix para sticky no Safari */
+.sticky-safari {
+  position: -webkit-sticky;
+  position: sticky;
+}
+
+/* Fix para backdrop-blur no Safari */
+@supports (-webkit-backdrop-filter: blur(10px)) {
+  .backdrop-blur-safari {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}

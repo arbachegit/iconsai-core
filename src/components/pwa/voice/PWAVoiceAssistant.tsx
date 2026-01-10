@@ -1,11 +1,12 @@
 /**
  * ============================================================
- * PWAVoiceAssistant.tsx - v5.0.0
+ * PWAVoiceAssistant.tsx - v5.1.0
  * ============================================================
  * ARQUITETURA DE CONTAINERS INDEPENDENTES
  * - Cada container gerencia seu próprio autoplay
  * - Sem race conditions
  * - Sem refs compartilhadas
+ * - SAFARI COMPATIBLE
  * ============================================================
  */
 
@@ -20,6 +21,8 @@ import { FooterModules } from "./FooterModules";
 import { HistoryScreen } from "./HistoryScreen";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
+import SafariAudioUnlock from "@/components/pwa/SafariAudioUnlock";
+import SafariPWAInstallPrompt from "@/components/pwa/SafariPWAInstallPrompt";
 
 // Containers independentes
 import { 
@@ -182,6 +185,9 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
 
     return (
       <div className={wrapperClass}>
+        {/* Safari compatibility components */}
+        <SafariAudioUnlock />
+        <SafariPWAInstallPrompt />
         <AnimatePresence mode="wait">
           {appState === "splash" && (
             <SplashScreen

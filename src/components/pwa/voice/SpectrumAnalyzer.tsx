@@ -11,6 +11,7 @@
  */
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { getAudioContext } from "@/utils/safari-audio";
 import { motion } from "framer-motion";
 
 // Estados possíveis do visualizador
@@ -182,7 +183,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
     if (useRealAudio && audioRef?.current && state === "playing") {
       try {
         if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+          audioContextRef.current = getAudioContext();
         }
         
         if (!analyzerRef.current) {
