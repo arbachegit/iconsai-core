@@ -4059,31 +4059,76 @@ export type Database = {
       }
       pwa_user_devices: {
         Row: {
+          blocked_reason: string | null
           created_at: string | null
           device_id: string
+          device_info: Json | null
           device_name: string | null
+          expires_at: string | null
           id: string
+          invitation_id: string | null
+          is_blocked: boolean | null
+          is_verified: boolean | null
+          last_access_at: string | null
           last_used_at: string | null
+          phone: string | null
+          registration_id: string | null
+          updated_at: string | null
           user_agent: string | null
           user_id: string | null
+          user_name: string | null
+          verification_attempts: number | null
+          verification_code: string | null
+          verification_code_expires_at: string | null
+          verified_at: string | null
         }
         Insert: {
+          blocked_reason?: string | null
           created_at?: string | null
           device_id: string
+          device_info?: Json | null
           device_name?: string | null
+          expires_at?: string | null
           id?: string
+          invitation_id?: string | null
+          is_blocked?: boolean | null
+          is_verified?: boolean | null
+          last_access_at?: string | null
           last_used_at?: string | null
+          phone?: string | null
+          registration_id?: string | null
+          updated_at?: string | null
           user_agent?: string | null
           user_id?: string | null
+          user_name?: string | null
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
+          verified_at?: string | null
         }
         Update: {
+          blocked_reason?: string | null
           created_at?: string | null
           device_id?: string
+          device_info?: Json | null
           device_name?: string | null
+          expires_at?: string | null
           id?: string
+          invitation_id?: string | null
+          is_blocked?: boolean | null
+          is_verified?: boolean | null
+          last_access_at?: string | null
           last_used_at?: string | null
+          phone?: string | null
+          registration_id?: string | null
+          updated_at?: string | null
           user_agent?: string | null
           user_id?: string | null
+          user_name?: string | null
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -6734,6 +6779,10 @@ export type Database = {
           p_suggestion_id: string
         }
         Returns: boolean
+      }
+      resend_pwa_verification_code: {
+        Args: { p_fingerprint: string }
+        Returns: Json
       }
       revert_tag_suggestion: {
         Args: { p_reviewer_id?: string; p_suggestion_id: string }
