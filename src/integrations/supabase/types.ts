@@ -3699,6 +3699,7 @@ export type Database = {
           device_fingerprint: string
           device_model: string | null
           device_vendor: string | null
+          email: string | null
           expires_at: string | null
           failed_verification_attempts: number | null
           first_seen_at: string | null
@@ -3707,6 +3708,7 @@ export type Database = {
           has_microphone: boolean | null
           has_touch: boolean | null
           id: string
+          invitation_id: string | null
           ip_address: unknown
           ip_city: string | null
           ip_country: string | null
@@ -3715,6 +3717,7 @@ export type Database = {
           is_blocked: boolean | null
           is_trusted: boolean | null
           is_verified: boolean | null
+          last_access_at: string | null
           last_active_at: string | null
           last_seen_at: string | null
           latitude: number | null
@@ -3724,9 +3727,12 @@ export type Database = {
           metadata: Json | null
           os_name: string | null
           os_version: string | null
+          phone: string | null
           phone_number: string | null
           pixel_ratio: number | null
+          pwa_access: string[] | null
           pwa_slugs: string[] | null
+          registration_id: string | null
           screen_height: number | null
           screen_width: number | null
           total_messages: number | null
@@ -3737,7 +3743,9 @@ export type Database = {
           user_id: string | null
           user_name: string | null
           user_registration_id: string | null
+          verification_attempts: number | null
           verification_code: string | null
+          verification_code_expires_at: string | null
           verification_expires_at: string | null
           verified_at: string | null
         }
@@ -3751,6 +3759,7 @@ export type Database = {
           device_fingerprint: string
           device_model?: string | null
           device_vendor?: string | null
+          email?: string | null
           expires_at?: string | null
           failed_verification_attempts?: number | null
           first_seen_at?: string | null
@@ -3759,6 +3768,7 @@ export type Database = {
           has_microphone?: boolean | null
           has_touch?: boolean | null
           id?: string
+          invitation_id?: string | null
           ip_address?: unknown
           ip_city?: string | null
           ip_country?: string | null
@@ -3767,6 +3777,7 @@ export type Database = {
           is_blocked?: boolean | null
           is_trusted?: boolean | null
           is_verified?: boolean | null
+          last_access_at?: string | null
           last_active_at?: string | null
           last_seen_at?: string | null
           latitude?: number | null
@@ -3776,9 +3787,12 @@ export type Database = {
           metadata?: Json | null
           os_name?: string | null
           os_version?: string | null
+          phone?: string | null
           phone_number?: string | null
           pixel_ratio?: number | null
+          pwa_access?: string[] | null
           pwa_slugs?: string[] | null
+          registration_id?: string | null
           screen_height?: number | null
           screen_width?: number | null
           total_messages?: number | null
@@ -3789,7 +3803,9 @@ export type Database = {
           user_id?: string | null
           user_name?: string | null
           user_registration_id?: string | null
+          verification_attempts?: number | null
           verification_code?: string | null
+          verification_code_expires_at?: string | null
           verification_expires_at?: string | null
           verified_at?: string | null
         }
@@ -3803,6 +3819,7 @@ export type Database = {
           device_fingerprint?: string
           device_model?: string | null
           device_vendor?: string | null
+          email?: string | null
           expires_at?: string | null
           failed_verification_attempts?: number | null
           first_seen_at?: string | null
@@ -3811,6 +3828,7 @@ export type Database = {
           has_microphone?: boolean | null
           has_touch?: boolean | null
           id?: string
+          invitation_id?: string | null
           ip_address?: unknown
           ip_city?: string | null
           ip_country?: string | null
@@ -3819,6 +3837,7 @@ export type Database = {
           is_blocked?: boolean | null
           is_trusted?: boolean | null
           is_verified?: boolean | null
+          last_access_at?: string | null
           last_active_at?: string | null
           last_seen_at?: string | null
           latitude?: number | null
@@ -3828,9 +3847,12 @@ export type Database = {
           metadata?: Json | null
           os_name?: string | null
           os_version?: string | null
+          phone?: string | null
           phone_number?: string | null
           pixel_ratio?: number | null
+          pwa_access?: string[] | null
           pwa_slugs?: string[] | null
+          registration_id?: string | null
           screen_height?: number | null
           screen_width?: number | null
           total_messages?: number | null
@@ -3841,11 +3863,20 @@ export type Database = {
           user_id?: string | null
           user_name?: string | null
           user_registration_id?: string | null
+          verification_attempts?: number | null
           verification_code?: string | null
+          verification_code_expires_at?: string | null
           verification_expires_at?: string | null
           verified_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pwa_devices_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "user_invitations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pwa_devices_user_registration_id_fkey"
             columns: ["user_registration_id"]
