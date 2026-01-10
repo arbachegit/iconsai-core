@@ -30,6 +30,7 @@ const PWAVoiceAssistant = lazy(() => import("./components/pwa/voice/PWAVoiceAssi
 const InvitePage = lazy(() => import("./pages/InvitePage"));
 const Contact = lazy(() => import("./pages/Contact"));
 const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
+const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -197,6 +198,13 @@ const App = () => (
                     } />
                     
                     <Route path="/invite/:token" element={<InvitePage />} />
+                    
+                    {/* PWA Register - Mobile Only - Accepts invitation tokens */}
+                    <Route path="/pwa-register/:token" element={
+                      <DeviceGate allowDesktop={false}>
+                        <PWARegisterPage />
+                      </DeviceGate>
+                    } />
                     
                     {/* Temporary test route */}
                     <Route path="/test/retail-diagram" element={<TestRetailDiagram />} />
