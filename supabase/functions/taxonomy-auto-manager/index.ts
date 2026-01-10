@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 2.1.0 | DEPLOY: 2026-01-10
+// AUDITORIA: Adicionadas ações DELETE
 // ============================================
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -9,9 +9,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 interface RequestBody {
-  action: 'health' | 'gaps' | 'suggestions' | 'keywords' | 'analyze' | 'approve' | 'reject' | 'batch_approve' | 'batch_reject';
+  action: 'health' | 'gaps' | 'suggestions' | 'keywords' | 'analyze' | 'approve' | 'reject' | 'batch_approve' | 'batch_reject' | 'delete' | 'batch_delete' | 'hard_delete' | 'purge_all';
   suggestionId?: string;
   suggestionIds?: string[];
+  taxonomyId?: string;
+  taxonomyIds?: string[];
   notes?: string;
   modifyCode?: string;
   modifyName?: string;
@@ -31,7 +33,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, suggestionId, suggestionIds, notes, modifyCode, modifyName, minOccurrences, limit } = await req.json() as RequestBody;
+    const { action, suggestionId, suggestionIds, taxonomyId, taxonomyIds, notes, modifyCode, modifyName, minOccurrences, limit } = await req.json() as RequestBody;
     
     console.log(`[taxonomy-auto-manager] Action: ${action}`);
 
@@ -382,11 +384,209 @@ serve(async (req) => {
         });
       }
 
+      // ===============================================
+      // DELETE - Deletar taxonomia (soft delete via status)
+      // ===============================================
+      case 'delete': {
+        if (!taxonomyId) {
+          throw new Error('taxonomyId é obrigatório');
+        }
+
+        // Verificar se taxonomia existe
+        const { data: existing, error: checkError } = await supabase
+          .from('global_taxonomy')
+          .select('id, code, name, status')
+          .eq('id', taxonomyId)
+          .single();
+
+        if (checkError || !existing) {
+          throw new Error(`Taxonomia não encontrada: ${taxonomyId}`);
+        }
+
+        // Soft delete: mudar status para 'deleted'
+        const { error: deleteError } = await supabase
+          .from('global_taxonomy')
+          .update({ 
+            status: 'deleted',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', taxonomyId);
+
+        if (deleteError) {
+          console.error('[taxonomy-auto-manager] Error deleting taxonomy:', deleteError);
+          throw deleteError;
+        }
+
+        console.log(`[taxonomy-auto-manager] Deleted taxonomy: ${existing.code} (${existing.name})`);
+
+        return new Response(JSON.stringify({
+          success: true,
+          deleted: {
+            id: taxonomyId,
+            code: existing.code,
+            name: existing.name
+          },
+          message: 'Taxonomia deletada com sucesso (soft delete)',
+          executionTime: Date.now() - startTime
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // ===============================================
+      // BATCH DELETE - Deletar múltiplas taxonomias
+      // ===============================================
+      case 'batch_delete': {
+        if (!taxonomyIds || taxonomyIds.length === 0) {
+          throw new Error('taxonomyIds é obrigatório');
+        }
+
+        const results: { id: string; success: boolean; code?: string; error?: string }[] = [];
+
+        for (const id of taxonomyIds) {
+          try {
+            // Buscar info antes de deletar
+            const { data: existing } = await supabase
+              .from('global_taxonomy')
+              .select('code')
+              .eq('id', id)
+              .single();
+
+            const { error } = await supabase
+              .from('global_taxonomy')
+              .update({ 
+                status: 'deleted',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', id);
+
+            if (error) {
+              results.push({ id, success: false, error: error.message });
+            } else {
+              results.push({ id, success: true, code: existing?.code });
+            }
+          } catch (err: any) {
+            results.push({ id, success: false, error: err.message });
+          }
+        }
+
+        console.log(`[taxonomy-auto-manager] Batch deleted: ${results.filter(r => r.success).length}/${taxonomyIds.length}`);
+
+        return new Response(JSON.stringify({
+          success: true,
+          results,
+          deleted: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+          executionTime: Date.now() - startTime
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // ===============================================
+      // HARD DELETE - Deletar permanentemente (USE COM CUIDADO)
+      // ===============================================
+      case 'hard_delete': {
+        if (!taxonomyId) {
+          throw new Error('taxonomyId é obrigatório');
+        }
+
+        // Buscar info antes de deletar
+        const { data: existing } = await supabase
+          .from('global_taxonomy')
+          .select('id, code, name')
+          .eq('id', taxonomyId)
+          .single();
+
+        if (!existing) {
+          throw new Error(`Taxonomia não encontrada: ${taxonomyId}`);
+        }
+
+        // Deletar referências em entity_tags primeiro
+        await supabase
+          .from('entity_tags')
+          .delete()
+          .eq('taxonomy_id', taxonomyId);
+
+        // Deletar a taxonomia
+        const { error: deleteError } = await supabase
+          .from('global_taxonomy')
+          .delete()
+          .eq('id', taxonomyId);
+
+        if (deleteError) {
+          console.error('[taxonomy-auto-manager] Error hard deleting taxonomy:', deleteError);
+          throw deleteError;
+        }
+
+        console.log(`[taxonomy-auto-manager] HARD DELETED taxonomy: ${existing.code} (${existing.name})`);
+
+        return new Response(JSON.stringify({
+          success: true,
+          hardDeleted: {
+            id: taxonomyId,
+            code: existing.code,
+            name: existing.name
+          },
+          message: 'Taxonomia deletada PERMANENTEMENTE',
+          executionTime: Date.now() - startTime
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // ===============================================
+      // PURGE ALL - Deletar TODAS as taxonomias (PERIGO!)
+      // ===============================================
+      case 'purge_all': {
+        // Requer confirmação explícita
+        if (notes !== 'CONFIRMO_DELETAR_TUDO') {
+          throw new Error('Para purgar tudo, envie notes: "CONFIRMO_DELETAR_TUDO"');
+        }
+
+        // Contar antes
+        const { count: beforeCount } = await supabase
+          .from('global_taxonomy')
+          .select('id', { count: 'exact', head: true });
+
+        // Deletar entity_tags primeiro
+        await supabase
+          .from('entity_tags')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Deleta tudo
+
+        // Deletar todas as taxonomias
+        const { error: purgeError } = await supabase
+          .from('global_taxonomy')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Deleta tudo
+
+        if (purgeError) {
+          console.error('[taxonomy-auto-manager] Error purging all:', purgeError);
+          throw purgeError;
+        }
+
+        console.log(`[taxonomy-auto-manager] PURGED ALL taxonomies: ${beforeCount} deleted`);
+
+        return new Response(JSON.stringify({
+          success: true,
+          purged: beforeCount,
+          message: 'TODAS as taxonomias foram deletadas permanentemente',
+          executionTime: Date.now() - startTime
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       default:
         return new Response(JSON.stringify({
           success: false,
           error: `Action desconhecida: ${action}`,
-          availableActions: ['health', 'gaps', 'suggestions', 'keywords', 'analyze', 'approve', 'reject', 'batch_approve', 'batch_reject']
+          availableActions: [
+            'health', 'gaps', 'suggestions', 'keywords', 'analyze', 
+            'approve', 'reject', 'batch_approve', 'batch_reject',
+            'delete', 'batch_delete', 'hard_delete', 'purge_all'
+          ]
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
