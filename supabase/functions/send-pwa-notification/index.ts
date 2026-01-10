@@ -1,12 +1,11 @@
 // ============================================
-// VERSAO: 5.2.0 | DEPLOY: 2026-01-09
-// FIX: OTP sempre via SMS (Authentication não aceita variáveis)
-// FIX: Templates Utility com variáveis SEQUENCIAIS corretas
-// FIX: invitation_v3 com URL dinâmica no botão ({{3}})
-// REF: https://www.twilio.com/docs/content/using-variables-with-content-api
+// VERSÃO: 5.3.0 | DEPLOY: 2026-01-10
+// TEMPORÁRIO: Forçando SMS para TODOS os templates
+// MOTIVO: Templates WhatsApp aguardando aprovação Twilio
+// TODO: Reverter para WhatsApp quando templates aprovados
 // ============================================
 
-const FUNCTION_VERSION = "5.2.0";
+const FUNCTION_VERSION = "5.3.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -377,56 +376,21 @@ serve(async (req) => {
     }
 
     // ===========================================
-    // ESTRATÉGIA DE ENVIO
+    // ESTRATÉGIA DE ENVIO - v5.3.0
+    // TEMPORÁRIO: Forçando SMS para TODOS os templates
+    // MOTIVO: Templates WhatsApp aguardando aprovação Twilio
+    // TODO: Reverter para WhatsApp quando templates aprovados
     // ===========================================
     let result: SendResult;
     const attempts: SendResult[] = [];
 
-    const isAuthenticationTemplate = templateConfig.type === "authentication";
+    console.log("\n[ESTRATÉGIA v5.3.0] FORÇANDO SMS - Templates WhatsApp pendentes");
+    console.log(`[INFO] Template: ${template} (${templateConfig.type})`);
+    console.log(`[INFO] Canal original solicitado: ${channel}`);
+    console.log(`[INFO] Motivo: Templates aguardando aprovação Twilio`);
 
-    if (isAuthenticationTemplate) {
-      // ============================================
-      // OTP/CÓDIGOS: SEMPRE VIA SMS
-      // Templates Authentication não aceitam variáveis customizadas
-      // ============================================
-      console.log("\n[ESTRATÉGIA] Template AUTHENTICATION - FORÇANDO SMS");
-      console.log("[MOTIVO] WhatsApp Authentication templates têm código hardcoded");
-
-      result = await sendSmsViaInfobip(phone, template, variables);
-      attempts.push(result);
-    } else if (channel === "sms") {
-      // Canal SMS explicitamente solicitado
-      console.log("\n[ESTRATÉGIA] Canal SMS solicitado explicitamente");
-
-      result = await sendSmsViaInfobip(phone, template, variables);
-      attempts.push(result);
-    } else {
-      // ============================================
-      // UTILITY: WhatsApp primeiro, fallback SMS
-      // ============================================
-      console.log("\n[ESTRATÉGIA] Template UTILITY - WhatsApp primeiro");
-
-      // Montar ContentVariables com TODAS as variáveis sequenciais
-      // O Twilio espera {"1": "valor1", "2": "valor2", "3": "valor3"}
-      const contentVariables: Record<string, string> = {};
-      for (let i = 1; i <= templateConfig.totalVariables; i++) {
-        contentVariables[String(i)] = variables[String(i)] || "";
-      }
-
-      console.log(`[VARIÁVEIS] ContentVariables: ${JSON.stringify(contentVariables)}`);
-
-      // Tentativa 1: WhatsApp
-      console.log("\n[TENTATIVA 1] WhatsApp via Twilio");
-      result = await sendWhatsAppViaTwilio(phone, templateConfig.sid, contentVariables, template);
-      attempts.push(result);
-
-      // Fallback: SMS se WhatsApp falhar
-      if (!result.success) {
-        console.log("\n[FALLBACK] WhatsApp falhou - tentando SMS");
-        result = await sendSmsViaInfobip(phone, template, variables);
-        attempts.push(result);
-      }
-    }
+    result = await sendSmsViaInfobip(phone, template, variables);
+    attempts.push(result);
 
     // ===========================================
     // LOGGING
@@ -452,6 +416,9 @@ serve(async (req) => {
           templateSid: templateConfig.sid,
           variables,
           totalVariablesExpected: templateConfig.totalVariables,
+          originalChannel: channel,
+          forcedSms: true,
+          reason: "whatsapp_templates_pending_approval",
           attempts: attempts.map((a) => ({
             channel: a.channel,
             success: a.success,
