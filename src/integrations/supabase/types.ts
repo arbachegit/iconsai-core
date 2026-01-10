@@ -3699,6 +3699,7 @@ export type Database = {
           device_fingerprint: string
           device_model: string | null
           device_vendor: string | null
+          expires_at: string | null
           failed_verification_attempts: number | null
           first_seen_at: string | null
           has_camera: boolean | null
@@ -3750,6 +3751,7 @@ export type Database = {
           device_fingerprint: string
           device_model?: string | null
           device_vendor?: string | null
+          expires_at?: string | null
           failed_verification_attempts?: number | null
           first_seen_at?: string | null
           has_camera?: boolean | null
@@ -3801,6 +3803,7 @@ export type Database = {
           device_fingerprint?: string
           device_model?: string | null
           device_vendor?: string | null
+          expires_at?: string | null
           failed_verification_attempts?: number | null
           first_seen_at?: string | null
           has_camera?: boolean | null
@@ -6566,6 +6569,10 @@ export type Database = {
           p_success: boolean
         }
         Returns: string
+      }
+      login_pwa_by_phone: {
+        Args: { p_device_info?: Json; p_fingerprint: string; p_phone: string }
+        Returns: Json
       }
       normalize_document_names: {
         Args: never

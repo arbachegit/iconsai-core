@@ -1,3 +1,8 @@
+// ============================================
+// PWA Auth Gate v2.0
+// Login por telefone com verificação de convite
+// ============================================
+
 import { ReactNode, useState } from "react";
 import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { usePWAAuth, CodeSentChannel } from "@/hooks/usePWAAuth";
@@ -51,23 +56,30 @@ function CodeSentFeedback({
   return null;
 }
 
-// Inline Registration Screen
-function RegisterScreen({
+// Tela de Login (substitui RegisterScreen)
+function LoginScreen({
   fingerprint,
-  onRegister,
+  onLogin,
   isSubmitting,
+  previousPhone,
 }: {
   fingerprint: string;
-  onRegister: (params: { phone: string; name?: string }) => Promise<{ success: boolean; error?: string }>;
+  onLogin: (params: { phone: string }) => Promise<{ success: boolean; error?: string }>;
   isSubmitting: boolean;
+  previousPhone?: string | null;
 }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(previousPhone || "");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && phone.trim()) {
-      await onRegister({ phone: phone.trim(), name: name.trim() });
+    setError(null);
+    
+    if (phone.trim()) {
+      const result = await onLogin({ phone: phone.trim() });
+      if (!result.success && result.error) {
+        setError(result.error);
+      }
     }
   };
 
@@ -78,24 +90,19 @@ function RegisterScreen({
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Phone className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Cadastre-se</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Entrar no KnowYOU</h1>
           <p className="text-muted-foreground text-sm">
-            Informe seu nome e telefone para acessar o aplicativo
+            Digite seu telefone para acessar
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
-            <Input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Seu nome"
-              disabled={isSubmitting}
-              className="w-full"
-            />
+        {error && (
+          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-sm text-destructive">{error}</p>
           </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Telefone</label>
             <Input
@@ -105,27 +112,34 @@ function RegisterScreen({
               placeholder="(11) 99999-9999"
               disabled={isSubmitting}
               className="w-full"
+              autoFocus
             />
           </div>
           <Button
             type="submit"
-            disabled={isSubmitting || !name.trim() || !phone.trim()}
+            disabled={isSubmitting || !phone.trim()}
             className="w-full"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Registrando...
+                Verificando...
               </>
             ) : (
-              "Continuar"
+              "Entrar"
             )}
           </Button>
         </form>
 
-        <div className="mt-6 flex flex-col items-center gap-1">
+        <div className="mt-6 text-center">
+          <p className="text-xs text-muted-foreground">
+            Não tem acesso? O KnowYOU funciona apenas por convite.
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-col items-center gap-1">
           <p className="text-xs text-muted-foreground text-center font-mono whitespace-nowrap overflow-x-auto max-w-full">
-            Device ID: {fingerprint}
+            Device ID: {fingerprint.substring(0, 16)}...
           </p>
           <Popover>
             <PopoverTrigger asChild>
@@ -143,10 +157,7 @@ function RegisterScreen({
                 <li>• User-Agent (navegador, versão, SO)</li>
                 <li>• Resolução de tela e pixel ratio</li>
                 <li>• Fuso horário e idioma</li>
-                <li>• Fontes instaladas e plugins</li>
-                <li>• Canvas fingerprint (renderização)</li>
-                <li>• WebGL renderer</li>
-                <li>• Capacidades de áudio/touch</li>
+                <li>• Canvas fingerprint</li>
               </ul>
             </PopoverContent>
           </Popover>
@@ -162,7 +173,7 @@ function SendingCodeScreen({ phone }: { phone: string }) {
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full bg-card rounded-2xl p-8 shadow-xl border border-border text-center">
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-          <MessageCircle className="h-10 w-10 text-primary animate-pulse" />
+          <MessageSquare className="h-10 w-10 text-primary animate-pulse" />
           <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" />
         </div>
         <h1 className="text-xl font-bold text-foreground mb-2">Enviando código...</h1>
@@ -178,7 +189,7 @@ function SendingCodeScreen({ phone }: { phone: string }) {
   );
 }
 
-// Inline Verification Screen
+// Tela de Verificação de Código
 function VerifyScreen({
   phone,
   verificationCode,
@@ -201,14 +212,20 @@ function VerifyScreen({
   isSubmitting: boolean;
 }) {
   const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleVerify = async () => {
     if (code.length === 6) {
-      await onVerify({ code });
+      setError(null);
+      const result = await onVerify({ code });
+      if (!result.success && result.error) {
+        setError(result.error);
+      }
     }
   };
 
   const handleResend = async () => {
+    setError(null);
     const result = await onResendCode();
     if (result.success && result.channel) {
       toast({
@@ -247,6 +264,13 @@ function VerifyScreen({
 
         {/* Feedback de envio de código */}
         <CodeSentFeedback channel={codeSentVia} error={codeSentError} />
+
+        {/* Erro de verificação */}
+        {error && (
+          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
         <div className="flex justify-center mb-6">
           <InputOTP
@@ -300,7 +324,7 @@ function VerifyScreen({
   );
 }
 
-// Inline Blocked Screen
+// Tela de Bloqueio
 function BlockedScreen({
   reason,
   fingerprint,
@@ -316,7 +340,7 @@ function BlockedScreen({
         </div>
         <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Bloqueado</h1>
         <p className="text-muted-foreground mb-4">
-          {reason || "Este dispositivo foi bloqueado por motivos de seguranca."}
+          {reason || "Este dispositivo foi bloqueado por motivos de segurança."}
         </p>
         <p className="text-xs text-muted-foreground break-all">
           Device ID: {fingerprint}
@@ -339,10 +363,10 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     codeSentVia,
     codeSentError,
     resendingCode,
-    register,
+    login,
     verify,
     resendCode,
-    backToRegister,
+    backToLogin,
     refresh,
   } = usePWAAuth();
 
@@ -373,13 +397,14 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     return <SendingCodeScreen phone={userPhone || ""} />;
   }
 
-  // Registration state
-  if (status === "needs_registration") {
+  // Login state (novo - substitui needs_registration)
+  if (status === "needs_login") {
     return (
-      <RegisterScreen
+      <LoginScreen
         fingerprint={fingerprint || ""}
-        onRegister={register}
+        onLogin={login}
         isSubmitting={isSubmitting}
+        previousPhone={userPhone}
       />
     );
   }
@@ -395,7 +420,7 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
         resendingCode={resendingCode}
         onVerify={verify}
         onResendCode={resendCode}
-        onBack={backToRegister}
+        onBack={backToLogin}
         isSubmitting={isSubmitting}
       />
     );
@@ -409,9 +434,9 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
           <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <RefreshCw className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Erro de Conexao</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Erro de Conexão</h1>
           <p className="text-muted-foreground mb-6">
-            {errorMessage || "Nao foi possivel verificar seu acesso. Verifique sua conexao e tente novamente."}
+            {errorMessage || "Não foi possível verificar seu acesso. Verifique sua conexão e tente novamente."}
           </p>
           <button
             onClick={refresh}
