@@ -2,24 +2,32 @@
  * ============================================================
  * hooks/useAudioRecorder.ts
  * ============================================================
- * Versao: 1.0.0 - 2026-01-08
- * PRD: Microfone_objeto.zip
- * Hook para gravacao de audio com MediaRecorder
+ * Versão: 2.0.0 - 2026-01-10
+ * SAFARI COMPATIBLE
+ * Hook para gravação de áudio com MediaRecorder
  * ============================================================
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { blobToBase64, validateAudioBlob } from "@/utils/audio";
+import { getBrowserInfo, BrowserInfo } from "@/utils/safari-detect";
+import { 
+  getSupportedRecordingMimeType, 
+  getOptimizedAudioConstraints,
+  getAudioContext,
+  unlockAudio 
+} from "@/utils/safari-audio";
 
 export type RecordingState = "idle" | "recording" | "processing" | "error";
 
 interface UseAudioRecorderOptions {
-  minDuration?: number; // segundos
-  maxDuration?: number; // segundos
+  minDuration?: number;
+  maxDuration?: number;
   minSizeKB?: number;
   onRecordingStart?: () => void;
   onRecordingStop?: (blob: Blob, duration: number) => void;
   onError?: (error: string) => void;
+  onFrequencyData?: (data: number[]) => void;
 }
 
 interface UseAudioRecorderReturn {
@@ -31,10 +39,19 @@ interface UseAudioRecorderReturn {
   stopRecording: () => Promise<void>;
   cancelRecording: () => void;
   reset: () => void;
+  browserInfo: BrowserInfo;
 }
 
 export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudioRecorderReturn {
-  const { minDuration = 0.5, maxDuration = 120, minSizeKB = 1, onRecordingStart, onRecordingStop, onError } = options;
+  const { 
+    minDuration = 0.5, 
+    maxDuration = 120, 
+    minSizeKB = 1, 
+    onRecordingStart, 
+    onRecordingStop, 
+    onError,
+    onFrequencyData 
+  } = options;
 
   const [state, setState] = useState<RecordingState>("idle");
   const [duration, setDuration] = useState(0);
@@ -46,22 +63,46 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+  const mimeTypeRef = useRef<string>("");
+  const analyzerRef = useRef<AnalyserNode | null>(null);
+  const animationRef = useRef<number | null>(null);
+  
+  const browserInfo = getBrowserInfo();
 
-  // Limpar recursos
   const cleanup = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     mediaRecorderRef.current = null;
+    analyzerRef.current = null;
     chunksRef.current = [];
   }, []);
 
-  // Iniciar gravacao
+  // Análise de frequência para visualizador
+  const startFrequencyAnalysis = useCallback(() => {
+    if (!analyzerRef.current || !onFrequencyData) return;
+    
+    const dataArray = new Uint8Array(analyzerRef.current.frequencyBinCount);
+    
+    const analyze = () => {
+      if (!analyzerRef.current) return;
+      analyzerRef.current.getByteFrequencyData(dataArray);
+      onFrequencyData(Array.from(dataArray));
+      animationRef.current = requestAnimationFrame(analyze);
+    };
+    
+    analyze();
+  }, [onFrequencyData]);
+
   const startRecording = useCallback(async () => {
     try {
       cleanup();
@@ -70,20 +111,50 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
       setAudioBlob(null);
       setAudioBase64(null);
 
+      // Safari: desbloquear áudio primeiro
+      if (browserInfo.isSafari || browserInfo.isIOS) {
+        await unlockAudio();
+      }
+
+      // Obter constraints otimizadas para a plataforma
+      const audioConstraints = getOptimizedAudioConstraints();
+      
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        },
+        audio: audioConstraints,
       });
 
       streamRef.current = stream;
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm;codecs=opus",
-      });
+      // Configurar analisador de frequência
+      try {
+        const audioContext = getAudioContext();
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+        const source = audioContext.createMediaStreamSource(stream);
+        analyzerRef.current = audioContext.createAnalyser();
+        analyzerRef.current.fftSize = 256;
+        source.connect(analyzerRef.current);
+      } catch (e) {
+        console.warn('[AudioRecorder] Could not setup analyzer:', e);
+      }
 
+      // Obter mimeType suportado pela plataforma
+      const mimeType = getSupportedRecordingMimeType();
+      mimeTypeRef.current = mimeType || 'audio/webm';
+      
+      // Criar MediaRecorder com opções otimizadas
+      const recorderOptions: MediaRecorderOptions = {};
+      if (mimeType) {
+        recorderOptions.mimeType = mimeType;
+      }
+      
+      // Safari: audioBitsPerSecond ajuda na qualidade
+      if (browserInfo.isSafari || browserInfo.isIOS) {
+        recorderOptions.audioBitsPerSecond = 128000;
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -93,15 +164,18 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
         }
       };
 
-      mediaRecorder.start(100); // Coletar dados a cada 100ms
+      // Safari: timeslice maior para evitar problemas
+      const timeslice = browserInfo.isSafari || browserInfo.isIOS ? 1000 : 100;
+      mediaRecorder.start(timeslice);
       startTimeRef.current = Date.now();
 
-      // Timer para duracao
+      // Iniciar análise de frequência
+      startFrequencyAnalysis();
+
       timerRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
         setDuration(elapsed);
 
-        // Auto-stop se atingir duracao maxima
         if (elapsed >= maxDuration) {
           stopRecording();
         }
@@ -109,13 +183,29 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
 
       onRecordingStart?.();
     } catch (error) {
-      console.error("[useAudioRecorder] Erro ao iniciar:", error);
+      console.error("[useAudioRecorder] Error starting:", error);
       setState("error");
-      onError?.("Nao foi possivel acessar o microfone");
+      
+      // Mensagens de erro específicas para Safari/iOS
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          const msg = browserInfo.isIOS 
+            ? "Permissão negada. Vá em Ajustes > Safari > Microfone"
+            : "Permissão de microfone negada";
+          onError?.(msg);
+        } else if (error.name === 'NotFoundError') {
+          onError?.("Microfone não encontrado");
+        } else if (error.name === 'NotReadableError') {
+          onError?.("Microfone em uso por outro app");
+        } else {
+          onError?.("Erro ao acessar microfone");
+        }
+      } else {
+        onError?.("Não foi possível acessar o microfone");
+      }
     }
-  }, [cleanup, maxDuration, onRecordingStart, onError]);
+  }, [cleanup, maxDuration, onRecordingStart, onError, browserInfo, startFrequencyAnalysis]);
 
-  // Parar gravacao
   const stopRecording = useCallback(async () => {
     if (!mediaRecorderRef.current || state !== "recording") return;
 
@@ -127,30 +217,37 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
       mediaRecorder.onstop = async () => {
         const finalDuration = (Date.now() - startTimeRef.current) / 1000;
 
-        // Criar blob
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        // Usar mimeType salvo na ref
+        const finalMimeType = mimeTypeRef.current || mediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: finalMimeType });
 
-        // Validar
+        console.log('[AudioRecorder] Blob created:', {
+          size: blob.size,
+          type: blob.type,
+          chunks: chunksRef.current.length,
+          duration: finalDuration,
+          browser: browserInfo.isSafari ? 'Safari' : browserInfo.isIOS ? 'iOS' : 'Other'
+        });
+
         const validation = validateAudioBlob(blob, minSizeKB, minDuration, finalDuration);
 
         if (!validation.valid) {
-          console.warn("[useAudioRecorder] Audio invalido:", validation.reason);
-          onError?.(validation.reason || "Audio muito curto");
+          console.warn("[useAudioRecorder] Invalid audio:", validation.reason);
+          onError?.(validation.reason || "Áudio muito curto");
           cleanup();
           setState("idle");
           resolve();
           return;
         }
 
-        // Converter para base64
         try {
           const base64 = await blobToBase64(blob);
           setAudioBlob(blob);
           setAudioBase64(base64);
           onRecordingStop?.(blob, finalDuration);
         } catch (error) {
-          console.error("[useAudioRecorder] Erro ao converter:", error);
-          onError?.("Erro ao processar audio");
+          console.error("[useAudioRecorder] Error converting:", error);
+          onError?.("Erro ao processar áudio");
         }
 
         cleanup();
@@ -160,9 +257,8 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
 
       mediaRecorder.stop();
     });
-  }, [state, cleanup, minSizeKB, minDuration, onRecordingStop, onError]);
+  }, [state, cleanup, minSizeKB, minDuration, onRecordingStop, onError, browserInfo]);
 
-  // Cancelar gravacao
   const cancelRecording = useCallback(() => {
     cleanup();
     setState("idle");
@@ -171,12 +267,10 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
     setAudioBase64(null);
   }, [cleanup]);
 
-  // Reset
   const reset = useCallback(() => {
     cancelRecording();
   }, [cancelRecording]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       cleanup();
@@ -192,6 +286,7 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
     stopRecording,
     cancelRecording,
     reset,
+    browserInfo,
   };
 }
 

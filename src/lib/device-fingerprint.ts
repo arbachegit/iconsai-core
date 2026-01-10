@@ -1,7 +1,14 @@
 /**
+ * ============================================================
+ * lib/device-fingerprint.ts
+ * ============================================================
+ * Versão: 2.0.0 - 2026-01-10
+ * SAFARI COMPATIBLE - Usa safari-storage para modo privado
  * Gerador de fingerprint único para dispositivos PWA
- * Combina múltiplas características do dispositivo para criar um identificador persistente
+ * ============================================================
  */
+
+import { safeGetItem, safeSetItem, safeRemoveItem } from '@/utils/safari-storage';
 
 const STORAGE_KEY = 'pwa-device-fingerprint';
 
@@ -105,11 +112,11 @@ function generateFingerprint(components: FingerprintComponents): string {
 
 /**
  * Obtém ou gera o fingerprint do dispositivo
- * Armazena em localStorage para persistência
+ * Usa safeGetItem/safeSetItem para compatibilidade com Safari modo privado
  */
 export function getDeviceFingerprint(): string {
   // Verificar se já existe um fingerprint armazenado
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = safeGetItem(STORAGE_KEY);
   if (stored) {
     return stored;
   }
@@ -118,8 +125,8 @@ export function getDeviceFingerprint(): string {
   const components = collectFingerprintComponents();
   const fingerprint = generateFingerprint(components);
   
-  // Armazenar para uso futuro
-  localStorage.setItem(STORAGE_KEY, fingerprint);
+  // Armazenar para uso futuro (com fallback para memória em modo privado)
+  safeSetItem(STORAGE_KEY, fingerprint);
   
   return fingerprint;
 }
@@ -242,6 +249,6 @@ export function getDeviceInfo(): {
  * Regenera o fingerprint (útil em caso de problemas)
  */
 export function regenerateFingerprint(): string {
-  localStorage.removeItem(STORAGE_KEY);
+  safeRemoveItem(STORAGE_KEY);
   return getDeviceFingerprint();
 }
