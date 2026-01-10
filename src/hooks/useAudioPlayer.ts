@@ -1,4 +1,15 @@
+/**
+ * ============================================================
+ * useAudioPlayer.ts - Hook para reprodução de áudio
+ * ============================================================
+ * Versão: 2.0.0 - 2026-01-10
+ * Safari/iOS: Otimizado com unlockAudio e createOptimizedAudioElement
+ * ============================================================
+ */
+
 import { useState, useRef, useCallback, useEffect } from "react";
+import { createOptimizedAudioElement, playAudioSafely, unlockAudio } from '@/utils/safari-audio';
+import { getBrowserInfo } from '@/utils/safari-detect';
 
 interface UseAudioPlayerReturn {
   isPlaying: boolean;
@@ -47,14 +58,22 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
       setIsLoading(true);
       setError(null);
       
+      const { isSafari, isIOS } = getBrowserInfo();
+      
       // Stop any existing audio
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
       }
       
-      // Create new audio element
-      const audio = new Audio(url);
+      // Safari/iOS: Unlock audio primeiro (requer gesto do usuário)
+      if (isSafari || isIOS) {
+        await unlockAudio();
+      }
+      
+      // Criar audio element otimizado para Safari
+      const audio = createOptimizedAudioElement();
+      audio.src = url;
       audioRef.current = audio;
       
       audio.onloadedmetadata = () => {
@@ -91,9 +110,22 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
         setIsPlaying(false);
       };
       
-      await audio.play();
+      // Safari: load antes de play + pequeno delay
+      audio.load();
+      if (isSafari || isIOS) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      // Usar playAudioSafely para tratamento Safari
+      await playAudioSafely(audio);
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
+      // Mensagem específica para Safari (NotAllowedError)
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        setError('Toque na tela para ativar o áudio');
+      } else {
+        setError(err instanceof Error ? err.message : "Erro desconhecido");
+      }
       setIsLoading(false);
     }
   }, [updateProgress]);
