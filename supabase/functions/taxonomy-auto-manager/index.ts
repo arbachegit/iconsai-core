@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.1.0 | DEPLOY: 2026-01-10
-// AUDITORIA: Adicionadas ações DELETE
+// VERSAO: 2.2.0 | DEPLOY: 2026-01-10
+// AUDITORIA: Tratamento completo de FKs no hard_delete
 // ============================================
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -485,41 +485,140 @@ serve(async (req) => {
 
       // ===============================================
       // HARD DELETE - Deletar permanentemente (USE COM CUIDADO)
+      // v2.2.0: Tratamento completo de todas as FKs
       // ===============================================
       case 'hard_delete': {
         if (!taxonomyId) {
           throw new Error('taxonomyId é obrigatório');
         }
 
-        // Buscar info antes de deletar
-        const { data: existing } = await supabase
+        console.log(`[taxonomy-auto-manager] HARD DELETE iniciado para: ${taxonomyId}`);
+
+        // 1. Verificar se taxonomia existe
+        const { data: existing, error: checkError } = await supabase
           .from('global_taxonomy')
           .select('id, code, name')
           .eq('id', taxonomyId)
           .single();
 
-        if (!existing) {
+        if (checkError || !existing) {
           throw new Error(`Taxonomia não encontrada: ${taxonomyId}`);
         }
 
-        // Deletar referências em entity_tags primeiro
-        await supabase
+        console.log(`[taxonomy-auto-manager] Taxonomia encontrada: ${existing.code} (${existing.name})`);
+
+        // 2. Verificar se tem filhos diretos (bloquear se tiver)
+        const { count: childrenCount, error: childrenError } = await supabase
+          .from('global_taxonomy')
+          .select('id', { count: 'exact', head: true })
+          .eq('parent_id', taxonomyId);
+
+        if (childrenError) {
+          console.error('[taxonomy-auto-manager] Erro ao verificar filhos:', childrenError);
+        }
+
+        if (childrenCount && childrenCount > 0) {
+          throw new Error(`Não é possível deletar: taxonomia tem ${childrenCount} filho(s). Delete os filhos primeiro.`);
+        }
+
+        console.log('[taxonomy-auto-manager] Sem filhos, prosseguindo com cleanup...');
+
+        // 3. Deletar de entity_tags
+        const { error: etError } = await supabase
           .from('entity_tags')
           .delete()
           .eq('taxonomy_id', taxonomyId);
 
-        // Deletar a taxonomia
+        if (etError) {
+          console.error('[taxonomy-auto-manager] Erro ao deletar entity_tags:', etError);
+        } else {
+          console.log('[taxonomy-auto-manager] entity_tags limpos');
+        }
+
+        // 4. Deletar de agent_tag_profiles
+        const { error: atpError } = await supabase
+          .from('agent_tag_profiles')
+          .delete()
+          .eq('taxonomy_id', taxonomyId);
+
+        if (atpError) {
+          console.error('[taxonomy-auto-manager] Erro ao deletar agent_tag_profiles:', atpError);
+        } else {
+          console.log('[taxonomy-auto-manager] agent_tag_profiles limpos');
+        }
+
+        // 5. Limpar taxonomy_suggestions (SET NULL nos campos de referência)
+        const { error: tsParentError } = await supabase
+          .from('taxonomy_suggestions')
+          .update({ suggested_parent_id: null })
+          .eq('suggested_parent_id', taxonomyId);
+
+        if (tsParentError) {
+          console.error('[taxonomy-auto-manager] Erro ao limpar taxonomy_suggestions.suggested_parent_id:', tsParentError);
+        } else {
+          console.log('[taxonomy-auto-manager] taxonomy_suggestions.suggested_parent_id limpos');
+        }
+
+        const { error: tsCreatedError } = await supabase
+          .from('taxonomy_suggestions')
+          .update({ created_taxonomy_id: null })
+          .eq('created_taxonomy_id', taxonomyId);
+
+        if (tsCreatedError) {
+          console.error('[taxonomy-auto-manager] Erro ao limpar taxonomy_suggestions.created_taxonomy_id:', tsCreatedError);
+        } else {
+          console.log('[taxonomy-auto-manager] taxonomy_suggestions.created_taxonomy_id limpos');
+        }
+
+        // 6. Limpar ontology_concepts (se existir)
+        try {
+          const { error: ocError } = await supabase
+            .from('ontology_concepts')
+            .update({ taxonomy_id: null })
+            .eq('taxonomy_id', taxonomyId);
+
+          if (ocError && !ocError.message?.includes('does not exist')) {
+            console.error('[taxonomy-auto-manager] Erro ao limpar ontology_concepts:', ocError);
+          } else {
+            console.log('[taxonomy-auto-manager] ontology_concepts limpos');
+          }
+        } catch (err) {
+          console.log('[taxonomy-auto-manager] ontology_concepts não existe ou erro ignorado');
+        }
+
+        // 7. Tentar limpar document_tags (tabela legada, ignorar erros)
+        try {
+          const { error: dtError } = await supabase
+            .from('document_tags')
+            .delete()
+            .eq('taxonomy_id', taxonomyId);
+
+          if (dtError && !dtError.message?.includes('does not exist') && !dtError.message?.includes('column')) {
+            console.warn('[taxonomy-auto-manager] Aviso ao limpar document_tags:', dtError.message);
+          } else {
+            console.log('[taxonomy-auto-manager] document_tags limpos (tabela legada)');
+          }
+        } catch (err) {
+          console.log('[taxonomy-auto-manager] document_tags não existe ou erro ignorado');
+        }
+
+        // 8. Finalmente, deletar a taxonomia
         const { error: deleteError } = await supabase
           .from('global_taxonomy')
           .delete()
           .eq('id', taxonomyId);
 
         if (deleteError) {
-          console.error('[taxonomy-auto-manager] Error hard deleting taxonomy:', deleteError);
+          console.error('[taxonomy-auto-manager] Erro ao deletar taxonomia:', deleteError);
+          
+          // Mensagem mais clara para FK
+          if (deleteError.message?.includes('foreign key') || deleteError.code === '23503') {
+            throw new Error(`Violação de Foreign Key: ainda existem referências a esta taxonomia em outras tabelas. Verifique: lexicon_terms, context_profiles, ou outras. Erro: ${deleteError.message}`);
+          }
           throw deleteError;
         }
 
-        console.log(`[taxonomy-auto-manager] HARD DELETED taxonomy: ${existing.code} (${existing.name})`);
+        console.log(`[taxonomy-auto-manager] HARD DELETED com sucesso: ${existing.code} (${existing.name})`);
 
         return new Response(JSON.stringify({
           success: true,
@@ -527,6 +626,13 @@ serve(async (req) => {
             id: taxonomyId,
             code: existing.code,
             name: existing.name
+          },
+          cleanup: {
+            entityTags: 'cleared',
+            agentTagProfiles: 'cleared',
+            taxonomySuggestions: 'cleared',
+            ontologyConcepts: 'attempted',
+            documentTags: 'attempted'
           },
           message: 'Taxonomia deletada PERMANENTEMENTE',
           executionTime: Date.now() - startTime
@@ -537,6 +643,7 @@ serve(async (req) => {
 
       // ===============================================
       // PURGE ALL - Deletar TODAS as taxonomias (PERIGO!)
+      // v2.2.0: Tratamento completo de todas as FKs
       // ===============================================
       case 'purge_all': {
         // Requer confirmação explícita
@@ -544,22 +651,68 @@ serve(async (req) => {
           throw new Error('Para purgar tudo, envie notes: "CONFIRMO_DELETAR_TUDO"');
         }
 
+        console.log('[taxonomy-auto-manager] PURGE ALL iniciado...');
+
         // Contar antes
         const { count: beforeCount } = await supabase
           .from('global_taxonomy')
           .select('id', { count: 'exact', head: true });
 
-        // Deletar entity_tags primeiro
+        // Limpar todas as tabelas dependentes
+        console.log('[taxonomy-auto-manager] Limpando entity_tags...');
         await supabase
           .from('entity_tags')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000'); // Deleta tudo
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+
+        console.log('[taxonomy-auto-manager] Limpando agent_tag_profiles...');
+        await supabase
+          .from('agent_tag_profiles')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+
+        console.log('[taxonomy-auto-manager] Limpando taxonomy_suggestions...');
+        await supabase
+          .from('taxonomy_suggestions')
+          .update({ suggested_parent_id: null, created_taxonomy_id: null })
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+
+        try {
+          console.log('[taxonomy-auto-manager] Limpando ontology_concepts...');
+          await supabase
+            .from('ontology_concepts')
+            .update({ taxonomy_id: null })
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (err) {
+          console.log('[taxonomy-auto-manager] ontology_concepts não existe');
+        }
+
+        try {
+          console.log('[taxonomy-auto-manager] Limpando document_tags...');
+          await supabase
+            .from('document_tags')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (err) {
+          console.log('[taxonomy-auto-manager] document_tags não existe');
+        }
+
+        try {
+          console.log('[taxonomy-auto-manager] Limpando lexicon_terms...');
+          await supabase
+            .from('lexicon_terms')
+            .update({ taxonomy_id: null })
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (err) {
+          console.log('[taxonomy-auto-manager] lexicon_terms não tem FK ou não existe');
+        }
 
         // Deletar todas as taxonomias
+        console.log('[taxonomy-auto-manager] Deletando global_taxonomy...');
         const { error: purgeError } = await supabase
           .from('global_taxonomy')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000'); // Deleta tudo
+          .neq('id', '00000000-0000-0000-0000-000000000000');
 
         if (purgeError) {
           console.error('[taxonomy-auto-manager] Error purging all:', purgeError);
@@ -571,6 +724,14 @@ serve(async (req) => {
         return new Response(JSON.stringify({
           success: true,
           purged: beforeCount,
+          cleanup: {
+            entityTags: 'cleared',
+            agentTagProfiles: 'cleared',
+            taxonomySuggestions: 'cleared',
+            ontologyConcepts: 'attempted',
+            documentTags: 'attempted',
+            lexiconTerms: 'attempted'
+          },
           message: 'TODAS as taxonomias foram deletadas permanentemente',
           executionTime: Date.now() - startTime
         }), {
