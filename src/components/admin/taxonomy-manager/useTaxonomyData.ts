@@ -87,13 +87,14 @@ export function generateCode(name: string, parentCode?: string): string {
 export function useTaxonomyData() {
   const queryClient = useQueryClient();
 
-  // Fetch all taxonomy items
+  // Fetch all taxonomy items (excluding deleted)
   const taxonomyQuery = useQuery({
     queryKey: ['taxonomy'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('global_taxonomy')
         .select('*')
+        .neq('status', 'deleted')
         .order('level', { ascending: true })
         .order('name', { ascending: true });
 
@@ -200,22 +201,78 @@ export function useTaxonomyData() {
     },
   });
 
-  // Delete mutation
+  // Soft delete mutation - using Edge Function
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('global_taxonomy')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('taxonomy-auto-manager', {
+        body: { 
+          action: 'delete',
+          taxonomyId: id
+        }
+      });
 
       if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Falha ao deletar');
+      
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['taxonomy'] });
-      toast.success('Tag excluída com sucesso');
+      queryClient.invalidateQueries({ queryKey: ['taxonomy-entity-counts'] });
+      toast.success(`Tag "${data.deleted?.name || ''}" removida com sucesso`);
     },
     onError: (error: any) => {
       toast.error(`Erro ao excluir tag: ${error.message}`);
+    },
+  });
+
+  // Hard delete mutation - permanent deletion via Edge Function
+  const hardDeleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.functions.invoke('taxonomy-auto-manager', {
+        body: { 
+          action: 'hard_delete',
+          taxonomyId: id
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Falha ao deletar permanentemente');
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['taxonomy'] });
+      queryClient.invalidateQueries({ queryKey: ['taxonomy-entity-counts'] });
+      toast.success(`Tag "${data.hardDeleted?.name || ''}" excluída PERMANENTEMENTE`);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir tag: ${error.message}`);
+    },
+  });
+
+  // Batch delete mutation
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { data, error } = await supabase.functions.invoke('taxonomy-auto-manager', {
+        body: { 
+          action: 'batch_delete',
+          taxonomyIds: ids
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Falha ao deletar em lote');
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['taxonomy'] });
+      queryClient.invalidateQueries({ queryKey: ['taxonomy-entity-counts'] });
+      toast.success(`${data.deleted || 0} tags removidas com sucesso`);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir tags: ${error.message}`);
     },
   });
 
@@ -228,9 +285,13 @@ export function useTaxonomyData() {
     createTag: createMutation.mutateAsync,
     updateTag: updateMutation.mutateAsync,
     deleteTag: deleteMutation.mutateAsync,
+    hardDeleteTag: hardDeleteMutation.mutateAsync,
+    batchDeleteTags: batchDeleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isHardDeleting: hardDeleteMutation.isPending,
+    isBatchDeleting: batchDeleteMutation.isPending,
   };
 }
 

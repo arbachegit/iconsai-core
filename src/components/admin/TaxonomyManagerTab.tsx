@@ -67,9 +67,11 @@ export default function TaxonomyManagerTab() {
     createTag,
     updateTag,
     deleteTag,
+    hardDeleteTag,
     isCreating,
     isUpdating,
     isDeleting,
+    isHardDeleting,
   } = useTaxonomyData();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -204,6 +206,15 @@ export default function TaxonomyManagerTab() {
   const handleDeleteTag = async () => {
     if (!deletingNode) return;
     await deleteTag(deletingNode.id);
+    if (selectedNode?.id === deletingNode.id) {
+      setSelectedNode(null);
+    }
+    setDeletingNode(null);
+  };
+
+  const handleHardDeleteTag = async () => {
+    if (!deletingNode) return;
+    await hardDeleteTag(deletingNode.id);
     if (selectedNode?.id === deletingNode.id) {
       setSelectedNode(null);
     }
@@ -419,8 +430,10 @@ export default function TaxonomyManagerTab() {
         open={!!deletingNode}
         onClose={() => setDeletingNode(null)}
         onConfirm={handleDeleteTag}
+        onHardDelete={handleHardDeleteTag}
         node={deletingNode}
         isDeleting={isDeleting}
+        isHardDeleting={isHardDeleting}
       />
 
       {/* Migration Modal */}
