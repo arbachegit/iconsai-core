@@ -213,10 +213,10 @@ export const lexiconImportConfig: CSVImportConfig = {
   },
 };
 
-// 3. FONÉTICA REGIONAL
+// 3. FONÉTICA REGIONAL (PRONÚNCIAS)
 export const regionalPhoneticsImportConfig: CSVImportConfig = {
-  tableName: "regional_tone_rules",
-  displayName: "Fonética Regional (TTS)",
+  tableName: "regional_pronunciations",
+  displayName: "Pronúncias Regionais (TTS)",
 
   columns: [
     { key: "region_code", label: "Código Região", required: true },
@@ -227,30 +227,43 @@ export const regionalPhoneticsImportConfig: CSVImportConfig = {
   templateData: [
     { region_code: "SUL", term: "IPCA", pronunciation: "í-pe-cá" },
     { region_code: "NORDESTE", term: "real", pronunciation: "réal" },
+    { region_code: "SUDESTE_SP", term: "você", pronunciation: "cê" },
+    { region_code: "SUDESTE_RJ", term: "ônibus", pronunciation: "busão" },
+    { region_code: "CENTRO_OESTE", term: "trem", pronunciation: "uai" },
+    { region_code: "NORTE", term: "açaí", pronunciation: "açaí" },
   ],
+
+  validateRow: (row) => {
+    const validRegions = ['SUL', 'NORDESTE', 'NORTE', 'CENTRO_OESTE', 'SUDESTE_SP', 'SUDESTE_RJ', 'SUDESTE_MG'];
+    const regionCode = String(row.region_code || '').toUpperCase();
+    if (!validRegions.includes(regionCode)) {
+      return `Região inválida: ${regionCode}. Use: ${validRegions.join(', ')}`;
+    }
+    return null;
+  },
 
   onInsert: async (data) => {
     const errors: string[] = [];
     let success = 0;
 
-    const byRegion = new Map<string, Record<string, string>>();
-    
-    for (const row of data) {
-      const regionCode = asString(row.region_code);
-      if (!byRegion.has(regionCode)) byRegion.set(regionCode, {});
-      byRegion.get(regionCode)![asString(row.term)] = asString(row.pronunciation);
-    }
+    const batchSize = 50;
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      const insertData = batch.map((row) => ({
+        region_code: String(row.region_code).toUpperCase().trim(),
+        term: String(row.term).trim(),
+        pronunciation: String(row.pronunciation).trim(),
+        is_active: true,
+      }));
 
-    for (const [regionCode, terms] of byRegion) {
-      const { data: existing } = await supabase.from("regional_tone_rules").select("id, preferred_terms").eq("region_code", regionCode).single();
+      const { error } = await supabase
+        .from("regional_pronunciations")
+        .upsert(insertData, { onConflict: "region_code,term" });
 
-      if (existing) {
-        const mergedTerms = { ...((existing.preferred_terms as Record<string, string>) || {}), ...terms };
-        const { error } = await supabase.from("regional_tone_rules").update({ preferred_terms: mergedTerms }).eq("id", existing.id);
-        if (error) errors.push(`Região ${regionCode}: ${error.message}`);
-        else success += Object.keys(terms).length;
+      if (error) {
+        errors.push(`Lote ${Math.floor(i / batchSize) + 1}: ${error.message}`);
       } else {
-        errors.push(`Região "${regionCode}" não encontrada`);
+        success += batch.length;
       }
     }
 

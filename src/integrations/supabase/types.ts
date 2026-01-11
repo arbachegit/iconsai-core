@@ -4269,6 +4269,39 @@ export type Database = {
         }
         Relationships: []
       }
+      regional_pronunciations: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          priority: number | null
+          pronunciation: string
+          region_code: string
+          term: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          pronunciation: string
+          region_code: string
+          term: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          pronunciation?: string
+          region_code?: string
+          term?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       regional_tone_rules: {
         Row: {
           affirmations: string[] | null
