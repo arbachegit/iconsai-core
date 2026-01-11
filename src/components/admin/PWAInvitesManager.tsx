@@ -242,10 +242,13 @@ export default function PWAInvitesManager() {
         toast.warning("Email não implementado. Enviando via SMS...");
       }
 
-      const pwaUrl = `${window.location.origin}/pwa`;
       const effectiveChannel = invite.channel === "email" ? "sms" : invite.channel;
 
+      // URL COMPLETA para o convite (usando code do pwa_invites)
+      const inviteUrl = `https://fia.iconsai.ai/pwa-register?code=${invite.access_code}`;
+
       console.log(`[PWA Invites] Enviando via ${effectiveChannel} para ${user.phone?.slice(0, 5)}***`);
+      console.log(`[PWA Invites] URL completa: ${inviteUrl}`);
 
       const { data, error } = await supabase.functions.invoke("send-pwa-notification", {
         body: {
@@ -254,27 +257,33 @@ export default function PWAInvitesManager() {
           variables: {
             "1": user.name || "Usuário",
             "2": "Equipe KnowYOU",
-            "3": `pwa-register?code=${invite.access_code}`,
+            "3": inviteUrl, // URL COMPLETA
           },
           channel: effectiveChannel,
           userId: user.id,
         },
       });
 
-      if (error) {
-        console.error("[PWA Invites] Erro na função:", error);
-        throw error;
-      }
-
+      // A função agora sempre retorna 200, verificamos success no payload
       console.log("[PWA Invites] Resposta:", data);
 
+      if (error) {
+        // Erro de invocação (rede, etc)
+        console.error("[PWA Invites] Erro de invocação:", error);
+        toast.error(`Erro de conexão: ${error.message || "Tente novamente"}`);
+        return;
+      }
+
       if (data?.success) {
-        recordSend(); // Record successful send for rate limiting
+        recordSend();
         const channelName = data.channel === "whatsapp" ? "WhatsApp" : "SMS";
-        const attemptsInfo = data.attempts > 1 ? ` (${data.attempts} tentativas)` : "";
-        toast.success(`Convite enviado via ${channelName}!${attemptsInfo}`);
+        const providerInfo = data.provider ? ` via ${data.provider}` : "";
+        toast.success(`Convite enviado via ${channelName}${providerInfo}!`);
       } else {
-        toast.error(`Falha ao enviar: ${data?.error || "Erro desconhecido"}`);
+        // Erro de negócio - agora temos detalhes!
+        const errorDetail = data?.error || "Erro desconhecido";
+        const errorCode = data?.error_code ? `[${data.error_code}]` : "";
+        toast.error(`Falha ao enviar ${errorCode}: ${errorDetail}`);
       }
     } catch (err) {
       console.error("[PWA Invites] Exceção:", err);
