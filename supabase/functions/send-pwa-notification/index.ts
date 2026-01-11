@@ -1,11 +1,15 @@
 // ============================================
-// VERSÃO: 5.3.0 | DEPLOY: 2026-01-10
+// VERSÃO: 5.4.0 | DEPLOY: 2026-01-11
+// FIX: Corrigido URL do convite SMS - domínio correto
 // TEMPORÁRIO: Forçando SMS para TODOS os templates
 // MOTIVO: Templates WhatsApp aguardando aprovação Twilio
 // TODO: Reverter para WhatsApp quando templates aprovados
 // ============================================
 
-const FUNCTION_VERSION = "5.3.0";
+const FUNCTION_VERSION = "5.4.0";
+
+// URL base do sistema
+const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -120,6 +124,18 @@ const TWILIO_ERROR_MESSAGES: Record<number, string> = {
 };
 
 // ===========================================
+// CONSTRUIR URL COMPLETA
+// ===========================================
+function buildFullUrl(urlOrPath: string): string {
+  if (!urlOrPath) return `${SITE_URL}/pwa`;
+  if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+    return urlOrPath;
+  }
+  const cleanPath = urlOrPath.startsWith("/") ? urlOrPath.slice(1) : urlOrPath;
+  return `${SITE_URL}/${cleanPath}`;
+}
+
+// ===========================================
 // ENVIO SMS VIA INFOBIP
 // ===========================================
 async function sendSmsViaInfobip(
@@ -129,6 +145,7 @@ async function sendSmsViaInfobip(
 ): Promise<SendResult> {
   console.log("\n[SMS-INFOBIP] ========================================");
   console.log("[SMS-INFOBIP] Enviando via Infobip...");
+  console.log(`[INFO] SITE_URL configurado: ${SITE_URL}`);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -142,14 +159,14 @@ async function sendSmsViaInfobip(
       smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos. Nao compartilhe.`;
       break;
     case "welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: https://hmv.knowyou.app/pwa`;
+      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: ${SITE_URL}/pwa`;
       break;
     case "resend_welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Seu acesso esta ativo. Entre em: https://hmv.knowyou.app/pwa`;
+      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Seu acesso esta ativo. Entre em: ${SITE_URL}/pwa`;
       break;
     case "invitation":
-      const path = variables["3"] || "pwa-register";
-      smsText = `KnowYOU: Ola ${variables["1"] || "Voce"}! ${variables["2"] || "Equipe KnowYOU"} te convidou. Acesse: https://hmv.knowyou.app/${path}`;
+      const fullUrl = buildFullUrl(variables["3"] || "pwa-register");
+      smsText = `KnowYOU: Ola ${variables["1"] || "Voce"}! ${variables["2"] || "Equipe KnowYOU"} te convidou. Acesse: ${fullUrl}`;
       break;
     default:
       smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
