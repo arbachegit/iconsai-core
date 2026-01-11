@@ -1,3 +1,4 @@
+// Build: 2026-01-11-NUCLEAR - Force complete rebuild
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";

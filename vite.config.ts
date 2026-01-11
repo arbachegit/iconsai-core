@@ -1,3 +1,4 @@
+// Nuclear rebuild: 2026-01-11T17:00:00Z
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
