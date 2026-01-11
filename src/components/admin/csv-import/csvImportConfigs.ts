@@ -1,3 +1,4 @@
+// Build: 2026-01-11-v1.1.0 - Force redeploy regional phonetics fix
 import { supabase } from "@/integrations/supabase/client";
 import type { CSVImportConfig } from "./CSVImportButton";
 
