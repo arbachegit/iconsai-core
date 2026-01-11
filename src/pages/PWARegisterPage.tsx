@@ -17,6 +17,8 @@ interface InvitationData {
   invited_by?: string;
 }
 
+const PWA_BG_COLOR = "#0A0E1A";
+
 export default function PWARegisterPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -27,6 +29,22 @@ export default function PWARegisterPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Force PWA background colors
+  useEffect(() => {
+    document.body.style.backgroundColor = PWA_BG_COLOR;
+    document.documentElement.style.backgroundColor = PWA_BG_COLOR;
+    
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute("content", PWA_BG_COLOR);
+    }
+    
+    return () => {
+      document.body.style.backgroundColor = "";
+      document.documentElement.style.backgroundColor = "";
+    };
+  }, []);
 
   // Validate token on load
   useEffect(() => {
@@ -196,10 +214,12 @@ export default function PWARegisterPage() {
   // Loading
   if (pageState === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Validando convite...</p>
+      <div className="min-h-[100dvh] flex flex-col bg-background">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-muted-foreground">Validando convite...</p>
+          </div>
         </div>
       </div>
     );
@@ -208,18 +228,20 @@ export default function PWARegisterPage() {
   // Invalid token
   if (pageState === "invalid") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-destructive/10 via-background to-destructive/5 p-4">
-        <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full text-center border border-border">
-          <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
-            <XCircle className="h-8 w-8 text-destructive" />
+      <div className="min-h-[100dvh] flex flex-col bg-background p-4">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full text-center border border-border">
+            <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+              <XCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <h1 className="text-xl font-bold text-foreground mb-2">Convite Inválido</h1>
+            <p className="text-muted-foreground text-sm mb-6">
+              Este link de convite é inválido ou expirou.
+            </p>
+            <Button onClick={() => navigate("/")} variant="outline" className="w-full">
+              Voltar ao Início
+            </Button>
           </div>
-          <h1 className="text-xl font-bold text-foreground mb-2">Convite Inválido</h1>
-          <p className="text-muted-foreground text-sm mb-6">
-            Este link de convite é inválido ou expirou.
-          </p>
-          <Button onClick={() => navigate("/")} variant="outline" className="w-full">
-            Voltar ao Início
-          </Button>
         </div>
       </div>
     );
@@ -228,18 +250,20 @@ export default function PWARegisterPage() {
   // Success
   if (pageState === "success") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-500/20 via-background to-green-500/10 p-4">
-        <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full text-center border border-border">
-          <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground mb-2">Cadastro Concluído!</h1>
-          <p className="text-muted-foreground text-sm mb-4">
-            Bem-vindo ao KnowYOU, {invitation?.name}!
-          </p>
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Redirecionando...</span>
+      <div className="min-h-[100dvh] flex flex-col bg-background p-4">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full text-center border border-border">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="h-8 w-8 text-green-600" />
+            </div>
+            <h1 className="text-xl font-bold text-foreground mb-2">Cadastro Concluído!</h1>
+            <p className="text-muted-foreground text-sm mb-4">
+              Bem-vindo ao KnowYOU, {invitation?.name}!
+            </p>
+            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Redirecionando...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -249,8 +273,9 @@ export default function PWARegisterPage() {
   // Confirm data
   if (pageState === "confirm") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20 p-4">
-        <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full border border-border">
+      <div className="min-h-[100dvh] flex flex-col bg-background p-4">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full border border-border">
           <div className="text-center mb-6">
             <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
               <Phone className="h-7 w-7 text-primary" />
@@ -302,14 +327,16 @@ export default function PWARegisterPage() {
           </div>
         </div>
       </div>
+    </div>
     );
   }
 
   // Verify code
   if (pageState === "verify") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20 p-4">
-        <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full border border-border">
+      <div className="min-h-[100dvh] flex flex-col bg-background p-4">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full border border-border">
           <button
             onClick={() => setPageState("confirm")}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
@@ -347,20 +374,21 @@ export default function PWARegisterPage() {
             </InputOTP>
           </div>
 
-          <Button 
-            onClick={handleVerify} 
-            disabled={isSubmitting || code.length !== 6} 
-            className="w-full h-12"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Verificando...
-              </>
-            ) : (
-              "Verificar"
-            )}
-          </Button>
+            <Button 
+              onClick={handleVerify} 
+              disabled={isSubmitting || code.length !== 6} 
+              className="w-full h-12"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                "Verificar"
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     );
