@@ -214,8 +214,9 @@ export const lexiconImportConfig: CSVImportConfig = {
 };
 
 // 3. FONÉTICA REGIONAL (PRONÚNCIAS)
+// Insere no campo preferred_terms (JSON) da tabela regional_tone_rules
 export const regionalPhoneticsImportConfig: CSVImportConfig = {
-  tableName: "regional_pronunciations",
+  tableName: "regional_tone_rules",
   displayName: "Pronúncias Regionais (TTS)",
 
   columns: [
@@ -231,13 +232,17 @@ export const regionalPhoneticsImportConfig: CSVImportConfig = {
     { region_code: "SUDESTE_RJ", term: "ônibus", pronunciation: "busão" },
     { region_code: "CENTRO_OESTE", term: "trem", pronunciation: "uai" },
     { region_code: "NORTE", term: "açaí", pronunciation: "açaí" },
+    { region_code: "SUDESTE_MG", term: "trem", pronunciation: "trem-bão" },
   ],
 
   validateRow: (row) => {
-    const validRegions = ['SUL', 'NORDESTE', 'NORTE', 'CENTRO_OESTE', 'SUDESTE_SP', 'SUDESTE_RJ', 'SUDESTE_MG'];
-    const regionCode = String(row.region_code || '').toUpperCase();
+    const validRegions = [
+      "SUL", "NORDESTE", "NORTE", "CENTRO_OESTE",
+      "SUDESTE_SP", "SUDESTE_RJ", "SUDESTE_MG",
+    ];
+    const regionCode = String(row.region_code || "").toUpperCase().trim();
     if (!validRegions.includes(regionCode)) {
-      return `Região inválida: ${regionCode}. Use: ${validRegions.join(', ')}`;
+      return `Região inválida: ${regionCode}. Use: ${validRegions.join(", ")}`;
     }
     return null;
   },
@@ -246,24 +251,77 @@ export const regionalPhoneticsImportConfig: CSVImportConfig = {
     const errors: string[] = [];
     let success = 0;
 
-    const batchSize = 50;
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-      const insertData = batch.map((row) => ({
-        region_code: String(row.region_code).toUpperCase().trim(),
-        term: String(row.term).trim(),
-        pronunciation: String(row.pronunciation).trim(),
-        is_active: true,
-      }));
+    // Mapeamento CSV → banco de dados
+    const csvToDb: Record<string, string> = {
+      SUL: "sul",
+      NORDESTE: "nordeste",
+      NORTE: "norte",
+      CENTRO_OESTE: "centro-oeste",
+      SUDESTE_SP: "sudeste-sp",
+      SUDESTE_RJ: "sudeste-rj",
+      SUDESTE_MG: "sudeste-mg",
+    };
 
-      const { error } = await supabase
-        .from("regional_pronunciations")
-        .upsert(insertData, { onConflict: "region_code,term" });
+    // 1. Buscar todas as regiões existentes
+    const { data: regions, error: fetchError } = await supabase
+      .from("regional_tone_rules")
+      .select("id, region_code, preferred_terms");
 
-      if (error) {
-        errors.push(`Lote ${Math.floor(i / batchSize) + 1}: ${error.message}`);
+    if (fetchError) {
+      errors.push(`Erro ao buscar regiões: ${fetchError.message}`);
+      return { success: 0, errors };
+    }
+
+    // 2. Criar mapa de region_code → região
+    const regionMap = new Map<
+      string,
+      { id: string; preferred_terms: Record<string, string> }
+    >();
+    regions?.forEach((r) => {
+      regionMap.set(r.region_code, {
+        id: r.id,
+        preferred_terms: (r.preferred_terms as Record<string, string>) || {},
+      });
+    });
+
+    // 3. Agrupar dados por região
+    const byRegion = new Map<string, Array<{ term: string; pronunciation: string }>>();
+    for (const row of data) {
+      const csvCode = String(row.region_code).toUpperCase().trim();
+      const dbCode = csvToDb[csvCode] || csvCode.toLowerCase();
+      const term = String(row.term).trim();
+      const pronunciation = String(row.pronunciation).trim();
+
+      if (!byRegion.has(dbCode)) {
+        byRegion.set(dbCode, []);
+      }
+      byRegion.get(dbCode)!.push({ term, pronunciation });
+    }
+
+    // 4. Atualizar cada região (merge no preferred_terms)
+    for (const [regionCode, terms] of byRegion) {
+      const region = regionMap.get(regionCode);
+
+      if (!region) {
+        errors.push(`Região não encontrada: ${regionCode}`);
+        continue;
+      }
+
+      // Merge dos termos existentes + novos
+      const updatedTerms = { ...region.preferred_terms };
+      terms.forEach((t) => {
+        updatedTerms[t.term] = t.pronunciation;
+      });
+
+      const { error: updateError } = await supabase
+        .from("regional_tone_rules")
+        .update({ preferred_terms: updatedTerms })
+        .eq("id", region.id);
+
+      if (updateError) {
+        errors.push(`Erro ao atualizar ${regionCode}: ${updateError.message}`);
       } else {
-        success += batch.length;
+        success += terms.length;
       }
     }
 
