@@ -1,9 +1,9 @@
 // ============================================
-// VERSAO: 3.3.0 | DEPLOY: 2026-01-11
-// FIX: Envia URL COMPLETA no reenvio APP (domínio + path + token)
+// VERSAO: 3.4.0 | DEPLOY: 2026-01-11
+// FIX: Reenvio APP usa URL inteira e estável (path param) e envio via SMS/Infobip
 // ============================================
 
-const FUNCTION_VERSION = "3.3.0";
+const FUNCTION_VERSION = "3.4.0";
 const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -75,10 +75,9 @@ serve(async (req) => {
       }
     }
 
-    const siteUrl = "https://fia.iconsai.ai";
-    const platformUrl = `${siteUrl}/invite/${token}`;
-    const appUrl = `${siteUrl}/pwa-register?token=${token}`;
-    
+    const platformUrl = `${SITE_URL}/invite/${token}`;
+    const appUrl = `${SITE_URL}/pwa-register/${token}`;
+
     const { name, email, phone, has_platform_access, has_app_access, status } = invitation;
     
     console.log("📋 Access check:", { has_platform_access, has_app_access, hasPhone: !!phone, product });
@@ -228,9 +227,9 @@ serve(async (req) => {
         try {
           // Use send-pwa-notification with invitation template
           // IMPORTANTE: Enviar URL COMPLETA para evitar problemas de montagem
-          const fullAppUrl = `${SITE_URL}/pwa-register?token=${token}`;
+          const fullAppUrl = appUrl;
           console.log(`📲 [v${FUNCTION_VERSION}] Enviando URL completa: ${fullAppUrl.slice(0, 50)}...`);
-          
+
           const { data: notifData, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
             body: {
               to: phone,

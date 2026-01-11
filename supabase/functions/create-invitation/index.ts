@@ -1,9 +1,9 @@
 // ============================================
-// VERSAO: 3.4.0 | DEPLOY: 2026-01-11
-// FIX: Envia URL COMPLETA no convite APP (domínio + path + token)
+// VERSAO: 3.5.0 | DEPLOY: 2026-01-11
+// FIX: Convite APP sempre dispara send-pwa-notification (SMS/Infobip) e URL inteira
 // ============================================
 
-const FUNCTION_VERSION = "3.4.0";
+const FUNCTION_VERSION = "3.5.0";
 const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -195,22 +195,18 @@ serve(async (req) => {
 
     console.log("✅ Invitation created:", invitation.id);
 
-    // 5. CONSTRUIR URLs
-    const siteUrl = "https://fia.iconsai.ai";
-    const platformUrl = `${siteUrl}/invite/${token}`;
-    const appUrl = `${siteUrl}/pwa-register?token=${token}`;
-    
+    // 5. CONSTRUIR URLs (SEMPRE URL COMPLETA)
+    const platformUrl = `${SITE_URL}/invite/${token}`;
+    const appUrl = `${SITE_URL}/pwa-register/${token}`;
+
     // URL principal baseada no acesso
     const inviteUrl = hasAppAccess && !hasPlatformAccess ? appUrl : platformUrl;
 
     // 6. VERIFICAR SECRETS ANTES DE ENVIAR
     const hasResendKey = !!Deno.env.get("RESEND_API_KEY");
-    const hasTwilioSid = !!Deno.env.get("TWILIO_ACCOUNT_SID");
-    const hasTwilioToken = !!Deno.env.get("TWILIO_AUTH_TOKEN");
-    const hasTwilioFrom = !!Deno.env.get("TWILIO_FROM_NUMBER");
-    const hasTwilioCredentials = hasTwilioSid && hasTwilioToken && hasTwilioFrom;
+    const hasInfobipKey = !!Deno.env.get("INFOBIP_API_KEY");
 
-    console.log("🔑 Secrets check:", { hasResendKey, hasTwilioSid, hasTwilioToken, hasTwilioFrom });
+    console.log("🔑 Secrets check:", { hasResendKey, hasInfobipKey });
 
     // =====================================================
     // REGRA DE CANAL POR PRODUTO:
@@ -308,112 +304,100 @@ serve(async (req) => {
       }
     }
 
-    // 8. WHATSAPP - Lógica correta por produto
-    if (finalSendViaWhatsapp && phone) {
-      if (!hasTwilioCredentials) {
-        const missing = [];
-        if (!hasTwilioSid) missing.push("TWILIO_ACCOUNT_SID");
-        if (!hasTwilioToken) missing.push("TWILIO_AUTH_TOKEN");
-        if (!hasTwilioFrom) missing.push("TWILIO_FROM_NUMBER");
-        const errorMsg = `Credenciais Twilio incompletas: ${missing.join(", ")}`;
-        
-        console.warn("⚠️ " + errorMsg);
-        if (hasAppAccess) {
-          results.push({ channel: "whatsapp", product: "app", success: false, error: errorMsg });
-        }
-        if (hasPlatformAccess && !hasAppAccess) {
-          results.push({ channel: "whatsapp", product: "platform_info", success: false, error: errorMsg });
-        }
+    // 8. APP (PWA): convite OBRIGATÓRIO via send-pwa-notification
+    // OBS: send-pwa-notification está forçando SMS/Infobip enquanto WhatsApp/Twilio não estiver aprovado
+    if (hasAppAccess) {
+      if (!phone) {
+        results.push({ channel: "sms", product: "app", success: false, error: "Telefone obrigatório para APP" });
       } else {
-        // WhatsApp para APP - Usar template via send-pwa-notification
-        if (hasAppAccess) {
-          console.log(`💬 [v${FUNCTION_VERSION}] Sending app invitation via template...`);
-          try {
-            // Use send-pwa-notification with invitation template
-            // IMPORTANTE: Enviar URL COMPLETA para evitar problemas de montagem
-            const fullAppUrl = `${SITE_URL}/pwa-register?token=${token}`;
-            console.log(`📲 [v${FUNCTION_VERSION}] Enviando URL completa: ${fullAppUrl.slice(0, 50)}...`);
-            
-            const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
-              body: {
-                to: phone,
-                template: "invitation",
-                variables: { 
-                  "1": name || "Usuário",
-                  "2": "Equipe KnowYOU",
-                  "3": fullAppUrl
-                },
-                channel: "whatsapp"
-              }
+        console.log(`💬 [v${FUNCTION_VERSION}] Sending app invitation via template (SMS fallback)...`);
+        try {
+          const fullAppUrl = appUrl; // URL COMPLETA
+          console.log(`📲 [v${FUNCTION_VERSION}] Enviando URL completa: ${fullAppUrl.slice(0, 80)}...`);
+
+          const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
+            body: {
+              to: phone,
+              template: "invitation",
+              variables: {
+                "1": name || "Usuário",
+                "2": "Equipe KnowYOU",
+                "3": fullAppUrl,
+              },
+              channel: "whatsapp",
+            },
+          });
+
+          console.log("📨 send-pwa-notification response:", JSON.stringify(notifResult));
+
+          const appNotifSuccess = !notifError && notifResult?.success;
+          if (!appNotifSuccess) {
+            console.error("❌ App notification error:", notifError || notifResult?.error);
+            results.push({
+              channel: notifResult?.channel || "sms",
+              product: "app",
+              success: false,
+              error: notifError?.message || notifResult?.error,
             });
-
-            console.log("📨 send-pwa-notification response:", JSON.stringify(notifResult));
-
-            const appNotifSuccess = !notifError && notifResult?.success;
-            if (!appNotifSuccess) {
-              console.error("❌ App notification error:", notifError || notifResult?.error);
-              results.push({ channel: notifResult?.channel || "whatsapp", product: "app", success: false, error: notifError?.message || notifResult?.error });
-            } else {
-              console.log("✅ App notification sent via", notifResult?.channel);
-              results.push({ channel: notifResult?.channel || "whatsapp", product: "app", success: true });
-            }
-
-            // Log notification attempt for APP
-            await supabase.from("notification_logs").insert({
-              event_type: "invitation_send",
-              channel: notifResult?.channel || "whatsapp",
-              recipient: phone,
-              subject: "Convite APP",
-              message_body: `Convite APP via template invitation`,
-              status: appNotifSuccess ? "success" : "failed",
-              error_message: notifError?.message || notifResult?.error || null,
-              metadata: { token, product: "app", action: "create", rule_version: `v${FUNCTION_VERSION}`, template: "invitation" }
-            });
-          } catch (notifCatch: any) {
-            console.error("❌ App notification exception:", notifCatch);
-            results.push({ channel: "whatsapp", product: "app", success: false, error: notifCatch.message });
+          } else {
+            console.log("✅ App notification sent via", notifResult?.channel);
+            results.push({ channel: notifResult?.channel || "sms", product: "app", success: true });
           }
+
+          // Log notification attempt for APP
+          await supabase.from("notification_logs").insert({
+            event_type: "invitation_send",
+            channel: notifResult?.channel || "sms",
+            recipient: phone,
+            subject: "Convite APP",
+            message_body: `Convite APP via template invitation`,
+            status: appNotifSuccess ? "success" : "failed",
+            error_message: notifError?.message || notifResult?.error || null,
+            metadata: { token, product: "app", action: "create", rule_version: `v${FUNCTION_VERSION}`, template: "invitation" },
+          });
+        } catch (notifCatch: any) {
+          console.error("❌ App notification exception:", notifCatch);
+          results.push({ channel: "sms", product: "app", success: false, error: notifCatch.message });
+        }
+      }
+    }
+
+    // 9. SMS INFORMATIVO para Plataforma (só se NÃO tem APP)
+    if (hasPlatformAccess && !hasAppAccess && phone) {
+      console.log(`📱 [v${FUNCTION_VERSION}] Sending platform info via SMS...`);
+      try {
+        const smsMsg = `KnowYOU: Enviamos email com convite para Plataforma. Acesse pelo computador.`;
+
+        const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
+          body: {
+            phoneNumber: phone,
+            message: smsMsg,
+          },
+        });
+
+        const platformSmsSuccess = !smsError && !smsResult?.error;
+        if (!platformSmsSuccess) {
+          console.error("❌ Platform info SMS error:", smsError || smsResult?.error);
+          results.push({ channel: "sms", product: "platform_info", success: false, error: smsError?.message || smsResult?.error });
+        } else {
+          console.log("✅ Platform info SMS sent");
+          results.push({ channel: "sms", product: "platform_info", success: true });
         }
 
-        // SMS INFORMATIVO para Plataforma (só se NÃO tem APP)
-        // Apenas avisa que enviamos um email - via SMS (não WhatsApp)
-        if (hasPlatformAccess && !hasAppAccess) {
-          console.log(`📱 [v${FUNCTION_VERSION}] Sending platform info via SMS (not WhatsApp)...`);
-          try {
-            const smsMsg = `KnowYOU: Enviamos email com convite para Plataforma. Acesse pelo computador.`;
-
-            const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
-              body: {
-                phoneNumber: phone,
-                message: smsMsg
-              }
-            });
-
-            const platformSmsSuccess = !smsError && !smsResult?.error;
-            if (!platformSmsSuccess) {
-              console.error("❌ Platform info SMS error:", smsError || smsResult?.error);
-              results.push({ channel: "sms", product: "platform_info", success: false, error: smsError?.message || smsResult?.error });
-            } else {
-              console.log("✅ Platform info SMS sent");
-              results.push({ channel: "sms", product: "platform_info", success: true });
-            }
-
-            // Log SMS attempt for Platform info
-            await supabase.from("notification_logs").insert({
-              event_type: "invitation_send",
-              channel: "sms",
-              recipient: phone,
-              subject: "Convite Plataforma Info",
-              message_body: smsMsg,
-              status: platformSmsSuccess ? "success" : "failed",
-              error_message: smsError?.message || smsResult?.error || null,
-              metadata: { token, product: "platform_info", action: "create", rule_version: `v${FUNCTION_VERSION}` }
-            });
-          } catch (smsCatch: any) {
-            console.error("❌ Platform info SMS exception:", smsCatch);
-            results.push({ channel: "sms", product: "platform_info", success: false, error: smsCatch.message });
-          }
-        }
+        // Log SMS attempt for Platform info
+        await supabase.from("notification_logs").insert({
+          event_type: "invitation_send",
+          channel: "sms",
+          recipient: phone,
+          subject: "Convite Plataforma Info",
+          message_body: smsMsg,
+          status: platformSmsSuccess ? "success" : "failed",
+          error_message: smsError?.message || smsResult?.error || null,
+          metadata: { token, product: "platform_info", action: "create", rule_version: `v${FUNCTION_VERSION}` },
+        });
+      } catch (smsCatch: any) {
+        console.error("❌ Platform info SMS exception:", smsCatch);
+        results.push({ channel: "sms", product: "platform_info", success: false, error: smsCatch.message });
       }
     }
 
