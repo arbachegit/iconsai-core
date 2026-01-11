@@ -143,12 +143,9 @@ async function sendSmsViaInfobip(
   templateName: string,
   variables: Record<string, string>,
 ): Promise<SendResult> {
-  console.log("\n[SMS-INFOBIP] ========================================");
-  console.log("[SMS-INFOBIP] Enviando via Infobip...");
+  console.log("\n[SMS] ========================================");
+  console.log("[SMS] Enviando SMS via função send-sms...");
   console.log(`[INFO] SITE_URL configurado: ${SITE_URL}`);
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   // Montar mensagem baseada no template
   let smsText = "";
@@ -164,45 +161,45 @@ async function sendSmsViaInfobip(
     case "resend_welcome":
       smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Seu acesso esta ativo. Entre em: ${SITE_URL}/pwa`;
       break;
-    case "invitation":
+    case "invitation": {
       const fullUrl = buildFullUrl(variables["3"] || "pwa-register");
       smsText = `KnowYOU: Ola ${variables["1"] || "Voce"}! ${variables["2"] || "Equipe KnowYOU"} te convidou. Acesse: ${fullUrl}`;
       break;
+    }
     default:
       smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
   }
 
-  console.log(`[SMS-INFOBIP] To: ${to.slice(0, 5)}***`);
-  console.log(`[SMS-INFOBIP] Template: ${templateName}`);
-  console.log(`[SMS-INFOBIP] Texto: ${smsText.slice(0, 60)}...`);
-  console.log("[SMS-INFOBIP] ========================================\n");
+  console.log(`[SMS] To: ${to.slice(0, 5)}***`);
+  console.log(`[SMS] Template: ${templateName}`);
+  console.log(`[SMS] Texto: ${smsText.slice(0, 60)}...`);
+  console.log("[SMS] ========================================\n");
 
   try {
-    const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify({
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: smsData, error: smsError } = await supabase.functions.invoke("send-sms", {
+      body: {
         phoneNumber: to,
         message: smsText,
         eventType: "pwa_notification",
-      }),
+      },
     });
 
-    const smsData = await smsResponse.json();
-    console.log(`[SMS-INFOBIP] Response:`, JSON.stringify(smsData));
+    console.log(`[SMS] Provider: ${smsData?.provider || "unknown"}`);
+    console.log(`[SMS] Response:`, JSON.stringify(smsData));
 
     return {
-      success: smsData.success,
+      success: !!smsData?.success && !smsError,
       channel: "sms",
-      messageId: smsData.messageId,
-      error: smsData.error,
+      messageId: smsData?.messageId,
+      error: smsError?.message || smsData?.error,
     };
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[SMS-INFOBIP] ERRO: ${errMsg}`);
+    console.error(`[SMS] ERRO: ${errMsg}`);
     return {
       success: false,
       channel: "sms",
