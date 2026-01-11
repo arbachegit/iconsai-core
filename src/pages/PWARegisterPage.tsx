@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle2, XCircle, Phone, KeyRound, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,9 @@ interface InvitationData {
 const PWA_BG_COLOR = "#0A0E1A";
 
 export default function PWARegisterPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: tokenParam } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const token = tokenParam || searchParams.get("token") || undefined;
   const navigate = useNavigate();
   
   const [pageState, setPageState] = useState<PageState>("loading");
