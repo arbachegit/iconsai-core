@@ -1,10 +1,13 @@
 // ============================================
-// VERSAO: 4.1.0 | DEPLOY: 2026-01-11
-// FIX: Normaliza INFOBIP_BASE_URL (aceita host/URL/path) + fallback Twilio SMS
+// VERSAO: 4.2.0 | DEPLOY: 2026-01-11
+// FIX: SEMPRE retorna HTTP 200 com success:true/false
+// Elimina erros "non-2xx" no frontend
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+
+const FUNCTION_VERSION = "4.2.0";
 
 const sanitizePhoneNumberForInfobip = (phone: string): string => {
   let cleaned = phone.replace(/[^\d+]/g, "");
@@ -102,15 +105,32 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  console.log("\n=== SEND-SMS v4.1.0 START ===");
+  console.log(`\n=== SEND-SMS v${FUNCTION_VERSION} START ===`);
   console.log(`[TIMESTAMP] ${new Date().toISOString()}`);
+
+  // Helper para resposta padronizada (SEMPRE HTTP 200)
+  const respond = (payload: Record<string, unknown>) => {
+    const body = { ...payload, version: FUNCTION_VERSION };
+    console.log(`[RESPONSE] ${JSON.stringify(body)}`);
+    console.log(`=== SEND-SMS v${FUNCTION_VERSION} END ===\n`);
+    return new Response(JSON.stringify(body), {
+      status: 200, // SEMPRE 200
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  };
 
   try {
     const { phoneNumber: rawPhone, message, eventType } = await req.json();
 
+    // Validação - retorna 200 com success:false
     if (!rawPhone || !message) {
       console.error("❌ Campos obrigatórios faltando");
-      throw new Error("phoneNumber and message are required");
+      return respond({
+        success: false,
+        error: "phoneNumber and message are required",
+        error_code: "VALIDATION_ERROR",
+        channel: "sms",
+      });
     }
 
     const infobipTo = sanitizePhoneNumberForInfobip(rawPhone);
@@ -134,61 +154,61 @@ serve(async (req) => {
       infobipError = "INFOBIP_API_KEY não configurada";
       console.error(`❌ ${infobipError}`);
     } else {
-      const endpoint = resolveInfobipSmsEndpoint(baseUrl);
+      try {
+        const endpoint = resolveInfobipSmsEndpoint(baseUrl);
 
-      console.log(`\n📤 [INFOBIP] ========================================`);
-      console.log(`📤 [INFOBIP] Base URL (raw): ${baseUrl}`);
-      console.log(`📤 [INFOBIP] Endpoint: ${endpoint}`);
-      console.log(`📤 [INFOBIP] From: ${sender}`);
-      console.log(`📤 [INFOBIP] Message: ${String(message).slice(0, 50)}...`);
-      console.log(`📤 [INFOBIP] ========================================\n`);
+        console.log(`\n📤 [INFOBIP] ========================================`);
+        console.log(`📤 [INFOBIP] Base URL (raw): ${baseUrl}`);
+        console.log(`📤 [INFOBIP] Endpoint: ${endpoint}`);
+        console.log(`📤 [INFOBIP] From: ${sender}`);
+        console.log(`📤 [INFOBIP] Message: ${String(message).slice(0, 50)}...`);
+        console.log(`📤 [INFOBIP] ========================================\n`);
 
-      const resp = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          Authorization: `App ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              destinations: [{ to: infobipTo }],
-              from: sender,
-              text: message,
-            },
-          ],
-        }),
-      });
+        const resp = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `App ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [
+              {
+                destinations: [{ to: infobipTo }],
+                from: sender,
+                text: message,
+              },
+            ],
+          }),
+        });
 
-      const { json: data, text } = await readJsonOrText(resp);
+        const { json: data, text } = await readJsonOrText(resp);
 
-      console.log(`📩 [INFOBIP] Response Status: ${resp.status}`);
-      console.log(`📩 [INFOBIP] Response:`, data ? JSON.stringify(data) : text.slice(0, 600));
+        console.log(`📩 [INFOBIP] Response Status: ${resp.status}`);
+        console.log(`📩 [INFOBIP] Response:`, data ? JSON.stringify(data) : text.slice(0, 600));
 
-      const messageStatus = data?.messages?.[0];
+        const messageStatus = data?.messages?.[0];
 
-      if (!resp.ok) {
-        infobipError = `Infobip HTTP ${resp.status}: ${data?.message || text || "erro"}`;
-      } else if (!messageStatus) {
-        infobipError = "Resposta inválida da Infobip (messages[0] ausente)";
-      } else if (messageStatus.status?.groupName === "REJECTED") {
-        infobipError = `SMS rejeitado: ${messageStatus.status?.description || "sem descrição"}`;
-      } else {
-        console.log(`✅ [INFOBIP] Message ID: ${messageStatus.messageId}`);
-        console.log(`✅ [INFOBIP] Status: ${messageStatus.status?.name}`);
-        console.log("=== SEND-SMS v4.1.0 END (INFOBIP OK) ===\n");
+        if (!resp.ok) {
+          infobipError = `Infobip HTTP ${resp.status}: ${data?.message || text || "erro"}`;
+        } else if (!messageStatus) {
+          infobipError = "Resposta inválida da Infobip (messages[0] ausente)";
+        } else if (messageStatus.status?.groupName === "REJECTED") {
+          infobipError = `SMS rejeitado: ${messageStatus.status?.description || "sem descrição"}`;
+        } else {
+          console.log(`✅ [INFOBIP] Message ID: ${messageStatus.messageId}`);
+          console.log(`✅ [INFOBIP] Status: ${messageStatus.status?.name}`);
 
-        return new Response(
-          JSON.stringify({
+          return respond({
             success: true,
             messageId: messageStatus.messageId,
             status: messageStatus.status?.name,
             statusGroup: messageStatus.status?.groupName,
             channel: "sms",
             provider: "infobip",
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+          });
+        }
+      } catch (e: unknown) {
+        infobipError = e instanceof Error ? e.message : String(e);
       }
 
       console.warn(`⚠️ [INFOBIP] Falhou: ${infobipError}`);
@@ -200,9 +220,16 @@ serve(async (req) => {
     const fromE164 = Deno.env.get("TWILIO_SMS_NUMBER") || Deno.env.get("TWILIO_FROM_NUMBER");
 
     if (!fromE164) {
-      const msg = `Falha Infobip e Twilio sem FROM (TWILIO_SMS_NUMBER/TWILIO_FROM_NUMBER). Infobip: ${infobipError}`;
+      const msg = `Falha Infobip e Twilio sem FROM. Infobip: ${infobipError}`;
       console.error(`❌ ${msg}`);
-      throw new Error(msg);
+      return respond({
+        success: false,
+        error: msg,
+        error_code: "MISSING_CREDENTIALS",
+        channel: "sms",
+        provider: "none",
+        infobipError,
+      });
     }
 
     console.log(`\n🔁 [FALLBACK] Tentando Twilio SMS...`);
@@ -213,35 +240,37 @@ serve(async (req) => {
     if (!twilioRes.success) {
       const msg = `Infobip falhou (${infobipError}); Twilio falhou (${twilioRes.error})`;
       console.error(`❌ ${msg}`);
-      throw new Error(msg);
+      return respond({
+        success: false,
+        error: msg,
+        error_code: "SMS_FAILED",
+        channel: "sms",
+        provider: "twilio",
+        infobipError,
+        twilioError: twilioRes.error,
+      });
     }
 
     console.log(`✅ [TWILIO] Message ID: ${twilioRes.messageId}`);
     console.log(`✅ [TWILIO] Status: ${twilioRes.status}`);
-    console.log("=== SEND-SMS v4.1.0 END (TWILIO OK) ===\n");
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        messageId: twilioRes.messageId,
-        status: twilioRes.status,
-        channel: "sms",
-        provider: "twilio",
-        fallbackFrom: "infobip",
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (error: any) {
-    console.error("❌ [ERRO]", error?.message || String(error));
-    console.log("=== SEND-SMS v4.1.0 END (ERROR) ===\n");
+    return respond({
+      success: true,
+      messageId: twilioRes.messageId,
+      status: twilioRes.status,
+      channel: "sms",
+      provider: "twilio",
+      fallbackFrom: "infobip",
+    });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("❌ [ERRO]", errMsg);
 
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error?.message || String(error),
-        channel: "sms",
-      }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return respond({
+      success: false,
+      error: errMsg,
+      error_code: "INTERNAL_ERROR",
+      channel: "sms",
+    });
   }
 });
