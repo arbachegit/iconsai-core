@@ -1,8 +1,8 @@
-// Build: 2026-01-11-v2.0.1 - Force redeploy
-// ============================================
-// PWA Auth Gate v2.0
-// Login por telefone com verificação de convite
-// ============================================
+// =============================================
+// PWA Auth Gate v2.0.2 - NUCLEAR REBUILD
+// Build: 2026-01-11T17:00:00Z - FORCE DEPLOY
+// SHA: NUCLEAR-DEPLOY-NOW
+// =============================================
 
 import { ReactNode, useState } from "react";
 import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2, Info } from "lucide-react";
