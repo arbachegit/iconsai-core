@@ -1,9 +1,10 @@
 // ============================================
-// VERSAO: 3.3.0 | DEPLOY: 2026-01-04
-// FIX: Normalização de versões em logs/metadata
+// VERSAO: 3.4.0 | DEPLOY: 2026-01-11
+// FIX: Envia URL COMPLETA no convite APP (domínio + path + token)
 // ============================================
 
-const FUNCTION_VERSION = "3.3.0";
+const FUNCTION_VERSION = "3.4.0";
+const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -329,6 +330,10 @@ serve(async (req) => {
           console.log(`💬 [v${FUNCTION_VERSION}] Sending app invitation via template...`);
           try {
             // Use send-pwa-notification with invitation template
+            // IMPORTANTE: Enviar URL COMPLETA para evitar problemas de montagem
+            const fullAppUrl = `${SITE_URL}/pwa-register?token=${token}`;
+            console.log(`📲 [v${FUNCTION_VERSION}] Enviando URL completa: ${fullAppUrl.slice(0, 50)}...`);
+            
             const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
               body: {
                 to: phone,
@@ -336,7 +341,7 @@ serve(async (req) => {
                 variables: { 
                   "1": name || "Usuário",
                   "2": "Equipe KnowYOU",
-                  "3": `pwa-register?token=${token}`
+                  "3": fullAppUrl
                 },
                 channel: "whatsapp"
               }
