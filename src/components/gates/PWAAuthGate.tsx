@@ -1,3 +1,4 @@
+// Build: 2025-01-11-v2.0.1 - Force redeploy
 // ============================================
 // PWA Auth Gate v2.0
 // Login por telefone com verificação de convite
