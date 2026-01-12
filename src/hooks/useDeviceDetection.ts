@@ -99,18 +99,21 @@ function getDeviceInfo(): DeviceInfo {
   const isTouchDevice = detectTouchDevice();
   const platform = detectPlatform(userAgent);
   
-  // Mobile: width < 768 OR touch device with mobile platform
+  // CRITICAL FIX: Mobile platform detection ALWAYS takes priority over screen size
+  // This ensures iOS/Android devices are NEVER classified as desktop
+  const isMobilePlatform = platform === 'ios' || platform === 'android';
+  
+  // Mobile: mobile platform OR (small screen AND touch device)
   const isMobileBySize = screenWidth < MOBILE_BREAKPOINT;
-  const isMobileByPlatform = isTouchDevice && (platform === 'ios' || platform === 'android');
-  const isMobile = isMobileBySize || isMobileByPlatform;
+  const isMobile = isMobilePlatform || (isMobileBySize && isTouchDevice);
   
-  // Desktop: width >= 1024 AND not a touch device (or touch with desktop platform)
+  // Desktop: ONLY if NOT mobile platform AND large screen AND (desktop platform OR not touch)
   const isDesktopBySize = screenWidth >= DESKTOP_BREAKPOINT;
-  const isDesktopByPlatform = !isTouchDevice || (platform === 'windows' || platform === 'macos' || platform === 'linux');
-  const isDesktop = isDesktopBySize && isDesktopByPlatform && !isMobile;
+  const isDesktopPlatform = platform === 'windows' || platform === 'macos' || platform === 'linux';
+  const isDesktop = !isMobilePlatform && isDesktopBySize && (isDesktopPlatform || !isTouchDevice);
   
-  // Tablet: in between
-  const isTablet = !isMobile && !isDesktop;
+  // Tablet: mobile platform with large screen (iPad in landscape, etc.)
+  const isTablet = isMobilePlatform && !isMobileBySize && !isDesktop;
 
   return {
     isMobile,

@@ -97,7 +97,11 @@ const DeviceGate = ({
   }
 
   // Desktop tentando acessar rota só mobile (PWA)
-  if (isDesktop && !allowDesktop) {
+  // CRITICAL FIX: NEVER block iOS devices with PWADesktopBlock
+  // This is a safety fallback in case device detection still fails
+  const isIOSDevice = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  
+  if (isDesktop && !allowDesktop && !isIOSDevice) {
     return <PWADesktopBlock />;
   }
 
