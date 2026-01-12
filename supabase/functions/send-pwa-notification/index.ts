@@ -1,27 +1,9 @@
-/**
- * ============================================================
- * send-pwa-notification/index.ts - Notificação PWA v5.6.0
- * ============================================================
- * Data: 2026-01-11
- * CORRECAO: URL shortener integrado para SMS caber em 160 chars
- * ============================================================
- * CHANGELOG v5.6.0:
- * - Adicionada função shortenUrl() usando TinyURL API
- * - Template invitation agora encurta URL automaticamente
- * - Mensagem SMS reduzida para ~85 caracteres
- * ============================================================
- * ROTA: supabase/functions/send-pwa-notification/index.ts
- * ============================================================
- */
-
 // ============================================
-// VERSÃO: 5.6.0 | DEPLOY: 2026-01-11
-// FIX: URL shortener para SMS - mensagem cabe em 160 chars
+// VERSÃO: 5.6.0 | DEPLOY: 2026-01-12
+// FIX: URL shortener + mensagens com nome do usuário
 // ============================================
 
 const FUNCTION_VERSION = "5.6.0";
-
-// URL base do sistema
 const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -31,11 +13,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Twilio Config
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID")!;
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-const TWILIO_WHATSAPP_NUMBER = "+16039454873";
 
 // ===========================================
 // TEMPLATES
@@ -51,35 +28,35 @@ interface TemplateConfig {
 const TEMPLATES: Record<string, TemplateConfig> = {
   otp: {
     sid: "HX15dbff375b023b2d1514038027db6ad0",
-    description: "Código de verificação OTP (knowyou_otp)",
+    description: "Código de verificação OTP",
     type: "authentication",
-    totalVariables: 0,
-    variableNames: [],
+    totalVariables: 1,
+    variableNames: ["codigo"],
   },
   resend_code: {
     sid: "HX026907ac8e769389acfda75829c5d543",
-    description: "Reenvio de código OTP (knowyou_resend_code)",
+    description: "Reenvio de código OTP",
     type: "authentication",
-    totalVariables: 0,
-    variableNames: [],
+    totalVariables: 1,
+    variableNames: ["codigo"],
   },
   welcome: {
     sid: "HX35461ac69adc68257f54eb030fafe4b1",
-    description: "Boas-vindas após verificação (knowyou_welcome)",
+    description: "Boas-vindas após verificação",
     type: "utility",
     totalVariables: 1,
     variableNames: ["nome"],
   },
   invitation: {
     sid: "HX76217d9d436086e8adc6d1e185c7e2ee",
-    description: "Convite de acesso ao PWA (knowyou_invitation_v3)",
+    description: "Convite de acesso ao PWA",
     type: "utility",
     totalVariables: 3,
-    variableNames: ["nome", "quem_convidou", "path_url"],
+    variableNames: ["nome", "quem_convidou", "url"],
   },
   resend_welcome: {
     sid: "HX9ccbe49ea4063c9155c3ebd67738556e",
-    description: "Reenvio de boas-vindas (knowyou_resend_welcome)",
+    description: "Reenvio de boas-vindas",
     type: "utility",
     totalVariables: 1,
     variableNames: ["nome"],
@@ -143,15 +120,11 @@ async function shortenUrl(longUrl: string): Promise<string> {
 }
 
 // ===========================================
-// CONSTRUIR URL COMPLETA
+// EXTRAIR PRIMEIRO NOME
 // ===========================================
-function buildFullUrl(urlOrPath: string): string {
-  if (!urlOrPath) return `${SITE_URL}/pwa`;
-  if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
-    return urlOrPath;
-  }
-  const cleanPath = urlOrPath.startsWith("/") ? urlOrPath.slice(1) : urlOrPath;
-  return `${SITE_URL}/${cleanPath}`;
+function getFirstName(fullName: string): string {
+  if (!fullName) return "Voce";
+  return fullName.split(" ")[0] || "Voce";
 }
 
 // ===========================================
@@ -163,43 +136,45 @@ async function sendSmsViaFunction(
   variables: Record<string, string>,
 ): Promise<SendResult> {
   console.log("\n[SMS] ========================================");
-  console.log("[SMS] Enviando SMS via função send-sms...");
-  console.log(`[INFO] SITE_URL configurado: ${SITE_URL}`);
+  console.log(`[SMS] Template: ${templateName}`);
+  console.log(`[SMS] Variáveis: ${JSON.stringify(variables)}`);
 
-  // Montar mensagem baseada no template
   let smsText = "";
+  const nome = getFirstName(variables["1"] || "");
 
   switch (templateName) {
     case "otp":
     case "resend_code":
-      smsText = `KnowYOU: Codigo ${variables["1"]}. Valido 10min.`;
+      // Código de verificação - COM NOME
+      smsText = `KnowYOU: Ola ${nome}! Codigo: ${variables["1"]}. Valido 2min.`;
       break;
+
     case "welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo. Acesse: ${SITE_URL}/pwa`;
+      smsText = `KnowYOU: Ola ${nome}! Bem-vindo. Acesse: ${SITE_URL}/pwa`;
       break;
+
     case "resend_welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Acesse: ${SITE_URL}/pwa`;
+      smsText = `KnowYOU: Ola ${nome}! Acesse: ${SITE_URL}/pwa`;
       break;
+
     case "invitation": {
-      // URL já deve vir encurtada do caller, mas garantimos aqui também
+      // Convite - URL já deve vir encurtada
       let inviteUrl = variables["3"] || `${SITE_URL}/pwa-register`;
 
-      // Se URL é longa (mais de 30 chars), encurtar
+      // Se URL ainda é longa, encurtar
       if (inviteUrl.length > 30) {
         inviteUrl = await shortenUrl(inviteUrl);
       }
 
-      // Mensagem compacta para caber em 160 chars
-      const nome = (variables["1"] || "Voce").split(" ")[0]; // Só primeiro nome
       smsText = `KnowYOU: Ola ${nome}! Voce foi convidado. Acesse: ${inviteUrl}`;
       break;
     }
+
     default:
       smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
   }
 
   console.log(`[SMS] To: ${to.slice(0, 5)}***`);
-  console.log(`[SMS] Template: ${templateName}`);
   console.log(`[SMS] Texto (${smsText.length} chars): ${smsText}`);
   console.log("[SMS] ========================================\n");
 
@@ -215,9 +190,6 @@ async function sendSmsViaFunction(
         eventType: "pwa_notification",
       },
     });
-
-    console.log(`[SMS] Provider: ${smsData?.provider || "unknown"}`);
-    console.log(`[SMS] Response:`, JSON.stringify(smsData));
 
     if (smsError) {
       console.error(`[SMS] Invoke error:`, smsError);
@@ -262,20 +234,11 @@ serve(async (req) => {
   console.log(`[SEND-PWA-NOTIFICATION v${FUNCTION_VERSION}] ${new Date().toISOString()}`);
   console.log(`${"=".repeat(60)}\n`);
 
-  // Helper para resposta padronizada (SEMPRE HTTP 200)
-  const respond = (payload: Record<string, unknown>, logResult = true) => {
+  const respond = (payload: Record<string, unknown>) => {
     const processingTime = Date.now() - startTime;
     const responseBody = { ...payload, processingTimeMs: processingTime, version: FUNCTION_VERSION };
 
-    if (logResult) {
-      console.log(`\n${"=".repeat(60)}`);
-      console.log(`[RESULTADO]`);
-      console.log(`Sucesso: ${payload.success ? "✅" : "❌"}`);
-      console.log(`Canal: ${payload.channel || "N/A"}`);
-      console.log(`Tempo: ${processingTime}ms`);
-      if (payload.error) console.log(`Erro: ${payload.error}`);
-      console.log(`${"=".repeat(60)}\n`);
-    }
+    console.log(`[RESULTADO] Sucesso: ${payload.success ? "✅" : "❌"} | Tempo: ${processingTime}ms`);
 
     return new Response(JSON.stringify(responseBody), {
       status: 200,
@@ -285,28 +248,17 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as NotificationRequest;
-    const { to, template, variables, channel = "whatsapp", userId } = body;
+    const { to, template, variables, channel = "sms", userId } = body;
 
-    console.log(`[REQUEST] Template: ${template}`);
-    console.log(`[REQUEST] Canal solicitado: ${channel}`);
-    console.log(`[REQUEST] Telefone: ${to?.slice(0, 5)}***`);
-    console.log(`[REQUEST] Variáveis recebidas: ${JSON.stringify(variables)}`);
+    console.log(`[REQUEST] Template: ${template} | Canal: ${channel}`);
 
     // Validações
     if (!to) {
-      return respond({
-        success: false,
-        error: "Campo 'to' obrigatório",
-        error_code: "VALIDATION_ERROR",
-      });
+      return respond({ success: false, error: "Campo 'to' obrigatório", error_code: "VALIDATION_ERROR" });
     }
 
     if (!template) {
-      return respond({
-        success: false,
-        error: "Campo 'template' obrigatório",
-        error_code: "VALIDATION_ERROR",
-      });
+      return respond({ success: false, error: "Campo 'template' obrigatório", error_code: "VALIDATION_ERROR" });
     }
 
     const templateConfig = TEMPLATES[template];
@@ -318,50 +270,16 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[TEMPLATE] Nome: ${template}`);
-    console.log(`[TEMPLATE] Tipo: ${templateConfig.type}`);
-
-    // Normalizar telefone
     const phone = normalizePhone(to);
-    console.log(`[TELEFONE] Normalizado: ${phone}`);
 
     if (!phone.match(/^\+[1-9]\d{10,14}$/)) {
-      return respond({
-        success: false,
-        error: "Formato de telefone inválido",
-        error_code: "VALIDATION_ERROR",
-      });
+      return respond({ success: false, error: "Formato de telefone inválido", error_code: "VALIDATION_ERROR" });
     }
 
-    // Validar variáveis
-    if (templateConfig.type === "utility" && templateConfig.totalVariables > 0) {
-      const missingVars: string[] = [];
-      for (let i = 1; i <= templateConfig.totalVariables; i++) {
-        if (!variables[String(i)] || variables[String(i)].trim() === "") {
-          const varName = templateConfig.variableNames[i - 1] || `var${i}`;
-          missingVars.push(`{{${i}}} (${varName})`);
-        }
-      }
-
-      if (missingVars.length > 0) {
-        return respond({
-          success: false,
-          error: `Variáveis faltando para template '${template}': ${missingVars.join(", ")}`,
-          error_code: "VALIDATION_ERROR",
-        });
-      }
-    }
-
-    // ===========================================
-    // ENVIO - Forçando SMS (WhatsApp pendente aprovação)
-    // ===========================================
-    console.log("\n[ESTRATÉGIA] FORÇANDO SMS - Templates WhatsApp pendentes");
-
+    // Envio via SMS
     const result = await sendSmsViaFunction(phone, template, variables);
 
-    // ===========================================
-    // LOGGING
-    // ===========================================
+    // Logging
     try {
       const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -376,14 +294,9 @@ serve(async (req) => {
         metadata: {
           user_id: userId || null,
           template,
-          templateType: templateConfig.type,
           variables,
-          originalChannel: channel,
-          forcedSms: true,
           provider: result.provider,
-          errorCode: result.errorCode,
           version: FUNCTION_VERSION,
-          processingTimeMs: Date.now() - startTime,
         },
       });
     } catch (logError) {
@@ -393,21 +306,13 @@ serve(async (req) => {
     return respond({
       success: result.success,
       channel: result.channel,
-      templateType: templateConfig.type,
       messageId: result.messageId || null,
       error: result.error || null,
-      error_code: result.errorCode || null,
       provider: result.provider || null,
-      attempts: 1,
     });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`\n[ERRO FATAL] ${errMsg}`);
-
-    return respond({
-      success: false,
-      error: errMsg,
-      error_code: "INTERNAL_ERROR",
-    });
+    console.error(`[ERRO FATAL] ${errMsg}`);
+    return respond({ success: false, error: errMsg, error_code: "INTERNAL_ERROR" });
   }
 });
