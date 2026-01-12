@@ -185,21 +185,38 @@ export function usePWAAuth() {
 
   /**
    * Login por telefone (simplificado, sem fingerprint)
+   * v6.0 - Logging extensivo para debug
    */
   const login = useCallback(async (params: LoginParams): Promise<{ success: boolean; error?: string }> => {
-    if (isSubmitting) return { success: false, error: 'Operação em andamento' };
+    console.log('[PWA Auth v6.0] ========================================');
+    console.log('[PWA Auth v6.0] ===== LOGIN START =====');
+    console.log('[PWA Auth v6.0] Timestamp:', new Date().toISOString());
+    console.log('[PWA Auth v6.0] Phone input:', params.phone);
+    console.log('[PWA Auth v6.0] isSubmitting:', isSubmitting);
+    
+    if (isSubmitting) {
+      console.log('[PWA Auth v6.0] BLOCKED - already submitting');
+      return { success: false, error: 'Operação em andamento' };
+    }
     
     setIsSubmitting(true);
+    console.log('[PWA Auth v6.0] setIsSubmitting(true)');
     
     try {
-      console.log('[PWA Auth v4.0] Login with phone:', params.phone.substring(0, 8) + '...');
+      console.log('[PWA Auth v6.0] Calling RPC: login_pwa_by_phone_simple');
+      const rpcStartTime = Date.now();
       
       const { data, error } = await supabase.rpc('login_pwa_by_phone_simple', {
         p_phone: params.phone,
       });
+      
+      const rpcElapsed = Date.now() - rpcStartTime;
+      console.log('[PWA Auth v6.0] RPC responded in', rpcElapsed, 'ms');
+      console.log('[PWA Auth v6.0] RPC data:', JSON.stringify(data));
+      console.log('[PWA Auth v6.0] RPC error:', error);
 
       if (error) {
-        console.error('[PWA Auth v4.0] Login error:', error);
+        console.error('[PWA Auth v6.0] RPC ERROR:', error.message);
         return { success: false, error: error.message };
       }
 
@@ -214,20 +231,25 @@ export function usePWAAuth() {
         normalized_phone?: string;
       };
 
-      console.log('[PWA Auth v4.0] Login result:', { 
+      console.log('[PWA Auth v6.0] Result parsed:', { 
         success: result.success, 
         already_verified: result.already_verified,
+        has_verification_code: !!result.verification_code,
+        verification_code: result.verification_code ? result.verification_code.substring(0, 2) + '****' : 'none',
+        normalized_phone: result.normalized_phone,
         error: result.error 
       });
 
       // Já verificado - salvar e recarregar
       if (result.already_verified) {
+        console.log('[PWA Auth v6.0] Already verified - saving phone and checking access');
         localStorage.setItem(STORAGE_KEY, params.phone);
         await checkAccess();
         return { success: true };
       }
 
       if (!result.success) {
+        console.log('[PWA Auth v6.0] Login NOT successful:', result.error);
         if (result.error === 'no_invitation') {
           return { 
             success: false, 
@@ -238,6 +260,7 @@ export function usePWAAuth() {
       }
 
       // Atualizar para estado de envio de código
+      console.log('[PWA Auth v6.0] Setting state to sending_code');
       setState(prev => ({
         ...prev,
         status: 'sending_code',
@@ -248,26 +271,26 @@ export function usePWAAuth() {
       }));
 
       // ============================================
-      // ENVIO DE SMS - CHAMADA DIRETA v5.0
-      // Bypass send-pwa-notification para maior confiabilidade
+      // ENVIO DE SMS - CHAMADA DIRETA v6.0
       // ============================================
       let sentChannel: CodeSentChannel = null;
       let sendError: string | null = null;
       
-      // Usar telefone normalizado retornado pelo backend
       const normalizedPhone = result.normalized_phone || params.phone;
+      console.log('[PWA Auth v6.0] Normalized phone:', normalizedPhone);
 
       if (result.verification_code) {
+        console.log('[PWA Auth v6.0] ===== SMS SEND BLOCK ENTERED =====');
+        console.log('[PWA Auth v6.0] verification_code EXISTS, proceeding to send SMS');
+        
         try {
-          console.log('[PWA Auth v5.0] ========================================');
-          console.log('[PWA Auth v5.0] Enviando SMS diretamente...');
-          console.log('[PWA Auth v5.0] Phone:', normalizedPhone.substring(0, 8) + '...');
-          console.log('[PWA Auth v5.0] Code:', result.verification_code);
-          
-          // Construir mensagem SMS
           const smsMessage = `KnowYOU: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+          console.log('[PWA Auth v6.0] SMS message length:', smsMessage.length);
+          console.log('[PWA Auth v6.0] SMS message preview:', smsMessage.substring(0, 30) + '...');
           
-          // CHAMADA DIRETA para send-sms (sem intermediário)
+          console.log('[PWA Auth v6.0] Calling supabase.functions.invoke("send-sms")...');
+          const smsStartTime = Date.now();
+          
           const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
             body: {
               phoneNumber: normalizedPhone,
@@ -276,46 +299,60 @@ export function usePWAAuth() {
             }
           });
 
-          console.log('[PWA Auth v5.0] send-sms response:', JSON.stringify(smsResult));
-          console.log('[PWA Auth v5.0] send-sms error:', smsError);
+          const smsElapsed = Date.now() - smsStartTime;
+          console.log('[PWA Auth v6.0] send-sms responded in', smsElapsed, 'ms');
+          console.log('[PWA Auth v6.0] send-sms data:', JSON.stringify(smsResult));
+          console.log('[PWA Auth v6.0] send-sms error:', smsError ? JSON.stringify(smsError) : 'null');
 
           if (smsError) {
-            console.error('[PWA Auth v5.0] Erro de invocação:', smsError.message);
-            sendError = `Erro: ${smsError.message}`;
+            console.error('[PWA Auth v6.0] SMS INVOCATION ERROR:', smsError);
+            sendError = `Erro: ${smsError.message || JSON.stringify(smsError)}`;
           } else if (!smsResult) {
-            console.error('[PWA Auth v5.0] Resposta vazia');
+            console.error('[PWA Auth v6.0] SMS EMPTY RESPONSE');
             sendError = 'Resposta vazia do servidor';
           } else if (!smsResult.success) {
-            console.error('[PWA Auth v5.0] SMS falhou:', smsResult.error);
+            console.error('[PWA Auth v6.0] SMS FAILED:', smsResult.error);
             sendError = smsResult.error || 'Falha ao enviar SMS';
           } else {
             sentChannel = 'sms';
-            console.log('[PWA Auth v5.0] ✅ SMS enviado via:', smsResult.provider);
+            console.log('[PWA Auth v6.0] ✅ SMS SENT SUCCESSFULLY via:', smsResult.provider);
+            console.log('[PWA Auth v6.0] SMS messageId:', smsResult.messageId);
           }
-          console.log('[PWA Auth v5.0] ========================================');
+          console.log('[PWA Auth v6.0] ===== SMS SEND BLOCK COMPLETE =====');
         } catch (err: any) {
-          console.error('[PWA Auth v5.0] Exception:', err);
+          console.error('[PWA Auth v6.0] SMS EXCEPTION:', err);
+          console.error('[PWA Auth v6.0] SMS EXCEPTION stack:', err.stack);
           sendError = `Erro inesperado: ${err.message}`;
         }
+      } else {
+        console.log('[PWA Auth v6.0] NO verification_code - SMS block SKIPPED');
       }
 
-      // Atualizar estado final - usar telefone normalizado
+      // Atualizar estado final
+      console.log('[PWA Auth v6.0] Setting final state: needs_verification');
+      console.log('[PWA Auth v6.0] sentChannel:', sentChannel);
+      console.log('[PWA Auth v6.0] sendError:', sendError);
+      
       setState(prev => ({
         ...prev,
         status: 'needs_verification',
-        userPhone: normalizedPhone, // Usar telefone normalizado
+        userPhone: normalizedPhone,
         verificationCode: result.verification_code || null,
         codeSentVia: sentChannel,
         codeSentError: sendError,
       }));
 
+      console.log('[PWA Auth v6.0] ===== LOGIN END SUCCESS =====');
       return { success: true };
 
-    } catch (err) {
-      console.error('[PWA Auth v4.0] Login unexpected error:', err);
+    } catch (err: any) {
+      console.error('[PWA Auth v6.0] LOGIN UNEXPECTED ERROR:', err);
+      console.error('[PWA Auth v6.0] LOGIN ERROR stack:', err.stack);
       return { success: false, error: 'Erro inesperado. Tente novamente.' };
     } finally {
       setIsSubmitting(false);
+      console.log('[PWA Auth v6.0] setIsSubmitting(false)');
+      console.log('[PWA Auth v6.0] ========================================');
     }
   }, [isSubmitting, checkAccess]);
 
