@@ -211,6 +211,12 @@ verify_jwt = true
 verify_jwt = false
 
 # ============================================
+# PWA NOTIFICATION - Internal (called by other functions)
+# ============================================
+[functions.send-pwa-notification]
+verify_jwt = false
+
+# ============================================
 # TWILIO CONTENT INSPECTOR - Diagnóstico de templates
 # ============================================
 [functions.twilio-content-inspector]
