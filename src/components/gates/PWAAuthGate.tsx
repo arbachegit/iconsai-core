@@ -4,8 +4,8 @@
 // Telefone como identificador (sem fingerprint)
 // =============================================
 
-import { ReactNode, useState, useEffect } from "react";
-import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
+import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2, Clock, Timer } from "lucide-react";
 import { usePWAAuth, CodeSentChannel } from "@/hooks/usePWAAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,7 +161,11 @@ function SendingCodeScreen({ phone }: { phone: string }) {
   );
 }
 
-// Tela de Verificação de Código
+// Constantes de tempo
+const CODE_EXPIRATION_SECONDS = 600; // 10 minutos
+const RESEND_COOLDOWN_SECONDS = 30; // 30 segundos para reenviar
+
+// Tela de Verificação de Código com Cronômetro
 function VerifyScreen({
   phone,
   codeSentVia,
@@ -183,9 +187,63 @@ function VerifyScreen({
 }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  
+  // Cronômetro de expiração
+  const [timeLeft, setTimeLeft] = useState(CODE_EXPIRATION_SECONDS);
+  const [isExpired, setIsExpired] = useState(false);
+  
+  // Cooldown para reenvio
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Timer de expiração do código
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setIsExpired(true);
+      return;
+    }
+    
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  // Timer de cooldown para reenvio
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    
+    const timer = setInterval(() => {
+      setResendCooldown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Formatar tempo (mm:ss)
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }, []);
+
+  // Cor do cronômetro baseada no tempo restante
+  const getTimerColor = useCallback(() => {
+    if (timeLeft <= 0) return 'text-destructive';
+    if (timeLeft <= 60) return 'text-red-500'; // Menos de 1 minuto
+    if (timeLeft <= 120) return 'text-yellow-500'; // 1-2 minutos
+    return 'text-green-500'; // Mais de 2 minutos
+  }, [timeLeft]);
+
+  const getTimerBgColor = useCallback(() => {
+    if (timeLeft <= 0) return 'bg-destructive/10 border-destructive/30';
+    if (timeLeft <= 60) return 'bg-red-500/10 border-red-500/30';
+    if (timeLeft <= 120) return 'bg-yellow-500/10 border-yellow-500/30';
+    return 'bg-green-500/10 border-green-500/30';
+  }, [timeLeft]);
 
   const handleVerify = async () => {
-    if (code.length === 6) {
+    if (code.length === 6 && !isExpired) {
       setError(null);
       const result = await onVerify({ code });
       if (!result.success && result.error) {
@@ -195,9 +253,17 @@ function VerifyScreen({
   };
 
   const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    
     setError(null);
     const result = await onResendCode();
     if (result.success && result.channel) {
+      // Resetar cronômetro e iniciar cooldown
+      setTimeLeft(CODE_EXPIRATION_SECONDS);
+      setIsExpired(false);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setCode("");
+      
       toast({
         title: "Código reenviado!",
         description: `Enviamos um novo código via ${result.channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`,
@@ -210,6 +276,11 @@ function VerifyScreen({
       });
     }
   };
+
+  // Mascarar número de telefone para exibição
+  const maskedPhone = phone.length > 4 
+    ? `***${phone.slice(-4)}` 
+    : phone;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col items-center justify-center p-4">
@@ -227,10 +298,38 @@ function VerifyScreen({
             <KeyRound className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Verificar Telefone</h1>
-          <p className="text-muted-foreground text-sm">
-            Digite o código enviado para {phone}
+          
+          {/* Instrução clara sobre SMS */}
+          <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm mb-2">
+            <MessageSquare className="h-4 w-4 text-blue-500" />
+            <span>Enviamos um código de <strong>6 dígitos</strong> via SMS</span>
+          </div>
+          <p className="text-foreground font-medium text-sm">
+            para o número terminado em {maskedPhone}
           </p>
         </div>
+
+        {/* Cronômetro de expiração */}
+        <div className={`flex items-center justify-center gap-2 p-3 rounded-lg border mb-4 ${getTimerBgColor()}`}>
+          {isExpired ? (
+            <>
+              <Timer className="h-5 w-5 text-destructive" />
+              <span className="text-destructive font-medium">Código expirado</span>
+            </>
+          ) : (
+            <>
+              <Clock className={`h-5 w-5 ${getTimerColor()}`} />
+              <span className={`font-medium ${getTimerColor()}`}>
+                Tempo restante: {formatTime(timeLeft)}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Regra de expiração */}
+        <p className="text-xs text-muted-foreground text-center mb-4">
+          O código expira em <strong>10 minutos</strong> após o envio
+        </p>
 
         {/* Feedback de envio de código */}
         <CodeSentFeedback channel={codeSentVia} error={codeSentError} />
@@ -242,12 +341,24 @@ function VerifyScreen({
           </div>
         )}
 
+        {/* Aviso quando expirado */}
+        {isExpired && (
+          <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <div className="flex items-center gap-2 text-yellow-500">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <p className="text-sm font-medium">
+                Seu código expirou. Clique em "Reenviar código" para receber um novo.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-center mb-6">
           <InputOTP
             maxLength={6}
             value={code}
             onChange={setCode}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isExpired}
           >
             <InputOTPGroup>
               <InputOTPSlot index={0} />
@@ -262,7 +373,7 @@ function VerifyScreen({
 
         <Button
           onClick={handleVerify}
-          disabled={isSubmitting || code.length !== 6}
+          disabled={isSubmitting || code.length !== 6 || isExpired}
           className="w-full mb-4"
         >
           {isSubmitting ? (
@@ -270,25 +381,46 @@ function VerifyScreen({
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
               Verificando...
             </>
+          ) : isExpired ? (
+            "Código expirado"
           ) : (
             "Verificar"
           )}
         </Button>
 
-        <button
-          onClick={handleResend}
-          disabled={isSubmitting || resendingCode}
-          className="w-full text-sm text-primary hover:underline disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {resendingCode ? (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Reenviando...
-            </>
+        {/* Botão de reenvio com cooldown */}
+        <div className="text-center">
+          {resendCooldown > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Aguarde <span className="font-medium text-foreground">{resendCooldown}s</span> para reenviar
+            </p>
           ) : (
-            "Reenviar código"
+            <button
+              onClick={handleResend}
+              disabled={isSubmitting || resendingCode}
+              className={`text-sm hover:underline disabled:opacity-50 flex items-center justify-center gap-2 mx-auto ${
+                isExpired ? 'text-yellow-500 font-medium' : 'text-primary'
+              }`}
+            >
+              {resendingCode ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Reenviando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3 w-3" />
+                  {isExpired ? 'Reenviar código agora' : 'Não recebeu? Reenviar código'}
+                </>
+              )}
+            </button>
           )}
-        </button>
+        </div>
+
+        {/* Regra de reenvio */}
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          Não recebeu? Aguarde <strong>30 segundos</strong> entre cada reenvio
+        </p>
       </div>
     </div>
   );
