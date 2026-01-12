@@ -1,9 +1,9 @@
 // ============================================
-// VERSAO: 3.6.0 | DEPLOY: 2026-01-12
-// FIX: URL shortener + mensagens personalizadas
+// VERSAO: 3.7.0 | DEPLOY: 2026-01-12
+// FIX: URL shortener IS.GD + mensagens personalizadas
 // ============================================
 
-const FUNCTION_VERSION = "3.6.0";
+const FUNCTION_VERSION = "3.7.0";
 const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -29,36 +29,42 @@ interface SendResult {
 }
 
 // ===========================================
-// URL SHORTENER - TinyURL API (gratuita)
+// URL SHORTENER - IS.GD API (gratuita, confiável)
+// Endpoint: https://is.gd/create.php?format=simple&url=URL
+// Retorna: URL curta em texto puro
 // ===========================================
 async function shortenUrl(longUrl: string): Promise<string> {
   try {
-    console.log(`[URL-SHORTENER] Encurtando: ${longUrl.slice(0, 50)}...`);
+    console.log(`[URL-SHORTENER] Encurtando via is.gd: ${longUrl.slice(0, 50)}...`);
 
-    const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`, {
+    const apiUrl = `https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`;
+
+    const response = await fetch(apiUrl, {
       method: "GET",
+      headers: { Accept: "text/plain" },
     });
 
     if (response.ok) {
       const shortUrl = await response.text();
-      console.log(`[URL-SHORTENER] Resultado: ${shortUrl}`);
-      return shortUrl.trim();
+      // Verificar se retornou uma URL válida (começa com https://is.gd/)
+      if (shortUrl.startsWith("https://is.gd/")) {
+        console.log(`[URL-SHORTENER] ✅ Sucesso: ${shortUrl}`);
+        return shortUrl.trim();
+      } else {
+        console.warn(`[URL-SHORTENER] ⚠️ Resposta inválida: ${shortUrl.slice(0, 100)}`);
+      }
+    } else {
+      console.warn(`[URL-SHORTENER] ⚠️ HTTP ${response.status}`);
     }
-
-    console.warn(`[URL-SHORTENER] HTTP ${response.status}`);
   } catch (e) {
-    console.warn(`[URL-SHORTENER] Erro: ${e}`);
+    console.warn(`[URL-SHORTENER] ❌ Erro: ${e}`);
   }
 
   return longUrl;
 }
 
-// ===========================================
-// EXTRAIR PRIMEIRO NOME
-// ===========================================
 function getFirstName(fullName: string): string {
-  if (!fullName) return "Voce";
-  return fullName.split(" ")[0] || "Voce";
+  return (fullName || "Voce").split(" ")[0] || "Voce";
 }
 
 serve(async (req) => {
@@ -66,7 +72,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log(`=== CREATE-INVITATION v${FUNCTION_VERSION} START ===`);
+  console.log(`\n${"=".repeat(50)}`);
+  console.log(`[CREATE-INVITATION v${FUNCTION_VERSION}] ${new Date().toISOString()}`);
+  console.log(`${"=".repeat(50)}`);
+
   const results: SendResult[] = [];
 
   try {
@@ -93,6 +102,8 @@ serve(async (req) => {
     }
 
     const { name, email, phone, role, sendViaEmail, sendViaWhatsapp, hasPlatformAccess, hasAppAccess } = body;
+
+    console.log(`[REQUEST] Nome: ${name} | Email: ${email} | Phone: ${phone ? "***" + phone.slice(-4) : "N/A"}`);
 
     // Validações
     if (!name || !email) {
@@ -130,6 +141,7 @@ serve(async (req) => {
       }
       finalSendViaWhatsapp = true;
       finalSendViaEmail = false;
+      console.log("[CONFIG] PWA-only: Forçando SMS, desabilitando Email");
     }
 
     // Verificar duplicados
@@ -182,20 +194,22 @@ serve(async (req) => {
       .single();
 
     if (insertError) {
+      console.error("[DB] Erro ao inserir:", insertError);
       return new Response(JSON.stringify({ error: "Erro ao criar convite: " + insertError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("✅ Convite criado:", invitation.id);
+    console.log(`✅ Convite criado: ${invitation.id}`);
 
     // URLs
     const platformUrl = `${SITE_URL}/invite/${token}`;
     const appUrlLong = `${SITE_URL}/pwa-register/${token}`;
 
-    // ENCURTAR URL DO APP
+    // ENCURTAR URL DO APP VIA IS.GD
     const appUrlShort = await shortenUrl(appUrlLong);
+    console.log(`📲 URL original: ${appUrlLong}`);
     console.log(`📲 URL encurtada: ${appUrlShort}`);
 
     const inviteUrl = hasAppAccess && !hasPlatformAccess ? appUrlLong : platformUrl;
@@ -232,15 +246,26 @@ serve(async (req) => {
           });
 
           results.push({ channel: "email", product: "platform", success: !emailError, error: emailError?.message });
+          console.log(`📧 Email: ${emailError ? "❌ " + emailError.message : "✅ Enviado"}`);
         } catch (e: any) {
           results.push({ channel: "email", product: "platform", success: false, error: e.message });
         }
+      } else {
+        console.warn("⚠️ RESEND_API_KEY não configurada");
+        results.push({
+          channel: "email",
+          product: "platform",
+          success: false,
+          error: "RESEND_API_KEY não configurada",
+        });
       }
     }
 
     // SMS para APP
     if (hasAppAccess && phone) {
       try {
+        console.log(`📱 Enviando SMS para ${firstName}: ${appUrlShort}`);
+
         const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
           body: {
             to: phone,
@@ -248,7 +273,7 @@ serve(async (req) => {
             variables: {
               "1": firstName,
               "2": "Equipe KnowYOU",
-              "3": appUrlShort, // URL ENCURTADA
+              "3": appUrlShort, // URL JÁ ENCURTADA
             },
             channel: "sms",
           },
@@ -261,6 +286,7 @@ serve(async (req) => {
           success,
           error: notifError?.message || notifResult?.error,
         });
+        console.log(`📱 SMS: ${success ? "✅ Enviado" : "❌ " + (notifError?.message || notifResult?.error)}`);
       } catch (e: any) {
         results.push({ channel: "sms", product: "app", success: false, error: e.message });
       }
@@ -272,6 +298,7 @@ serve(async (req) => {
         const smsMsg = `KnowYOU: Ola ${firstName}! Enviamos email com convite. Acesse pelo computador.`;
         await supabase.functions.invoke("send-sms", { body: { phoneNumber: phone, message: smsMsg } });
         results.push({ channel: "sms", product: "platform_info", success: true });
+        console.log("📱 SMS info plataforma: ✅ Enviado");
       } catch (e: any) {
         results.push({ channel: "sms", product: "platform_info", success: false, error: e.message });
       }
@@ -287,7 +314,9 @@ serve(async (req) => {
       metadata: { token, results, shortUrl: appUrlShort, version: FUNCTION_VERSION },
     });
 
-    console.log(`=== CREATE-INVITATION v${FUNCTION_VERSION} END ===`);
+    const successCount = results.filter((r) => r.success).length;
+    console.log(`\n📊 Resultados: ${successCount}/${results.length} sucesso`);
+    console.log(`${"=".repeat(50)}\n`);
 
     return new Response(
       JSON.stringify({
@@ -295,12 +324,13 @@ serve(async (req) => {
         inviteUrl,
         invitation: { id: invitation.id, token, expiresAt: expiresAt.toISOString() },
         sendResults: results,
+        shortUrl: appUrlShort,
         version: FUNCTION_VERSION,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
-    console.error("FATAL ERROR:", error);
+    console.error("❌ FATAL ERROR:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
