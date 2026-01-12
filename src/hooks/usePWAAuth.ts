@@ -1,8 +1,9 @@
-// ============================================
-// PWA Auth Hook v2.0
+// =============================================
+// PWA Auth Hook v3.0 - NUCLEAR FIX
+// Build: 2026-01-12T12:00:00Z
 // Login por telefone com verificação de convite
 // Expiração de 90 dias
-// ============================================
+// =============================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,18 +70,24 @@ export function usePWAAuth() {
       
       const fingerprint = getDeviceFingerprint();
       
+      console.log('[PWA Auth v3.0] ========================================');
+      console.log('[PWA Auth v3.0] Checking access for device:', fingerprint);
+      console.log('[PWA Auth v3.0] User-Agent:', navigator.userAgent.substring(0, 80));
+      
       const { data, error } = await supabase.rpc('check_pwa_access', {
         p_device_id: fingerprint,
         p_agent_slug: null,
       });
 
+      console.log('[PWA Auth v3.0] RPC Response:', { data, error });
+
       if (error) {
-        console.error('[PWA Auth v2] Error checking access:', error);
+        console.error('[PWA Auth v3.0] RPC Error:', error);
         setState(prev => ({
           ...prev,
           fingerprint,
           status: 'error',
-          errorMessage: 'Erro ao verificar acesso. Tente novamente.',
+          errorMessage: `Erro ao verificar acesso: ${error.message}`,
         }));
         return;
       }
@@ -97,10 +104,21 @@ export function usePWAAuth() {
         needs_verification?: boolean;
         needs_login?: boolean;
         user_phone?: string;
+        expires_at?: string;
       };
 
-      // Dispositivo bloqueado
-      if (result.is_blocked) {
+      console.log('[PWA Auth v3.0] Parsed result:', {
+        has_access: result.has_access,
+        is_blocked: result.is_blocked,
+        needs_verification: result.needs_verification,
+        needs_login: result.needs_login,
+        reason: result.reason,
+        user_name: result.user_name,
+      });
+
+      // Verificar cada condição explicitamente
+      if (result.is_blocked === true) {
+        console.log('[PWA Auth v3.0] Status: BLOCKED ⛔');
         setState(prev => ({
           ...prev,
           fingerprint,
@@ -110,20 +128,21 @@ export function usePWAAuth() {
         return;
       }
 
-      // Tem acesso (verificado e válido)
-      if (result.has_access) {
+      if (result.has_access === true) {
+        console.log('[PWA Auth v3.0] Status: VERIFIED ✅');
         setState(prev => ({
           ...prev,
           fingerprint,
           status: 'verified',
           userName: result.user_name || null,
+          userPhone: result.user_phone || null,
           pwaAccess: result.pwa_access || [],
         }));
         return;
       }
 
-      // Precisa verificação (já registrado mas código pendente)
-      if (result.needs_verification) {
+      if (result.needs_verification === true) {
+        console.log('[PWA Auth v3.0] Status: NEEDS_VERIFICATION 🔐');
         setState(prev => ({
           ...prev,
           fingerprint,
@@ -133,18 +152,19 @@ export function usePWAAuth() {
         return;
       }
 
-      // Precisa fazer login (novo dispositivo ou expirado)
-      if (result.needs_login) {
+      if (result.needs_login === true) {
+        console.log('[PWA Auth v3.0] Status: NEEDS_LOGIN 📱', { reason: result.reason });
         setState(prev => ({
           ...prev,
           fingerprint,
           status: 'needs_login',
-          userPhone: result.user_phone || null, // Pode ter telefone se expirou
+          userPhone: result.user_phone || null,
         }));
         return;
       }
 
       // Fallback: precisa login
+      console.log('[PWA Auth v3.0] Status: FALLBACK to needs_login');
       setState(prev => ({
         ...prev,
         fingerprint,
@@ -152,7 +172,7 @@ export function usePWAAuth() {
       }));
 
     } catch (err) {
-      console.error('[PWA Auth v2] Unexpected error:', err);
+      console.error('[PWA Auth v3.0] Unexpected error:', err);
       setState(prev => ({
         ...prev,
         status: 'error',
