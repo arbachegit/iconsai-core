@@ -1,9 +1,9 @@
 // ============================================
-// VERSAO: 3.1.0 | DEPLOY: 2026-01-12
+// VERSAO: 3.2.0 | DEPLOY: 2026-01-12
 // FIX: Mensagem de código com nome do usuário
 // ============================================
 
-const FUNCTION_VERSION = "3.1.0";
+const FUNCTION_VERSION = "3.2.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -23,12 +23,8 @@ interface SendVerificationRequest {
   verificationMethod: "email" | "sms" | "whatsapp";
 }
 
-// ===========================================
-// EXTRAIR PRIMEIRO NOME
-// ===========================================
 function getFirstName(fullName: string): string {
-  if (!fullName) return "Voce";
-  return fullName.split(" ")[0] || "Voce";
+  return (fullName || "Voce").split(" ")[0] || "Voce";
 }
 
 serve(async (req) => {
@@ -36,7 +32,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log(`=== SEND-INVITATION-VERIFICATION v${FUNCTION_VERSION} START ===`);
+  console.log(`\n${"=".repeat(50)}`);
+  console.log(`[SEND-INVITATION-VERIFICATION v${FUNCTION_VERSION}] ${new Date().toISOString()}`);
+  console.log(`${"=".repeat(50)}`);
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -75,6 +73,8 @@ serve(async (req) => {
       verificationMethod,
     } = body;
 
+    console.log(`[REQUEST] Token: ${token?.slice(0, 8)}... | Método: ${verificationMethod}`);
+
     // Validações
     if (!token) {
       return new Response(
@@ -103,6 +103,8 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    console.log(`[CONVITE] Nome: ${invitation.name} | Email: ${invitation.email}`);
 
     if (invitation.status === "completed") {
       return new Response(
@@ -172,14 +174,16 @@ serve(async (req) => {
       .eq("token", token);
 
     if (updateError) {
+      console.error("[DB] Erro ao atualizar:", updateError);
       return new Response(JSON.stringify({ error: "Erro ao salvar dados: " + updateError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Extrair primeiro nome para mensagem personalizada
+    // EXTRAIR PRIMEIRO NOME PARA MENSAGEM PERSONALIZADA
     const firstName = getFirstName(invitation.name);
+    console.log(`[NOME] Primeiro nome: ${firstName}`);
 
     let sendResult = { success: false, error: "", method: verificationMethod };
 
@@ -212,16 +216,18 @@ serve(async (req) => {
         });
 
         sendResult = { success: !emailError, error: emailError?.message || "", method: "email" };
+        console.log(`📧 Email: ${emailError ? "❌ " + emailError.message : "✅ Enviado"}`);
       } catch (e: any) {
         sendResult = { success: false, error: e.message, method: "email" };
       }
     } else if (verificationMethod === "sms" || verificationMethod === "whatsapp") {
-      // SMS/WhatsApp - MENSAGEM COM NOME
-      console.log(`📱 Enviando código por ${verificationMethod.toUpperCase()} para ${firstName}`);
+      // SMS/WhatsApp - MENSAGEM COM NOME PERSONALIZADO
+      console.log(`📱 Enviando código por SMS para ${firstName}`);
 
       try {
-        // Mensagem personalizada com nome
+        // ✨ MENSAGEM PERSONALIZADA COM NOME ✨
         const smsMessage = `KnowYOU: Ola ${firstName}! Codigo: ${verificationCode}. Valido 2min.`;
+        console.log(`[SMS] Mensagem (${smsMessage.length} chars): ${smsMessage}`);
 
         const { data: smsData, error: smsError } = await supabase.functions.invoke("send-sms", {
           body: {
@@ -233,9 +239,10 @@ serve(async (req) => {
 
         if (smsError || smsData?.error) {
           sendResult = { success: false, error: smsError?.message || smsData?.error, method: "sms" };
+          console.log(`📱 SMS: ❌ ${smsError?.message || smsData?.error}`);
         } else {
           sendResult = { success: true, error: "", method: "sms" };
-          console.log("✅ Código enviado via SMS");
+          console.log("📱 SMS: ✅ Enviado");
         }
       } catch (e: any) {
         sendResult = { success: false, error: e.message, method: "sms" };
@@ -263,13 +270,14 @@ serve(async (req) => {
       recipient: verificationMethod === "email" ? invitation.email : phone,
       subject: "Código de verificação enviado",
       status: "success",
-      metadata: { token: token.slice(0, 8), verificationMethod, version: FUNCTION_VERSION },
+      metadata: { token: token.slice(0, 8), verificationMethod, firstName, version: FUNCTION_VERSION },
     });
 
     const maskedDestination =
       verificationMethod === "email" ? `***@${invitation.email.split("@")[1]}` : `****${phone.slice(-4)}`;
 
-    console.log(`=== SEND-INVITATION-VERIFICATION v${FUNCTION_VERSION} SUCCESS ===`);
+    console.log(`\n✅ SUCESSO - Código enviado para ${maskedDestination}`);
+    console.log(`${"=".repeat(50)}\n`);
 
     return new Response(
       JSON.stringify({
@@ -282,7 +290,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
-    console.error("FATAL ERROR:", error);
+    console.error("❌ FATAL ERROR:", error);
     return new Response(JSON.stringify({ error: error.message || "Erro interno" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
