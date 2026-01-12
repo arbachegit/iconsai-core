@@ -1,19 +1,21 @@
 // =============================================
-// PWA Auth Hook v3.0 - NUCLEAR FIX
-// Build: 2026-01-12T12:00:00Z
-// Login por telefone com verificação de convite
-// Expiração de 90 dias
+// PWA Auth Hook v4.0 - SIMPLIFICAÇÃO RADICAL
+// Build: 2026-01-12T15:00:00Z
+// Telefone como identificador principal
+// Sem fingerprint instável
+// Armazenamento: localStorage
 // =============================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getDeviceFingerprint, getDeviceInfo } from '@/lib/device-fingerprint';
+
+const STORAGE_KEY = 'pwa-verified-phone';
 
 export type PWAAuthStatus = 
   | 'loading'
   | 'verified' 
   | 'blocked' 
-  | 'needs_login'           // Novo - dispositivo não encontrado ou expirado
+  | 'needs_login'
   | 'needs_verification'
   | 'sending_code'
   | 'error';
@@ -22,7 +24,6 @@ export type CodeSentChannel = 'whatsapp' | 'sms' | null;
 
 interface PWAAuthState {
   status: PWAAuthStatus;
-  fingerprint: string;
   userName: string | null;
   userPhone: string | null;
   userEmail: string | null;
@@ -43,10 +44,13 @@ interface VerifyParams {
   code: string;
 }
 
+/**
+ * Hook simplificado para autenticação PWA
+ * Usa telefone verificado no localStorage como sessão
+ */
 export function usePWAAuth() {
   const [state, setState] = useState<PWAAuthState>({
     status: 'loading',
-    fingerprint: '',
     userName: null,
     userPhone: null,
     userEmail: null,
@@ -62,32 +66,44 @@ export function usePWAAuth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
-   * Verificar status de acesso do dispositivo
+   * Verificar status de acesso usando telefone do localStorage
    */
   const checkAccess = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, status: 'loading', errorMessage: null }));
       
-      const fingerprint = getDeviceFingerprint();
+      // Buscar telefone verificado do localStorage
+      const verifiedPhone = localStorage.getItem(STORAGE_KEY);
       
-      console.log('[PWA Auth v3.0] ========================================');
-      console.log('[PWA Auth v3.0] Checking access for device:', fingerprint);
-      console.log('[PWA Auth v3.0] User-Agent:', navigator.userAgent.substring(0, 80));
-      
-      const { data, error } = await supabase.rpc('check_pwa_access', {
-        p_device_id: fingerprint,
-        p_agent_slug: null,
-      });
+      console.log('[PWA Auth v4.0] ========================================');
+      console.log('[PWA Auth v4.0] Checking access...');
+      console.log('[PWA Auth v4.0] Verified phone in storage:', verifiedPhone ? verifiedPhone.substring(0, 8) + '...' : 'none');
 
-      console.log('[PWA Auth v3.0] RPC Response:', { data, error });
-
-      if (error) {
-        console.error('[PWA Auth v3.0] RPC Error:', error);
+      // Se não tem telefone salvo, precisa fazer login
+      if (!verifiedPhone) {
+        console.log('[PWA Auth v4.0] No verified phone -> needs_login');
         setState(prev => ({
           ...prev,
-          fingerprint,
-          status: 'error',
-          errorMessage: `Erro ao verificar acesso: ${error.message}`,
+          status: 'needs_login',
+        }));
+        return;
+      }
+
+      // Verificar acesso via RPC
+      const { data, error } = await supabase.rpc('check_pwa_access_by_phone', {
+        p_phone: verifiedPhone,
+      });
+
+      console.log('[PWA Auth v4.0] RPC Response:', { data, error });
+
+      if (error) {
+        console.error('[PWA Auth v4.0] RPC Error:', error);
+        // Em caso de erro, limpar storage e pedir login
+        localStorage.removeItem(STORAGE_KEY);
+        setState(prev => ({
+          ...prev,
+          status: 'needs_login',
+          errorMessage: 'Erro ao verificar acesso. Faça login novamente.',
         }));
         return;
       }
@@ -96,83 +112,69 @@ export function usePWAAuth() {
         has_access: boolean;
         reason?: string;
         message?: string;
-        user_id?: string;
         user_name?: string;
+        user_phone?: string;
         pwa_access?: string[];
         is_blocked?: boolean;
         block_reason?: string;
         needs_verification?: boolean;
         needs_login?: boolean;
-        user_phone?: string;
         expires_at?: string;
       };
 
-      console.log('[PWA Auth v3.0] Parsed result:', {
+      console.log('[PWA Auth v4.0] Result:', {
         has_access: result.has_access,
         is_blocked: result.is_blocked,
-        needs_verification: result.needs_verification,
         needs_login: result.needs_login,
         reason: result.reason,
-        user_name: result.user_name,
       });
 
-      // Verificar cada condição explicitamente
+      // Verificar cada condição
       if (result.is_blocked === true) {
-        console.log('[PWA Auth v3.0] Status: BLOCKED ⛔');
+        console.log('[PWA Auth v4.0] Status: BLOCKED ⛔');
+        localStorage.removeItem(STORAGE_KEY);
         setState(prev => ({
           ...prev,
-          fingerprint,
           status: 'blocked',
-          blockReason: result.block_reason || 'Dispositivo bloqueado',
+          blockReason: result.block_reason || 'Acesso bloqueado',
         }));
         return;
       }
 
       if (result.has_access === true) {
-        console.log('[PWA Auth v3.0] Status: VERIFIED ✅');
+        console.log('[PWA Auth v4.0] Status: VERIFIED ✅');
         setState(prev => ({
           ...prev,
-          fingerprint,
           status: 'verified',
           userName: result.user_name || null,
-          userPhone: result.user_phone || null,
+          userPhone: verifiedPhone,
           pwaAccess: result.pwa_access || [],
         }));
         return;
       }
 
-      if (result.needs_verification === true) {
-        console.log('[PWA Auth v3.0] Status: NEEDS_VERIFICATION 🔐');
+      // Acesso expirado ou precisa login
+      if (result.needs_login === true || result.reason === 'expired') {
+        console.log('[PWA Auth v4.0] Status: NEEDS_LOGIN (expired or not found)');
+        localStorage.removeItem(STORAGE_KEY);
         setState(prev => ({
           ...prev,
-          fingerprint,
-          status: 'needs_verification',
-          userPhone: result.user_phone || null,
-        }));
-        return;
-      }
-
-      if (result.needs_login === true) {
-        console.log('[PWA Auth v3.0] Status: NEEDS_LOGIN 📱', { reason: result.reason });
-        setState(prev => ({
-          ...prev,
-          fingerprint,
           status: 'needs_login',
-          userPhone: result.user_phone || null,
+          userPhone: verifiedPhone, // Manter para preencher campo
         }));
         return;
       }
 
       // Fallback: precisa login
-      console.log('[PWA Auth v3.0] Status: FALLBACK to needs_login');
+      console.log('[PWA Auth v4.0] Status: FALLBACK -> needs_login');
+      localStorage.removeItem(STORAGE_KEY);
       setState(prev => ({
         ...prev,
-        fingerprint,
         status: 'needs_login',
       }));
 
     } catch (err) {
-      console.error('[PWA Auth v3.0] Unexpected error:', err);
+      console.error('[PWA Auth v4.0] Unexpected error:', err);
       setState(prev => ({
         ...prev,
         status: 'error',
@@ -182,8 +184,7 @@ export function usePWAAuth() {
   }, []);
 
   /**
-   * Login por telefone (substitui register)
-   * Verifica se o usuário tem convite antes de permitir
+   * Login por telefone (simplificado, sem fingerprint)
    */
   const login = useCallback(async (params: LoginParams): Promise<{ success: boolean; error?: string }> => {
     if (isSubmitting) return { success: false, error: 'Operação em andamento' };
@@ -191,29 +192,14 @@ export function usePWAAuth() {
     setIsSubmitting(true);
     
     try {
-      const deviceInfo = getDeviceInfo();
+      console.log('[PWA Auth v4.0] Login with phone:', params.phone.substring(0, 8) + '...');
       
-      const { data, error } = await supabase.rpc('login_pwa_by_phone', {
+      const { data, error } = await supabase.rpc('login_pwa_by_phone_simple', {
         p_phone: params.phone,
-        p_fingerprint: deviceInfo.fingerprint,
-        p_device_info: {
-          os_name: deviceInfo.osName,
-          os_version: deviceInfo.osVersion,
-          browser_name: deviceInfo.browserName,
-          browser_version: deviceInfo.browserVersion,
-          device_vendor: deviceInfo.deviceVendor,
-          device_model: deviceInfo.deviceModel,
-          screen_width: deviceInfo.screenWidth,
-          screen_height: deviceInfo.screenHeight,
-          pixel_ratio: deviceInfo.pixelRatio,
-          has_touch: deviceInfo.hasTouch,
-          has_microphone: deviceInfo.hasMicrophone,
-          user_agent: deviceInfo.userAgent,
-        },
       });
 
       if (error) {
-        console.error('[PWA Auth v2] Login error:', error);
+        console.error('[PWA Auth v4.0] Login error:', error);
         return { success: false, error: error.message };
       }
 
@@ -224,20 +210,27 @@ export function usePWAAuth() {
         user_name?: string;
         error?: string;
         already_verified?: boolean;
+        expires_at?: string;
       };
 
-      // Já verificado - recarregar status
+      console.log('[PWA Auth v4.0] Login result:', { 
+        success: result.success, 
+        already_verified: result.already_verified,
+        error: result.error 
+      });
+
+      // Já verificado - salvar e recarregar
       if (result.already_verified) {
+        localStorage.setItem(STORAGE_KEY, params.phone);
         await checkAccess();
         return { success: true };
       }
 
       if (!result.success) {
-        // Erro específico de convite
         if (result.error === 'no_invitation') {
           return { 
             success: false, 
-            error: result.message || 'Não encontramos um convite para este telefone. Você precisa de um convite para acessar o KnowYOU.' 
+            error: result.message || 'Não encontramos um convite para este telefone.' 
           };
         }
         return { success: false, error: result.error || 'Erro ao fazer login' };
@@ -259,28 +252,28 @@ export function usePWAAuth() {
 
       if (result.verification_code) {
         try {
-          console.log('[PWA Auth v2] Sending verification code via SMS...');
+          console.log('[PWA Auth v4.0] Sending verification code via SMS...');
           const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-notification', {
             body: {
               to: params.phone,
               template: "otp",
               variables: { "1": result.verification_code },
-              channel: "sms", // v5.3.0 força SMS
+              channel: "sms",
               userId: null,
             }
           });
           
           if (funcError) {
-            console.warn('[PWA Auth v2] Failed to send code:', funcError);
+            console.warn('[PWA Auth v4.0] Failed to send code:', funcError);
             sendError = 'Não foi possível enviar o código. Tente reenviar.';
           } else if (sendResult?.success) {
             sentChannel = sendResult?.channel === 'sms' ? 'sms' : 'whatsapp';
-            console.log('[PWA Auth v2] Code sent via:', sentChannel);
+            console.log('[PWA Auth v4.0] Code sent via:', sentChannel);
           } else {
             sendError = sendResult?.error || 'Falha no envio do código.';
           }
         } catch (err) {
-          console.warn('[PWA Auth v2] Error sending code:', err);
+          console.warn('[PWA Auth v4.0] Error sending code:', err);
           sendError = 'Erro ao enviar código. Tente reenviar.';
         }
       }
@@ -297,7 +290,7 @@ export function usePWAAuth() {
       return { success: true };
 
     } catch (err) {
-      console.error('[PWA Auth v2] Login unexpected error:', err);
+      console.error('[PWA Auth v4.0] Login unexpected error:', err);
       return { success: false, error: 'Erro inesperado. Tente novamente.' };
     } finally {
       setIsSubmitting(false);
@@ -305,7 +298,7 @@ export function usePWAAuth() {
   }, [isSubmitting, checkAccess]);
 
   /**
-   * Verificar código SMS
+   * Verificar código SMS (simplificado, usa telefone)
    */
   const verify = useCallback(async (params: VerifyParams): Promise<{ success: boolean; error?: string }> => {
     if (isSubmitting) return { success: false, error: 'Operação em andamento' };
@@ -313,15 +306,21 @@ export function usePWAAuth() {
     setIsSubmitting(true);
     
     try {
-      const fingerprint = getDeviceFingerprint();
+      const phone = state.userPhone;
       
-      const { data, error } = await supabase.rpc('verify_pwa_device_code', {
-        p_fingerprint: fingerprint,
+      if (!phone) {
+        return { success: false, error: 'Telefone não encontrado. Faça login novamente.' };
+      }
+
+      console.log('[PWA Auth v4.0] Verifying code for phone:', phone.substring(0, 8) + '...');
+      
+      const { data, error } = await supabase.rpc('verify_pwa_code_simple', {
+        p_phone: phone,
         p_code: params.code,
       });
 
       if (error) {
-        console.error('[PWA Auth v2] Verify error:', error);
+        console.error('[PWA Auth v4.0] Verify error:', error);
         return { success: false, error: error.message };
       }
 
@@ -333,7 +332,14 @@ export function usePWAAuth() {
         expires_at?: string;
         error?: string;
         attempts_remaining?: number;
+        already_verified?: boolean;
       };
+
+      console.log('[PWA Auth v4.0] Verify result:', { 
+        success: result.success, 
+        error: result.error,
+        already_verified: result.already_verified 
+      });
 
       if (!result.success) {
         if (result.error === 'invalid_code') {
@@ -347,16 +353,20 @@ export function usePWAAuth() {
         }
         if (result.error === 'too_many_attempts') {
           setState(prev => ({ ...prev, status: 'blocked', blockReason: 'Excesso de tentativas' }));
-          return { success: false, error: 'Dispositivo bloqueado por excesso de tentativas.' };
+          return { success: false, error: 'Bloqueado por excesso de tentativas.' };
         }
         return { success: false, error: result.error || 'Código inválido' };
       }
+
+      // SUCESSO! Salvar telefone no localStorage
+      console.log('[PWA Auth v4.0] Verification SUCCESS! Saving phone to localStorage');
+      localStorage.setItem(STORAGE_KEY, phone);
 
       // Enviar mensagem de boas-vindas
       try {
         await supabase.functions.invoke('send-pwa-notification', {
           body: {
-            to: state.userPhone,
+            to: phone,
             template: "welcome",
             variables: { 
               "1": result.user_name || state.userName || "Usuário", 
@@ -366,9 +376,9 @@ export function usePWAAuth() {
             userId: null,
           }
         });
-        console.log('[PWA Auth v2] Welcome message sent');
+        console.log('[PWA Auth v4.0] Welcome message sent');
       } catch (welcomeErr) {
-        console.warn('[PWA Auth v2] Failed to send welcome message:', welcomeErr);
+        console.warn('[PWA Auth v4.0] Failed to send welcome message:', welcomeErr);
       }
 
       // Verificação bem sucedida
@@ -383,7 +393,7 @@ export function usePWAAuth() {
       return { success: true };
 
     } catch (err) {
-      console.error('[PWA Auth v2] Verify unexpected error:', err);
+      console.error('[PWA Auth v4.0] Verify unexpected error:', err);
       return { success: false, error: 'Erro inesperado. Tente novamente.' };
     } finally {
       setIsSubmitting(false);
@@ -399,18 +409,16 @@ export function usePWAAuth() {
     setState(prev => ({ ...prev, resendingCode: true, codeSentError: null }));
     
     try {
-      const deviceInfo = getDeviceInfo();
+      const phone = state.userPhone;
       
-      // Chamar login_pwa_by_phone para gerar novo código
-      const { data, error } = await supabase.rpc('login_pwa_by_phone', {
-        p_phone: state.userPhone || '',
-        p_fingerprint: deviceInfo.fingerprint,
-        p_device_info: {
-          os_name: deviceInfo.osName,
-          os_version: deviceInfo.osVersion,
-          browser_name: deviceInfo.browserName,
-          browser_version: deviceInfo.browserVersion,
-        },
+      if (!phone) {
+        setState(prev => ({ ...prev, resendingCode: false }));
+        return { success: false, error: 'Telefone não encontrado' };
+      }
+      
+      // Chamar login para gerar novo código
+      const { data, error } = await supabase.rpc('login_pwa_by_phone_simple', {
+        p_phone: phone,
       });
 
       if (error) {
@@ -434,10 +442,10 @@ export function usePWAAuth() {
       
       if (result.verification_code) {
         try {
-          console.log('[PWA Auth v2] Resending verification code via SMS...');
+          console.log('[PWA Auth v4.0] Resending verification code via SMS...');
           const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-notification', {
             body: {
-              to: state.userPhone,
+              to: phone,
               template: "resend_code",
               variables: { "1": result.verification_code },
               channel: "sms",
@@ -446,7 +454,7 @@ export function usePWAAuth() {
           });
           
           if (funcError) {
-            console.warn('[PWA Auth v2] Failed to resend code:', funcError);
+            console.warn('[PWA Auth v4.0] Failed to resend code:', funcError);
             setState(prev => ({ 
               ...prev, 
               resendingCode: false, 
@@ -458,7 +466,7 @@ export function usePWAAuth() {
             sentChannel = sendResult?.channel === 'sms' ? 'sms' : 'whatsapp';
           }
         } catch (err) {
-          console.warn('[PWA Auth v2] Error resending code:', err);
+          console.warn('[PWA Auth v4.0] Error resending code:', err);
         }
       }
 
@@ -493,7 +501,22 @@ export function usePWAAuth() {
   }, []);
 
   /**
-   * Atualizar para status de refresh
+   * Logout - limpar localStorage e voltar para login
+   */
+  const logout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setState(prev => ({
+      ...prev,
+      status: 'needs_login',
+      userName: null,
+      userPhone: null,
+      pwaAccess: [],
+      verificationCode: null,
+    }));
+  }, []);
+
+  /**
+   * Refresh - verificar acesso novamente
    */
   const refresh = useCallback(() => {
     checkAccess();
@@ -507,24 +530,25 @@ export function usePWAAuth() {
   return {
     // Estado
     status: state.status,
-    fingerprint: state.fingerprint,
     userName: state.userName,
     userPhone: state.userPhone,
     pwaAccess: state.pwaAccess,
     blockReason: state.blockReason,
     verificationCode: state.verificationCode,
     errorMessage: state.errorMessage,
-    isSubmitting,
-    // Estados de feedback de envio de código
     codeSentVia: state.codeSentVia,
     codeSentError: state.codeSentError,
     resendingCode: state.resendingCode,
+    isSubmitting,
     
     // Ações
-    login,              // Novo - substitui register
+    login,
     verify,
     resendCode,
-    backToLogin,        // Renomeado de backToRegister
+    backToLogin,
+    logout,
     refresh,
   };
 }
+
+export default usePWAAuth;

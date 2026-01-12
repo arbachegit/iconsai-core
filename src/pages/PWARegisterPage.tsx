@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { getDeviceFingerprint, getDeviceInfo } from "@/lib/device-fingerprint";
 
 type PageState = "loading" | "invalid" | "confirm" | "verify" | "success" | "error";
 
@@ -18,6 +17,7 @@ interface InvitationData {
 }
 
 const PWA_BG_COLOR = "#0A0E1A";
+const STORAGE_KEY = 'pwa-verified-phone';
 
 export default function PWARegisterPage() {
   const { token: tokenParam } = useParams<{ token: string }>();
@@ -102,7 +102,7 @@ export default function PWARegisterPage() {
     validateToken();
   }, [token]);
 
-  // Confirm data and send OTP
+  // Confirm data and send OTP (usando função simplificada)
   const handleConfirm = async () => {
     if (!phone.trim()) {
       setError("Informe seu telefone");
@@ -113,25 +113,9 @@ export default function PWARegisterPage() {
     setError(null);
 
     try {
-      const deviceInfo = getDeviceInfo();
-      
-      const { data, error: rpcError } = await supabase.rpc("login_pwa_by_phone", {
+      // Usar a função simplificada (sem fingerprint)
+      const { data, error: rpcError } = await supabase.rpc("login_pwa_by_phone_simple", {
         p_phone: phone,
-        p_fingerprint: deviceInfo.fingerprint,
-        p_device_info: {
-          os_name: deviceInfo.osName,
-          os_version: deviceInfo.osVersion,
-          browser_name: deviceInfo.browserName,
-          browser_version: deviceInfo.browserVersion,
-          device_vendor: deviceInfo.deviceVendor,
-          device_model: deviceInfo.deviceModel,
-          screen_width: deviceInfo.screenWidth,
-          screen_height: deviceInfo.screenHeight,
-          pixel_ratio: deviceInfo.pixelRatio,
-          has_touch: deviceInfo.hasTouch,
-          has_microphone: deviceInfo.hasMicrophone,
-          user_agent: deviceInfo.userAgent,
-        },
       });
 
       if (rpcError) {
@@ -140,7 +124,15 @@ export default function PWARegisterPage() {
         return;
       }
 
-      const result = data as { success: boolean; verification_code?: string; error?: string; message?: string };
+      const result = data as { success: boolean; verification_code?: string; error?: string; message?: string; already_verified?: boolean };
+
+      // Se já está verificado, salvar e redirecionar
+      if (result.already_verified) {
+        localStorage.setItem(STORAGE_KEY, phone);
+        setPageState("success");
+        setTimeout(() => navigate("/pwa"), 2000);
+        return;
+      }
 
       if (!result.success) {
         setError(result.message || result.error || "Erro ao processar");
@@ -169,7 +161,7 @@ export default function PWARegisterPage() {
     }
   };
 
-  // Verify OTP code
+  // Verify OTP code (usando função simplificada)
   const handleVerify = async () => {
     if (code.length !== 6) return;
 
@@ -177,10 +169,9 @@ export default function PWARegisterPage() {
     setError(null);
 
     try {
-      const fingerprint = getDeviceFingerprint();
-      
-      const { data, error: rpcError } = await supabase.rpc("verify_pwa_device_code", {
-        p_fingerprint: fingerprint,
+      // Usar a função simplificada (por telefone, sem fingerprint)
+      const { data, error: rpcError } = await supabase.rpc("verify_pwa_code_simple", {
+        p_phone: phone,
         p_code: code,
       });
 
@@ -198,7 +189,8 @@ export default function PWARegisterPage() {
         return;
       }
 
-      // Success!
+      // Success! Salvar telefone no localStorage
+      localStorage.setItem(STORAGE_KEY, phone);
       setPageState("success");
       
       // Redirect to /pwa after 2 seconds
