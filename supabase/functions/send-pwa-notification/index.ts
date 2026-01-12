@@ -1,10 +1,25 @@
+/**
+ * ============================================================
+ * send-pwa-notification/index.ts - Notificação PWA v5.6.0
+ * ============================================================
+ * Data: 2026-01-11
+ * CORRECAO: URL shortener integrado para SMS caber em 160 chars
+ * ============================================================
+ * CHANGELOG v5.6.0:
+ * - Adicionada função shortenUrl() usando TinyURL API
+ * - Template invitation agora encurta URL automaticamente
+ * - Mensagem SMS reduzida para ~85 caracteres
+ * ============================================================
+ * ROTA: supabase/functions/send-pwa-notification/index.ts
+ * ============================================================
+ */
+
 // ============================================
-// VERSÃO: 5.5.0 | DEPLOY: 2026-01-11
-// FIX: SEMPRE retorna HTTP 200 com success:true/false
-// Elimina erros "non-2xx" no frontend
+// VERSÃO: 5.6.0 | DEPLOY: 2026-01-11
+// FIX: URL shortener para SMS - mensagem cabe em 160 chars
 // ============================================
 
-const FUNCTION_VERSION = "5.5.0";
+const FUNCTION_VERSION = "5.6.0";
 
 // URL base do sistema
 const SITE_URL = "https://fia.iconsai.ai";
@@ -103,6 +118,31 @@ function normalizePhone(phone: string): string {
 }
 
 // ===========================================
+// URL SHORTENER - TinyURL API (gratuita)
+// ===========================================
+async function shortenUrl(longUrl: string): Promise<string> {
+  try {
+    console.log(`[URL-SHORTENER] Encurtando: ${longUrl.slice(0, 50)}...`);
+
+    const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`, {
+      method: "GET",
+    });
+
+    if (response.ok) {
+      const shortUrl = await response.text();
+      console.log(`[URL-SHORTENER] Resultado: ${shortUrl}`);
+      return shortUrl.trim();
+    }
+
+    console.warn(`[URL-SHORTENER] HTTP ${response.status}, usando URL original`);
+  } catch (e) {
+    console.warn(`[URL-SHORTENER] Erro: ${e}, usando URL original`);
+  }
+
+  return longUrl;
+}
+
+// ===========================================
 // CONSTRUIR URL COMPLETA
 // ===========================================
 function buildFullUrl(urlOrPath: string): string {
@@ -132,17 +172,26 @@ async function sendSmsViaFunction(
   switch (templateName) {
     case "otp":
     case "resend_code":
-      smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos. Nao compartilhe.`;
+      smsText = `KnowYOU: Codigo ${variables["1"]}. Valido 10min.`;
       break;
     case "welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: ${SITE_URL}/pwa`;
+      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo. Acesse: ${SITE_URL}/pwa`;
       break;
     case "resend_welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Seu acesso esta ativo. Entre em: ${SITE_URL}/pwa`;
+      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Acesse: ${SITE_URL}/pwa`;
       break;
     case "invitation": {
-      const fullUrl = buildFullUrl(variables["3"] || "pwa-register");
-      smsText = `KnowYOU: Ola ${variables["1"] || "Voce"}! ${variables["2"] || "Equipe KnowYOU"} te convidou. Acesse: ${fullUrl}`;
+      // URL já deve vir encurtada do caller, mas garantimos aqui também
+      let inviteUrl = variables["3"] || `${SITE_URL}/pwa-register`;
+
+      // Se URL é longa (mais de 30 chars), encurtar
+      if (inviteUrl.length > 30) {
+        inviteUrl = await shortenUrl(inviteUrl);
+      }
+
+      // Mensagem compacta para caber em 160 chars
+      const nome = (variables["1"] || "Voce").split(" ")[0]; // Só primeiro nome
+      smsText = `KnowYOU: Ola ${nome}! Voce foi convidado. Acesse: ${inviteUrl}`;
       break;
     }
     default:
@@ -151,7 +200,7 @@ async function sendSmsViaFunction(
 
   console.log(`[SMS] To: ${to.slice(0, 5)}***`);
   console.log(`[SMS] Template: ${templateName}`);
-  console.log(`[SMS] Texto: ${smsText.slice(0, 60)}...`);
+  console.log(`[SMS] Texto (${smsText.length} chars): ${smsText}`);
   console.log("[SMS] ========================================\n");
 
   try {
@@ -170,7 +219,6 @@ async function sendSmsViaFunction(
     console.log(`[SMS] Provider: ${smsData?.provider || "unknown"}`);
     console.log(`[SMS] Response:`, JSON.stringify(smsData));
 
-    // A função send-sms agora sempre retorna 200, então verificamos success no payload
     if (smsError) {
       console.error(`[SMS] Invoke error:`, smsError);
       return {
@@ -218,7 +266,7 @@ serve(async (req) => {
   const respond = (payload: Record<string, unknown>, logResult = true) => {
     const processingTime = Date.now() - startTime;
     const responseBody = { ...payload, processingTimeMs: processingTime, version: FUNCTION_VERSION };
-    
+
     if (logResult) {
       console.log(`\n${"=".repeat(60)}`);
       console.log(`[RESULTADO]`);
@@ -228,9 +276,9 @@ serve(async (req) => {
       if (payload.error) console.log(`Erro: ${payload.error}`);
       console.log(`${"=".repeat(60)}\n`);
     }
-    
+
     return new Response(JSON.stringify(responseBody), {
-      status: 200, // SEMPRE 200
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   };
@@ -244,7 +292,7 @@ serve(async (req) => {
     console.log(`[REQUEST] Telefone: ${to?.slice(0, 5)}***`);
     console.log(`[REQUEST] Variáveis recebidas: ${JSON.stringify(variables)}`);
 
-    // Validações - retornam 200 com success:false
+    // Validações
     if (!to) {
       return respond({
         success: false,
@@ -271,9 +319,7 @@ serve(async (req) => {
     }
 
     console.log(`[TEMPLATE] Nome: ${template}`);
-    console.log(`[TEMPLATE] Descrição: ${templateConfig.description}`);
     console.log(`[TEMPLATE] Tipo: ${templateConfig.type}`);
-    console.log(`[TEMPLATE] Total de variáveis esperadas: ${templateConfig.totalVariables}`);
 
     // Normalizar telefone
     const phone = normalizePhone(to);
@@ -302,9 +348,6 @@ serve(async (req) => {
           success: false,
           error: `Variáveis faltando para template '${template}': ${missingVars.join(", ")}`,
           error_code: "VALIDATION_ERROR",
-          expected: templateConfig.totalVariables,
-          expectedNames: templateConfig.variableNames,
-          received: Object.keys(variables).length,
         });
       }
     }
