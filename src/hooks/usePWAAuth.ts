@@ -211,6 +211,7 @@ export function usePWAAuth() {
         error?: string;
         already_verified?: boolean;
         expires_at?: string;
+        normalized_phone?: string;
       };
 
       console.log('[PWA Auth v4.0] Login result:', { 
@@ -249,39 +250,47 @@ export function usePWAAuth() {
       // Enviar código via SMS
       let sentChannel: CodeSentChannel = null;
       let sendError: string | null = null;
+      
+      // Usar telefone normalizado retornado pelo backend se disponível
+      const normalizedPhone = result.normalized_phone || params.phone;
 
       if (result.verification_code) {
         try {
-          console.log('[PWA Auth v4.0] Sending verification code via SMS...');
+          console.log('[PWA Auth v4.1] Sending verification code via SMS to:', normalizedPhone.substring(0, 8) + '...');
           const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-notification', {
             body: {
-              to: params.phone,
+              to: normalizedPhone,
               template: "otp",
-              variables: { "1": result.verification_code },
+              variables: { 
+                "1": result.verification_code,
+                "2": result.user_name || "Usuario"
+              },
               channel: "sms",
               userId: null,
             }
           });
           
           if (funcError) {
-            console.warn('[PWA Auth v4.0] Failed to send code:', funcError);
+            console.warn('[PWA Auth v4.1] Failed to send code:', funcError);
             sendError = 'Não foi possível enviar o código. Tente reenviar.';
           } else if (sendResult?.success) {
             sentChannel = sendResult?.channel === 'sms' ? 'sms' : 'whatsapp';
-            console.log('[PWA Auth v4.0] Code sent via:', sentChannel);
+            console.log('[PWA Auth v4.1] Code sent via:', sentChannel, 'messageId:', sendResult?.messageId);
           } else {
+            console.warn('[PWA Auth v4.1] Send result:', sendResult);
             sendError = sendResult?.error || 'Falha no envio do código.';
           }
         } catch (err) {
-          console.warn('[PWA Auth v4.0] Error sending code:', err);
+          console.warn('[PWA Auth v4.1] Error sending code:', err);
           sendError = 'Erro ao enviar código. Tente reenviar.';
         }
       }
 
-      // Atualizar estado final
+      // Atualizar estado final - usar telefone normalizado
       setState(prev => ({
         ...prev,
         status: 'needs_verification',
+        userPhone: normalizedPhone, // Usar telefone normalizado
         verificationCode: result.verification_code || null,
         codeSentVia: sentChannel,
         codeSentError: sendError,

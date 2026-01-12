@@ -94,13 +94,20 @@ async function sendSms(
   variables: Record<string, string>,
 ): Promise<{ success: boolean; error?: string; messageId?: string; provider?: string }> {
   let smsText = "";
-  const nome = getFirstName(variables["1"] || "");
+  // Para OTP: variables["1"] = código, variables["2"] = nome (opcional)
+  // Para outros: variables["1"] = nome
+  const codigo = templateName === "otp" || templateName === "resend_code" ? variables["1"] : null;
+  const nome = getFirstName(
+    templateName === "otp" || templateName === "resend_code" 
+      ? (variables["2"] || "Usuario") 
+      : (variables["1"] || "Usuario")
+  );
 
   switch (templateName) {
     case "otp":
     case "resend_code":
-      // Código de verificação - COM NOME
-      smsText = `KnowYOU: Ola ${nome}! Codigo: ${variables["1"]}. Valido 2min.`;
+      // Código de verificação - SEM NOME para simplificar
+      smsText = `KnowYOU: Seu codigo de verificacao: ${codigo}. Valido por 10 minutos.`;
       break;
 
     case "welcome":
