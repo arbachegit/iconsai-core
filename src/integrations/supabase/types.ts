@@ -5736,6 +5736,7 @@ export type Database = {
       }
       user_invitations: {
         Row: {
+          accepted_at: string | null
           address_cep: string | null
           address_city: string | null
           address_complement: string | null
@@ -5786,6 +5787,7 @@ export type Database = {
           whatsapp_sent_at: string | null
         }
         Insert: {
+          accepted_at?: string | null
           address_cep?: string | null
           address_city?: string | null
           address_complement?: string | null
@@ -5836,6 +5838,7 @@ export type Database = {
           whatsapp_sent_at?: string | null
         }
         Update: {
+          accepted_at?: string | null
           address_cep?: string | null
           address_city?: string | null
           address_complement?: string | null

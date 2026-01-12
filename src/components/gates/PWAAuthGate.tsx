@@ -1,10 +1,10 @@
 // =============================================
-// PWA Auth Gate v2.0.2 - NUCLEAR REBUILD
-// Build: 2026-01-11T17:00:00Z - FORCE DEPLOY
-// SHA: NUCLEAR-DEPLOY-NOW
+// PWA Auth Gate v3.0 - NUCLEAR FIX
+// Build: 2026-01-12T12:00:00Z
+// SHA: NUCLEAR-FIX-v3.0
 // =============================================
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { usePWAAuth, CodeSentChannel } from "@/hooks/usePWAAuth";
 import { Button } from "@/components/ui/button";
@@ -371,6 +371,15 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     refresh,
   } = usePWAAuth();
 
+  // Debug logging v3.0
+  useEffect(() => {
+    console.log('[PWAAuthGate v3.0] ========================================');
+    console.log('[PWAAuthGate v3.0] Status changed:', status);
+    console.log('[PWAAuthGate v3.0] Fingerprint:', fingerprint?.substring(0, 20) + '...');
+    console.log('[PWAAuthGate v3.0] UserPhone:', userPhone);
+    console.log('[PWAAuthGate v3.0] ========================================');
+  }, [status, fingerprint, userPhone]);
+
   // Loading state
   if (status === "loading") {
     return (
@@ -378,6 +387,12 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground text-sm">Verificando acesso...</p>
+          {/* Debug: mostrar fingerprint durante loading */}
+          {fingerprint && (
+            <p className="text-xs text-muted-foreground/50 font-mono mt-4">
+              {fingerprint.substring(0, 24)}...
+            </p>
+          )}
         </div>
       </div>
     );
