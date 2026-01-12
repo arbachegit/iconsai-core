@@ -247,42 +247,55 @@ export function usePWAAuth() {
         codeSentError: null,
       }));
 
-      // Enviar código via SMS
+      // ============================================
+      // ENVIO DE SMS - CHAMADA DIRETA v5.0
+      // Bypass send-pwa-notification para maior confiabilidade
+      // ============================================
       let sentChannel: CodeSentChannel = null;
       let sendError: string | null = null;
       
-      // Usar telefone normalizado retornado pelo backend se disponível
+      // Usar telefone normalizado retornado pelo backend
       const normalizedPhone = result.normalized_phone || params.phone;
 
       if (result.verification_code) {
         try {
-          console.log('[PWA Auth v4.1] Sending verification code via SMS to:', normalizedPhone.substring(0, 8) + '...');
-          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-notification', {
+          console.log('[PWA Auth v5.0] ========================================');
+          console.log('[PWA Auth v5.0] Enviando SMS diretamente...');
+          console.log('[PWA Auth v5.0] Phone:', normalizedPhone.substring(0, 8) + '...');
+          console.log('[PWA Auth v5.0] Code:', result.verification_code);
+          
+          // Construir mensagem SMS
+          const smsMessage = `KnowYOU: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+          
+          // CHAMADA DIRETA para send-sms (sem intermediário)
+          const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
             body: {
-              to: normalizedPhone,
-              template: "otp",
-              variables: { 
-                "1": result.verification_code,
-                "2": result.user_name || "Usuario"
-              },
-              channel: "sms",
-              userId: null,
+              phoneNumber: normalizedPhone,
+              message: smsMessage,
+              eventType: 'pwa_otp'
             }
           });
-          
-          if (funcError) {
-            console.warn('[PWA Auth v4.1] Failed to send code:', funcError);
-            sendError = 'Não foi possível enviar o código. Tente reenviar.';
-          } else if (sendResult?.success) {
-            sentChannel = sendResult?.channel === 'sms' ? 'sms' : 'whatsapp';
-            console.log('[PWA Auth v4.1] Code sent via:', sentChannel, 'messageId:', sendResult?.messageId);
+
+          console.log('[PWA Auth v5.0] send-sms response:', JSON.stringify(smsResult));
+          console.log('[PWA Auth v5.0] send-sms error:', smsError);
+
+          if (smsError) {
+            console.error('[PWA Auth v5.0] Erro de invocação:', smsError.message);
+            sendError = `Erro: ${smsError.message}`;
+          } else if (!smsResult) {
+            console.error('[PWA Auth v5.0] Resposta vazia');
+            sendError = 'Resposta vazia do servidor';
+          } else if (!smsResult.success) {
+            console.error('[PWA Auth v5.0] SMS falhou:', smsResult.error);
+            sendError = smsResult.error || 'Falha ao enviar SMS';
           } else {
-            console.warn('[PWA Auth v4.1] Send result:', sendResult);
-            sendError = sendResult?.error || 'Falha no envio do código.';
+            sentChannel = 'sms';
+            console.log('[PWA Auth v5.0] ✅ SMS enviado via:', smsResult.provider);
           }
-        } catch (err) {
-          console.warn('[PWA Auth v4.1] Error sending code:', err);
-          sendError = 'Erro ao enviar código. Tente reenviar.';
+          console.log('[PWA Auth v5.0] ========================================');
+        } catch (err: any) {
+          console.error('[PWA Auth v5.0] Exception:', err);
+          sendError = `Erro inesperado: ${err.message}`;
         }
       }
 
@@ -446,24 +459,29 @@ export function usePWAAuth() {
         return { success: false, error: result.error || 'Erro ao reenviar código' };
       }
 
-      // Enviar código via SMS
+      // ============================================
+      // REENVIO DE SMS - CHAMADA DIRETA v5.0
+      // ============================================
       let sentChannel: CodeSentChannel = null;
       
       if (result.verification_code) {
         try {
-          console.log('[PWA Auth v4.0] Resending verification code via SMS...');
-          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-notification', {
+          console.log('[PWA Auth v5.0] Reenviando código via SMS diretamente...');
+          
+          const smsMessage = `KnowYOU: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+          
+          const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
             body: {
-              to: phone,
-              template: "resend_code",
-              variables: { "1": result.verification_code },
-              channel: "sms",
-              userId: null,
+              phoneNumber: phone,
+              message: smsMessage,
+              eventType: 'pwa_otp_resend'
             }
           });
+
+          console.log('[PWA Auth v5.0] Resend response:', JSON.stringify(smsResult));
           
-          if (funcError) {
-            console.warn('[PWA Auth v4.0] Failed to resend code:', funcError);
+          if (smsError) {
+            console.warn('[PWA Auth v5.0] Failed to resend:', smsError);
             setState(prev => ({ 
               ...prev, 
               resendingCode: false, 
@@ -471,11 +489,12 @@ export function usePWAAuth() {
               verificationCode: result.verification_code || null,
             }));
             return { success: false, error: 'Falha ao reenviar código' };
-          } else if (sendResult?.success) {
-            sentChannel = sendResult?.channel === 'sms' ? 'sms' : 'whatsapp';
+          } else if (smsResult?.success) {
+            sentChannel = 'sms';
+            console.log('[PWA Auth v5.0] ✅ Código reenviado via:', smsResult.provider);
           }
         } catch (err) {
-          console.warn('[PWA Auth v4.0] Error resending code:', err);
+          console.warn('[PWA Auth v5.0] Error resending code:', err);
         }
       }
 
