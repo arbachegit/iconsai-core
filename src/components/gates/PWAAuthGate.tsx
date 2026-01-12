@@ -1,20 +1,19 @@
 // =============================================
-// PWA Auth Gate v3.0 - NUCLEAR FIX
-// Build: 2026-01-12T12:00:00Z
-// SHA: NUCLEAR-FIX-v3.0
+// PWA Auth Gate v4.0 - SIMPLIFICAÇÃO RADICAL
+// Build: 2026-01-12T15:00:00Z
+// Telefone como identificador (sem fingerprint)
 // =============================================
 
 import { ReactNode, useState, useEffect } from "react";
-import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { usePWAAuth, CodeSentChannel } from "@/hooks/usePWAAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface PWAAuthGateProps {
-  children: ReactNode | ((data: { fingerprint: string; pwaAccess: string[] }) => ReactNode);
+  children: ReactNode | ((data: { userPhone: string; pwaAccess: string[] }) => ReactNode);
 }
 
 // Componente de feedback de envio
@@ -57,14 +56,12 @@ function CodeSentFeedback({
   return null;
 }
 
-// Tela de Login (substitui RegisterScreen)
+// Tela de Login
 function LoginScreen({
-  fingerprint,
   onLogin,
   isSubmitting,
   previousPhone,
 }: {
-  fingerprint: string;
   onLogin: (params: { phone: string }) => Promise<{ success: boolean; error?: string }>;
   isSubmitting: boolean;
   previousPhone?: string | null;
@@ -137,32 +134,6 @@ function LoginScreen({
             Não tem acesso? O KnowYOU funciona apenas por convite.
           </p>
         </div>
-
-        <div className="mt-4 flex flex-col items-center gap-1">
-          <p className="text-xs text-muted-foreground text-center font-mono whitespace-nowrap overflow-x-auto max-w-full">
-            Device ID: {fingerprint.substring(0, 16)}...
-          </p>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors">
-                <Info className="h-3 w-3" />
-                <span>O que é isso?</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 text-sm" side="top">
-              <p className="font-medium mb-2">Impressão digital do dispositivo</p>
-              <p className="text-muted-foreground text-xs mb-2">
-                Identificador único gerado combinando características do navegador/dispositivo:
-              </p>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• User-Agent (navegador, versão, SO)</li>
-                <li>• Resolução de tela e pixel ratio</li>
-                <li>• Fuso horário e idioma</li>
-                <li>• Canvas fingerprint</li>
-              </ul>
-            </PopoverContent>
-          </Popover>
-        </div>
       </div>
     </div>
   );
@@ -193,7 +164,6 @@ function SendingCodeScreen({ phone }: { phone: string }) {
 // Tela de Verificação de Código
 function VerifyScreen({
   phone,
-  verificationCode,
   codeSentVia,
   codeSentError,
   resendingCode,
@@ -203,7 +173,6 @@ function VerifyScreen({
   isSubmitting,
 }: {
   phone: string;
-  verificationCode: string;
   codeSentVia: CodeSentChannel;
   codeSentError: string | null;
   resendingCode: boolean;
@@ -328,10 +297,8 @@ function VerifyScreen({
 // Tela de Bloqueio
 function BlockedScreen({
   reason,
-  fingerprint,
 }: {
   reason: string | null;
-  fingerprint: string;
 }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col items-center justify-center p-4">
@@ -343,9 +310,6 @@ function BlockedScreen({
         <p className="text-muted-foreground mb-4">
           {reason || "Este dispositivo foi bloqueado por motivos de segurança."}
         </p>
-        <p className="text-xs text-muted-foreground break-all">
-          Device ID: {fingerprint}
-        </p>
       </div>
     </div>
   );
@@ -354,16 +318,14 @@ function BlockedScreen({
 export function PWAAuthGate({ children }: PWAAuthGateProps) {
   const {
     status,
-    fingerprint,
-    pwaAccess,
     userPhone,
+    pwaAccess,
     blockReason,
-    verificationCode,
-    errorMessage,
-    isSubmitting,
     codeSentVia,
     codeSentError,
     resendingCode,
+    errorMessage,
+    isSubmitting,
     login,
     verify,
     resendCode,
@@ -371,14 +333,10 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     refresh,
   } = usePWAAuth();
 
-  // Debug logging v3.0
+  // Debug logging v4.0
   useEffect(() => {
-    console.log('[PWAAuthGate v3.0] ========================================');
-    console.log('[PWAAuthGate v3.0] Status changed:', status);
-    console.log('[PWAAuthGate v3.0] Fingerprint:', fingerprint?.substring(0, 20) + '...');
-    console.log('[PWAAuthGate v3.0] UserPhone:', userPhone);
-    console.log('[PWAAuthGate v3.0] ========================================');
-  }, [status, fingerprint, userPhone]);
+    console.log('[PWAAuthGate v4.0] Status:', status, '| Phone:', userPhone?.substring(0, 8) + '...');
+  }, [status, userPhone]);
 
   // Loading state
   if (status === "loading") {
@@ -387,12 +345,6 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground text-sm">Verificando acesso...</p>
-          {/* Debug: mostrar fingerprint durante loading */}
-          {fingerprint && (
-            <p className="text-xs text-muted-foreground/50 font-mono mt-4">
-              {fingerprint.substring(0, 24)}...
-            </p>
-          )}
         </div>
       </div>
     );
@@ -400,12 +352,7 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
 
   // Blocked state
   if (status === "blocked") {
-    return (
-      <BlockedScreen 
-        reason={blockReason || null} 
-        fingerprint={fingerprint || ""} 
-      />
-    );
+    return <BlockedScreen reason={blockReason} />;
   }
 
   // Sending code state (transição)
@@ -413,11 +360,10 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     return <SendingCodeScreen phone={userPhone || ""} />;
   }
 
-  // Login state (novo - substitui needs_registration)
+  // Login state
   if (status === "needs_login") {
     return (
       <LoginScreen
-        fingerprint={fingerprint || ""}
         onLogin={login}
         isSubmitting={isSubmitting}
         previousPhone={userPhone}
@@ -430,7 +376,6 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     return (
       <VerifyScreen
         phone={userPhone || ""}
-        verificationCode={verificationCode || ""}
         codeSentVia={codeSentVia}
         codeSentError={codeSentError}
         resendingCode={resendingCode}
@@ -467,11 +412,11 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
   }
 
   // Verified state - render children
-  if (status === "verified" && fingerprint) {
+  if (status === "verified" && userPhone) {
     const accessList = pwaAccess || [];
     
     if (typeof children === "function") {
-      return <>{children({ fingerprint, pwaAccess: accessList })}</>;
+      return <>{children({ userPhone, pwaAccess: accessList })}</>;
     }
     
     return <>{children}</>;
