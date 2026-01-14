@@ -116,7 +116,7 @@ serve(async (req) => {
 
     const hasPlatformAccess = registration.has_platform_access;
     const hasAppAccess = registration.has_app_access;
-    const siteUrl = "https://fia.iconsai.ai";
+    const siteUrl = "https://pwa.iconsai.ai";
     const appUrl = `${siteUrl}/pwa-register`;
 
     // Generate new password recovery link para Plataforma

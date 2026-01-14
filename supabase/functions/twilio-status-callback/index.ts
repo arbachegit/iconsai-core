@@ -1,10 +1,10 @@
 // ============================================
-// VERSAO: 3.3.0 | DEPLOY: 2026-01-11
-// FIX: Corrigido domínio no fallback SMS (fia.iconsai.ai)
+// VERSAO: 3.4.0 | DEPLOY: 2026-01-14
+// FIX: URL atualizada para pwa.iconsai.ai
 // ============================================
 
-const FUNCTION_VERSION = "3.3.0";
-const SITE_URL = "https://fia.iconsai.ai";
+const FUNCTION_VERSION = "3.4.0";
+const SITE_URL = "https://pwa.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
