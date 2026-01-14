@@ -22,6 +22,7 @@ jobs:
       - name: Deploy Edge Functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_ID: uhazjwqfsvxqozepyjjj
+          # Project ID: gmflpmcepempcygdrayv (from supabase/config.toml)
+          SUPABASE_PROJECT_ID: gmflpmcepempcygdrayv
         run: |
           supabase functions deploy --project-ref $SUPABASE_PROJECT_ID
