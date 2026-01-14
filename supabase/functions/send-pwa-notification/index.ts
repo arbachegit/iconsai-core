@@ -1,11 +1,10 @@
 // ============================================
-// VERSÃO: 5.3.0 | DEPLOY: 2026-01-10
-// TEMPORÁRIO: Forçando SMS para TODOS os templates
-// MOTIVO: Templates WhatsApp aguardando aprovação Twilio
-// TODO: Reverter para WhatsApp quando templates aprovados
+// VERSÃO: 5.7.0 | DEPLOY: 2026-01-12
+// FIX: URL shortener IS.GD + mensagens com nome
 // ============================================
 
-const FUNCTION_VERSION = "5.3.0";
+const FUNCTION_VERSION = "5.7.0";
+const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -15,461 +14,205 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Twilio Config
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID")!;
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-const TWILIO_WHATSAPP_NUMBER = "+16039454873";
-
-// ===========================================
-// TEMPLATES - CONFIGURAÇÃO BASEADA NOS PRINTS DO TWILIO CONSOLE
-//
-// IMPORTANTE: As variáveis são SEQUENCIAIS em todo o template
-// Body usa {{1}}, {{2}}, etc.
-// Button URL continua a sequência: {{3}}, {{4}}, etc.
-// ===========================================
-interface TemplateConfig {
-  sid: string;
-  description: string;
-  type: "authentication" | "utility";
-  totalVariables: number; // Total de variáveis no template (body + button)
-  variableNames: string[]; // Nomes descritivos para log
-}
-
-const TEMPLATES: Record<string, TemplateConfig> = {
+const TEMPLATES: Record<string, { sid: string; type: string; totalVariables: number; variableNames: string[] }> = {
   otp: {
     sid: "HX15dbff375b023b2d1514038027db6ad0",
-    description: "Código de verificação OTP (knowyou_otp)",
     type: "authentication",
-    totalVariables: 0, // Authentication: código hardcoded "403239"
-    variableNames: [],
+    totalVariables: 1,
+    variableNames: ["codigo"],
   },
   resend_code: {
     sid: "HX026907ac8e769389acfda75829c5d543",
-    description: "Reenvio de código OTP (knowyou_resend_code)",
     type: "authentication",
-    totalVariables: 0, // Authentication: código hardcoded "403239"
-    variableNames: [],
+    totalVariables: 1,
+    variableNames: ["codigo"],
   },
-  welcome: {
-    sid: "HX35461ac69adc68257f54eb030fafe4b1",
-    description: "Boas-vindas após verificação (knowyou_welcome)",
-    type: "utility",
-    totalVariables: 1, // {{1}} = nome
-    variableNames: ["nome"],
-  },
+  welcome: { sid: "HX35461ac69adc68257f54eb030fafe4b1", type: "utility", totalVariables: 1, variableNames: ["nome"] },
   invitation: {
     sid: "HX76217d9d436086e8adc6d1e185c7e2ee",
-    description: "Convite de acesso ao PWA (knowyou_invitation_v3)",
     type: "utility",
-    totalVariables: 3, // {{1}} = nome, {{2}} = quem convidou, {{3}} = path URL
-    variableNames: ["nome", "quem_convidou", "path_url"],
+    totalVariables: 3,
+    variableNames: ["nome", "quem_convidou", "url"],
   },
   resend_welcome: {
     sid: "HX9ccbe49ea4063c9155c3ebd67738556e",
-    description: "Reenvio de boas-vindas (knowyou_resend_welcome)",
     type: "utility",
-    totalVariables: 1, // {{1}} = nome
+    totalVariables: 1,
     variableNames: ["nome"],
   },
 };
 
-interface NotificationRequest {
-  to: string;
-  template: string;
-  variables: Record<string, string>;
-  channel?: "whatsapp" | "sms";
-  userId?: string;
-}
-
-interface SendResult {
-  success: boolean;
-  channel: "whatsapp" | "sms";
-  messageId?: string;
-  error?: string;
-  errorCode?: number;
-}
-
-// ===========================================
-// NORMALIZAÇÃO DE TELEFONE (E.164)
-// ===========================================
 function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 10 || cleaned.length === 11) {
-    cleaned = "55" + cleaned;
-  }
-  if (!cleaned.startsWith("+")) {
-    cleaned = "+" + cleaned;
-  }
-  return cleaned;
+  if (cleaned.length === 10 || cleaned.length === 11) cleaned = "55" + cleaned;
+  return cleaned.startsWith("+") ? cleaned : "+" + cleaned;
 }
 
 // ===========================================
-// MAPEAMENTO DE ERROS TWILIO
+// URL SHORTENER - IS.GD API (gratuita, confiável)
+// Endpoint: https://is.gd/create.php?format=simple&url=URL
+// Retorna: URL curta em texto puro
 // ===========================================
-const TWILIO_ERROR_MESSAGES: Record<number, string> = {
-  63016: "Mensagem freeform fora da janela de 24h. Use templates.",
-  63024: "Número não habilitado para WhatsApp Business.",
-  63025: "Taxa de envio excedida. Aguarde.",
-  63026: "Conta não conectada ao WhatsApp Business.",
-  63028: "Número de parâmetros não corresponde ao template.",
-  21408: "Número não está no sandbox.",
-  21608: "Número não registrado no WhatsApp.",
-  21610: "Número bloqueado.",
-  21614: "Número de destino inválido.",
-  21656: "ContentVariables inválido - verifique formato JSON.",
-};
+async function shortenUrl(longUrl: string): Promise<string> {
+  try {
+    console.log(`[URL-SHORTENER] Encurtando via is.gd: ${longUrl.slice(0, 50)}...`);
 
-// ===========================================
-// ENVIO SMS VIA INFOBIP
-// ===========================================
-async function sendSmsViaInfobip(
+    const apiUrl = `https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`;
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: { Accept: "text/plain" },
+    });
+
+    if (response.ok) {
+      const shortUrl = await response.text();
+      // Verificar se retornou uma URL válida (começa com https://is.gd/)
+      if (shortUrl.startsWith("https://is.gd/")) {
+        console.log(`[URL-SHORTENER] ✅ Sucesso: ${shortUrl}`);
+        return shortUrl.trim();
+      } else {
+        console.warn(`[URL-SHORTENER] ⚠️ Resposta inválida: ${shortUrl.slice(0, 100)}`);
+      }
+    } else {
+      console.warn(`[URL-SHORTENER] ⚠️ HTTP ${response.status}`);
+    }
+  } catch (e) {
+    console.warn(`[URL-SHORTENER] ❌ Erro: ${e}`);
+  }
+
+  // Fallback: retorna URL original
+  return longUrl;
+}
+
+function getFirstName(fullName: string): string {
+  return (fullName || "Voce").split(" ")[0] || "Voce";
+}
+
+async function sendSms(
   to: string,
   templateName: string,
   variables: Record<string, string>,
-): Promise<SendResult> {
-  console.log("\n[SMS-INFOBIP] ========================================");
-  console.log("[SMS-INFOBIP] Enviando via Infobip...");
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  // Montar mensagem baseada no template
+): Promise<{ success: boolean; error?: string; messageId?: string; provider?: string }> {
   let smsText = "";
+  // Para OTP: variables["1"] = código, variables["2"] = nome (opcional)
+  // Para outros: variables["1"] = nome
+  const codigo = templateName === "otp" || templateName === "resend_code" ? variables["1"] : null;
+  const nome = getFirstName(
+    templateName === "otp" || templateName === "resend_code" 
+      ? (variables["2"] || "Usuario") 
+      : (variables["1"] || "Usuario")
+  );
 
   switch (templateName) {
     case "otp":
     case "resend_code":
-      smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos. Nao compartilhe.`;
+      // Código de verificação - SEM NOME para simplificar
+      smsText = `KnowYOU: Seu codigo de verificacao: ${codigo}. Valido por 10 minutos.`;
       break;
+
     case "welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: https://hmv.knowyou.app/pwa`;
+      smsText = `KnowYOU: Ola ${nome}! Bem-vindo. Acesse: ${SITE_URL}/pwa`;
       break;
+
     case "resend_welcome":
-      smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Seu acesso esta ativo. Entre em: https://hmv.knowyou.app/pwa`;
+      smsText = `KnowYOU: Ola ${nome}! Acesse: ${SITE_URL}/pwa`;
       break;
-    case "invitation":
-      const path = variables["3"] || "pwa-register";
-      smsText = `KnowYOU: Ola ${variables["1"] || "Voce"}! ${variables["2"] || "Equipe KnowYOU"} te convidou. Acesse: https://hmv.knowyou.app/${path}`;
+
+    case "invitation": {
+      // Convite - URL pode vir já encurtada ou não
+      let inviteUrl = variables["3"] || `${SITE_URL}/pwa-register`;
+
+      // Se URL é longa (não começa com https://is.gd/), encurtar
+      if (!inviteUrl.startsWith("https://is.gd/") && inviteUrl.length > 30) {
+        inviteUrl = await shortenUrl(inviteUrl);
+      }
+
+      smsText = `KnowYOU: Ola ${nome}! Voce foi convidado. Acesse: ${inviteUrl}`;
       break;
+    }
+
     default:
       smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
   }
 
-  console.log(`[SMS-INFOBIP] To: ${to.slice(0, 5)}***`);
-  console.log(`[SMS-INFOBIP] Template: ${templateName}`);
-  console.log(`[SMS-INFOBIP] Texto: ${smsText.slice(0, 60)}...`);
-  console.log("[SMS-INFOBIP] ========================================\n");
+  console.log(`[SMS] ${smsText.length} chars: ${smsText}`);
+
+  // Verificar se passou de 160 chars
+  if (smsText.length > 160) {
+    console.warn(`[SMS] ⚠️ AVISO: Mensagem com ${smsText.length} chars (limite 160)`);
+  }
 
   try {
-    const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify({
-        phoneNumber: to,
-        message: smsText,
-        eventType: "pwa_notification",
-      }),
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data, error } = await supabase.functions.invoke("send-sms", {
+      body: { phoneNumber: to, message: smsText, eventType: "pwa_notification" },
     });
-
-    const smsData = await smsResponse.json();
-    console.log(`[SMS-INFOBIP] Response:`, JSON.stringify(smsData));
-
-    return {
-      success: smsData.success,
-      channel: "sms",
-      messageId: smsData.messageId,
-      error: smsData.error,
-    };
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[SMS-INFOBIP] ERRO: ${errMsg}`);
-    return {
-      success: false,
-      channel: "sms",
-      error: errMsg,
-    };
+    if (error) return { success: false, error: error.message };
+    return { success: !!data?.success, messageId: data?.messageId, error: data?.error, provider: data?.provider };
+  } catch (e: any) {
+    return { success: false, error: e.message };
   }
 }
 
-// ===========================================
-// ENVIO WHATSAPP VIA TWILIO
-//
-// IMPORTANTE: ContentVariables deve conter TODAS as variáveis
-// sequencialmente (1, 2, 3, ...) conforme definido no template.
-// Ref: https://www.twilio.com/docs/content/using-variables-with-content-api
-// ===========================================
-async function sendWhatsAppViaTwilio(
-  to: string,
-  templateSid: string,
-  contentVariables: Record<string, string>,
-  templateName?: string,
-): Promise<SendResult> {
-  const fromNumber = `whatsapp:${TWILIO_WHATSAPP_NUMBER}`;
-  const toNumber = `whatsapp:${to}`;
-
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-status-callback`;
-
-  // ContentVariables deve ser um JSON string
-  const contentVariablesJson = JSON.stringify(contentVariables);
-
-  const body = new URLSearchParams({
-    From: fromNumber,
-    To: toNumber,
-    ContentSid: templateSid,
-    ContentVariables: contentVariablesJson,
-    StatusCallback: statusCallbackUrl,
-  });
-
-  console.log(`\n[WHATSAPP] ========================================`);
-  console.log(`[WHATSAPP] From: ${fromNumber}`);
-  console.log(`[WHATSAPP] To: ${toNumber}`);
-  console.log(`[WHATSAPP] ContentSid: ${templateSid}`);
-  console.log(`[WHATSAPP] ContentVariables: ${contentVariablesJson}`);
-  console.log(`[WHATSAPP] ========================================\n`);
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-      },
-      body: body.toString(),
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.sid) {
-      console.log(`[WHATSAPP] ✅ ACEITO`);
-      console.log(`[WHATSAPP] Message SID: ${data.sid}`);
-      console.log(`[WHATSAPP] Status: ${data.status}`);
-      return {
-        success: true,
-        channel: "whatsapp",
-        messageId: data.sid,
-      };
-    } else {
-      const errorCode = data.code || 0;
-      const friendlyError = TWILIO_ERROR_MESSAGES[errorCode] || data.message || "Erro desconhecido";
-
-      console.error(`[WHATSAPP] ❌ FALHA`);
-      console.error(`[WHATSAPP] HTTP Status: ${response.status}`);
-      console.error(`[WHATSAPP] Error Code: ${errorCode}`);
-      console.error(`[WHATSAPP] Error: ${data.message}`);
-      console.error(`[WHATSAPP] More Info: ${data.more_info || "N/A"}`);
-
-      return {
-        success: false,
-        channel: "whatsapp",
-        error: `[${errorCode}] ${friendlyError}`,
-        errorCode,
-      };
-    }
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[WHATSAPP] EXCEÇÃO: ${errMsg}`);
-    return {
-      success: false,
-      channel: "whatsapp",
-      error: errMsg,
-    };
-  }
-}
-
-// ===========================================
-// HANDLER PRINCIPAL
-// ===========================================
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const startTime = Date.now();
-  console.log(`\n${"=".repeat(60)}`);
+  console.log(`\n${"=".repeat(50)}`);
   console.log(`[SEND-PWA-NOTIFICATION v${FUNCTION_VERSION}] ${new Date().toISOString()}`);
-  console.log(`${"=".repeat(60)}\n`);
+  console.log(`${"=".repeat(50)}`);
 
   try {
-    const body = (await req.json()) as NotificationRequest;
-    const { to, template, variables, channel = "whatsapp", userId } = body;
+    const { to, template, variables } = await req.json();
 
-    console.log(`[REQUEST] Template: ${template}`);
-    console.log(`[REQUEST] Canal solicitado: ${channel}`);
-    console.log(`[REQUEST] Telefone: ${to?.slice(0, 5)}***`);
-    console.log(`[REQUEST] Variáveis recebidas: ${JSON.stringify(variables)}`);
-
-    // Validações
-    if (!to) {
-      return new Response(JSON.stringify({ success: false, error: "Campo 'to' obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!template) {
-      return new Response(JSON.stringify({ success: false, error: "Campo 'template' obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const templateConfig = TEMPLATES[template];
-    if (!templateConfig) {
+    if (!to || !template) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: `Template '${template}' não existe. Disponíveis: ${Object.keys(TEMPLATES).join(", ")}`,
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ success: false, error: "to e template obrigatórios", version: FUNCTION_VERSION }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
-    console.log(`[TEMPLATE] Nome: ${template}`);
-    console.log(`[TEMPLATE] Descrição: ${templateConfig.description}`);
-    console.log(`[TEMPLATE] Tipo: ${templateConfig.type}`);
-    console.log(`[TEMPLATE] Total de variáveis esperadas: ${templateConfig.totalVariables}`);
-    console.log(`[TEMPLATE] Nomes das variáveis: ${templateConfig.variableNames.join(", ") || "nenhuma"}`);
-
-    // Normalizar telefone
     const phone = normalizePhone(to);
-    console.log(`[TELEFONE] Normalizado: ${phone}`);
+    console.log(`[REQUEST] Template: ${template} | Phone: ${phone.slice(0, 8)}***`);
 
-    if (!phone.match(/^\+[1-9]\d{10,14}$/)) {
-      return new Response(JSON.stringify({ success: false, error: "Formato de telefone inválido" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const result = await sendSms(phone, template, variables || {});
 
-    // ===========================================
-    // VALIDAR VARIÁVEIS ANTES DE ENVIAR
-    // ===========================================
-    if (templateConfig.type === "utility" && templateConfig.totalVariables > 0) {
-      const missingVars: string[] = [];
-      for (let i = 1; i <= templateConfig.totalVariables; i++) {
-        if (!variables[String(i)] || variables[String(i)].trim() === "") {
-          const varName = templateConfig.variableNames[i - 1] || `var${i}`;
-          missingVars.push(`{{${i}}} (${varName})`);
-        }
-      }
-
-      if (missingVars.length > 0) {
-        const errorMsg = `Variáveis faltando para template '${template}': ${missingVars.join(", ")}`;
-        console.error(`[VALIDAÇÃO] ${errorMsg}`);
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: errorMsg,
-            expected: templateConfig.totalVariables,
-            expectedNames: templateConfig.variableNames,
-            received: Object.keys(variables).length,
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-    }
-
-    // ===========================================
-    // ESTRATÉGIA DE ENVIO - v5.3.0
-    // TEMPORÁRIO: Forçando SMS para TODOS os templates
-    // MOTIVO: Templates WhatsApp aguardando aprovação Twilio
-    // TODO: Reverter para WhatsApp quando templates aprovados
-    // ===========================================
-    let result: SendResult;
-    const attempts: SendResult[] = [];
-
-    console.log("\n[ESTRATÉGIA v5.3.0] FORÇANDO SMS - Templates WhatsApp pendentes");
-    console.log(`[INFO] Template: ${template} (${templateConfig.type})`);
-    console.log(`[INFO] Canal original solicitado: ${channel}`);
-    console.log(`[INFO] Motivo: Templates aguardando aprovação Twilio`);
-
-    result = await sendSmsViaInfobip(phone, template, variables);
-    attempts.push(result);
-
-    // ===========================================
-    // LOGGING
-    // ===========================================
+    // Log no banco
     try {
       const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-
-      const logStatus =
-        result.channel === "whatsapp" && result.success ? "pending" : result.success ? "success" : "failed";
-
       await supabase.from("notification_logs").insert({
         event_type: "pwa_notification",
         recipient: phone,
-        channel: result.channel,
+        channel: "sms",
         subject: `${template} notification`,
-        status: logStatus,
+        status: result.success ? "success" : "failed",
         message_sid: result.messageId || null,
         error_message: result.error || null,
-        metadata: {
-          user_id: userId || null,
-          template,
-          templateType: templateConfig.type,
-          templateSid: templateConfig.sid,
-          variables,
-          totalVariablesExpected: templateConfig.totalVariables,
-          originalChannel: channel,
-          forcedSms: true,
-          reason: "whatsapp_templates_pending_approval",
-          attempts: attempts.map((a) => ({
-            channel: a.channel,
-            success: a.success,
-            error: a.error || null,
-            errorCode: a.errorCode || null,
-          })),
-          version: FUNCTION_VERSION,
-          processingTimeMs: Date.now() - startTime,
-        },
+        metadata: { template, variables, provider: result.provider, version: FUNCTION_VERSION },
       });
-    } catch (logError) {
-      console.warn("[LOG] Falha ao registrar:", logError);
+    } catch (logErr) {
+      console.warn("[LOG] Erro ao registrar:", logErr);
     }
 
-    // ===========================================
-    // RESULTADO
-    // ===========================================
-    const processingTime = Date.now() - startTime;
-
-    console.log(`\n${"=".repeat(60)}`);
-    console.log(`[RESULTADO]`);
-    console.log(`Sucesso: ${result.success ? "✅" : "❌"}`);
-    console.log(`Canal: ${result.channel}`);
-    console.log(`Tentativas: ${attempts.length}`);
-    console.log(`Tempo: ${processingTime}ms`);
-    if (result.error) {
-      console.log(`Erro: ${result.error}`);
-    }
-    console.log(`${"=".repeat(60)}\n`);
+    console.log(`[RESULTADO] ${result.success ? "✅ Sucesso" : "❌ Falha"}: ${result.error || "OK"}`);
 
     return new Response(
       JSON.stringify({
-        success: result.success,
-        channel: result.channel,
-        templateType: templateConfig.type,
-        messageId: result.messageId || null,
-        error: result.error || null,
-        attempts: attempts.length,
-        processingTimeMs: processingTime,
+        ...result,
+        channel: "sms",
+        version: FUNCTION_VERSION,
       }),
       {
-        status: result.success ? 200 : 400,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`\n[ERRO FATAL] ${errMsg}`);
-
-    return new Response(JSON.stringify({ success: false, error: errMsg }), {
-      status: 500,
+  } catch (e: any) {
+    console.error(`[ERRO FATAL] ${e.message}`);
+    return new Response(JSON.stringify({ success: false, error: e.message, version: FUNCTION_VERSION }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

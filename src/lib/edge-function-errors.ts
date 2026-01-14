@@ -94,7 +94,16 @@ export function extractEdgeFunctionError(error: unknown): ParsedError {
   if (directMessage) {
     // Detecta erros genéricos de HTTP e melhora a mensagem
     if (directMessage.includes('non-2xx')) {
+      // Tenta extrair detalhes do corpo da resposta
+      const bodyData = (err.context as Record<string, unknown>)?.body as Record<string, unknown>;
+      if (bodyData?.error) {
+        result.message = String(bodyData.error);
+        result.code = bodyData.error_code as string || undefined;
+        console.error('[EdgeFunction] non-2xx with body:', bodyData);
+        return result;
+      }
       result.message = 'Erro no servidor. Verifique os logs ou tente novamente.';
+      console.error('[EdgeFunction] non-2xx error without body details:', err);
       return result;
     }
     

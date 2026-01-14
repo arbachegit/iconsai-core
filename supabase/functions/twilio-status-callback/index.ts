@@ -1,9 +1,10 @@
 // ============================================
-// VERSAO: 3.2.0 | DEPLOY: 2026-01-04
-// FIX: Normalização de versões em logs
+// VERSAO: 3.3.0 | DEPLOY: 2026-01-11
+// FIX: Corrigido domínio no fallback SMS (fia.iconsai.ai)
 // ============================================
 
-const FUNCTION_VERSION = "3.2.0";
+const FUNCTION_VERSION = "3.3.0";
+const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -145,6 +146,13 @@ serve(async (req) => {
             const variables = (metadata?.variables as Record<string, string>) || {};
             
             // Montar mensagem SMS baseada no template
+            // Função auxiliar para montar URL completa
+            const buildUrl = (path: string) => {
+              if (!path) return `${SITE_URL}/pwa`;
+              if (path.startsWith("http")) return path;
+              return `${SITE_URL}/${path.startsWith("/") ? path.slice(1) : path}`;
+            };
+            
             let smsText = "";
             switch (templateName) {
               case "otp":
@@ -152,13 +160,13 @@ serve(async (req) => {
                 smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos.`;
                 break;
               case "welcome":
-                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: https://hmv.knowyou.app/${variables["2"] || "login"}`;
+                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: ${buildUrl(variables["2"] || "login")}`;
                 break;
               case "resend_welcome":
-                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Notamos que voce ainda nao acessou. Entre em: https://hmv.knowyou.app/${variables["2"] || "login"}`;
+                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Notamos que voce ainda nao acessou. Entre em: ${buildUrl(variables["2"] || "login")}`;
                 break;
               case "invitation":
-                smsText = `KnowYOU: ${variables["1"] || "Voce"} foi convidado por ${variables["2"] || "Equipe KnowYOU"}! Acesse: https://hmv.knowyou.app/${variables["3"] || ""}`;
+                smsText = `KnowYOU: ${variables["1"] || "Voce"} foi convidado por ${variables["2"] || "Equipe KnowYOU"}! Acesse: ${buildUrl(variables["3"] || "")}`;
                 break;
               default:
                 smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;

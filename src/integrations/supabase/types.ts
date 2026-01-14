@@ -5736,6 +5736,7 @@ export type Database = {
       }
       user_invitations: {
         Row: {
+          accepted_at: string | null
           address_cep: string | null
           address_city: string | null
           address_complement: string | null
@@ -5786,6 +5787,7 @@ export type Database = {
           whatsapp_sent_at: string | null
         }
         Insert: {
+          accepted_at?: string | null
           address_cep?: string | null
           address_city?: string | null
           address_complement?: string | null
@@ -5836,6 +5838,7 @@ export type Database = {
           whatsapp_sent_at?: string | null
         }
         Update: {
+          accepted_at?: string | null
           address_cep?: string | null
           address_city?: string | null
           address_complement?: string | null
@@ -6312,6 +6315,7 @@ export type Database = {
         Args: { p_agent_slug?: string; p_device_id: string }
         Returns: Json
       }
+      check_pwa_access_by_phone: { Args: { p_phone: string }; Returns: Json }
       collect_daily_taxonomy_metrics: {
         Args: { p_date?: string }
         Returns: undefined
@@ -6683,6 +6687,7 @@ export type Database = {
         Args: { p_device_info?: Json; p_fingerprint: string; p_phone: string }
         Returns: Json
       }
+      login_pwa_by_phone_simple: { Args: { p_phone: string }; Returns: Json }
       normalize_document_names: {
         Args: never
         Returns: {
@@ -6929,6 +6934,10 @@ export type Database = {
           p_source_url?: string
         }
         Returns: string
+      }
+      verify_pwa_code_simple: {
+        Args: { p_code: string; p_phone: string }
+        Returns: Json
       }
       verify_pwa_device: { Args: { p_fingerprint: string }; Returns: Json }
       verify_pwa_device_code: {

@@ -170,14 +170,14 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     );
   }
 
-  const renderContent = ({ fingerprint, pwaAccess }: { fingerprint: string; pwaAccess: string[] }) => {
+  const renderContent = ({ userPhone, pwaAccess }: { userPhone: string; pwaAccess: string[] }) => {
     useEffect(() => {
-      if (fingerprint) {
-        setCurrentFingerprint(fingerprint);
-        setAuthenticated(true, fingerprint);
-        initializeHistory(fingerprint);
+      if (userPhone) {
+        setCurrentFingerprint(userPhone); // Using phone as device identifier
+        setAuthenticated(true, userPhone);
+        initializeHistory(userPhone);
       }
-    }, [fingerprint]);
+    }, [userPhone]);
 
     const wrapperClass = embedded
       ? "absolute inset-0 bg-background flex flex-col pwa-no-select overflow-hidden"
@@ -233,7 +233,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           <HistoryScreen
             onBack={() => setIsConversationsOpen(false)}
             filterModule={activeModule || undefined}
-            deviceId={fingerprint}
+            deviceId={currentFingerprint}
           />
         )}
       </div>
@@ -242,7 +242,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
 
   if (embedded) {
     return renderContent({
-      fingerprint: "simulator-embedded",
+      userPhone: "simulator-embedded",
       pwaAccess: ["pwa", "help", "health", "world", "ideas"],
     });
   }

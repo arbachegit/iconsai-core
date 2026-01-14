@@ -205,9 +205,15 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.send-sms]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-notification]
+verify_jwt = false
+
+# ============================================
+# PWA NOTIFICATION - Internal (called by other functions)
+# ============================================
+[functions.send-pwa-notification]
 verify_jwt = false
 
 # ============================================
