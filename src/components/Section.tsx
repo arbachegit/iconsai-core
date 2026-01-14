@@ -21,7 +21,7 @@ const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteA
       const { data } = await supabase
         .from('generated_images')
         .select('image_url')
-        .eq('section_id', id)
+        .ilike('prompt', `%${id}%`)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

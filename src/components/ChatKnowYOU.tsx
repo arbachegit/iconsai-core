@@ -141,12 +141,13 @@ export default function ChatKnowYOU() {
     const fetchAgentCapabilities = async () => {
       const { data } = await supabase
         .from("chat_agents")
-        .select("capabilities")
-        .eq("slug", "health")
-        .single();
+        .select("metadata")
+        .eq("name", "health")
+        .maybeSingle();
       
-      if (data?.capabilities) {
-        setAgentCapabilities(data.capabilities as Record<string, boolean>);
+      const capabilities = (data?.metadata as Record<string, any>)?.capabilities;
+      if (capabilities) {
+        setAgentCapabilities(capabilities as Record<string, boolean>);
       }
     };
     fetchAgentCapabilities();

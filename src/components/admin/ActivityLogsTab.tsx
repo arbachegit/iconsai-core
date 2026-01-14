@@ -45,10 +45,23 @@ import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
-type SortColumn = "created_at" | "user_email" | "action_category" | "action";
+type SortColumn = "created_at" | "action" | "resource";
 type SortDirection = "asc" | "desc" | null;
 type ChartView = "daily" | "users" | "categories";
 type MetricsPeriod = "today" | "7days" | "30days" | "custom";
+
+// Type for activity logs matching the database schema
+interface ActivityLog {
+  id: string;
+  action: string;
+  created_at: string | null;
+  details: Record<string, unknown> | null;
+  ip_address: string | null;
+  resource: string | null;
+  resource_id: string | null;
+  user_agent: string | null;
+  user_id: string | null;
+}
 
 const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ComponentType<{ className?: string }> }> = {
   LOGIN: { color: "bg-green-500", icon: LogIn },
@@ -149,13 +162,13 @@ export const ActivityLogsTab = () => {
     queryKey: ["activity-logs", categoryFilter, periodFilter, searchQuery],
     queryFn: async () => {
       let query = supabase
-        .from("user_activity_logs")
+        .from("activity_logs")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500);
 
-      if (categoryFilter !== "all") {
-        query = query.eq("action_category", categoryFilter);
+      if (searchQuery) {
+        query = query.or(`action.ilike.%${searchQuery}%,resource.ilike.%${searchQuery}%`);
       }
 
       const dateFilter = getDateFilter();
@@ -163,13 +176,9 @@ export const ActivityLogsTab = () => {
         query = query.gte("created_at", dateFilter);
       }
 
-      if (searchQuery) {
-        query = query.or(`action.ilike.%${searchQuery}%,user_email.ilike.%${searchQuery}%`);
-      }
-
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return (data || []) as ActivityLog[];
     },
   });
 
@@ -178,7 +187,7 @@ export const ActivityLogsTab = () => {
     queryKey: ["activity-logs-metrics", metricsPeriod, customDateRange],
     queryFn: async () => {
       let query = supabase
-        .from("user_activity_logs")
+        .from("activity_logs")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -194,7 +203,7 @@ export const ActivityLogsTab = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return (data || []) as ActivityLog[];
     },
   });
 
@@ -205,29 +214,31 @@ export const ActivityLogsTab = () => {
     // Activities by day
     const dailyMap = new Map<string, number>();
     metricsLogs.forEach(log => {
-      const day = format(new Date(log.created_at!), "dd/MM", { locale: ptBR });
-      dailyMap.set(day, (dailyMap.get(day) || 0) + 1);
+      if (log.created_at) {
+        const day = format(new Date(log.created_at), "dd/MM", { locale: ptBR });
+        dailyMap.set(day, (dailyMap.get(day) || 0) + 1);
+      }
     });
     const daily = Array.from(dailyMap.entries())
       .map(([date, count]) => ({ date, count }))
       .reverse()
       .slice(-30);
 
-    // Most active users
+    // Most active users (use user_id instead of user_email)
     const usersMap = new Map<string, number>();
     metricsLogs.forEach(log => {
-      const email = log.user_email || "Desconhecido";
-      usersMap.set(email, (usersMap.get(email) || 0) + 1);
+      const userId = log.user_id || "Desconhecido";
+      usersMap.set(userId, (usersMap.get(userId) || 0) + 1);
     });
     const users = Array.from(usersMap.entries())
-      .map(([email, count]) => ({ email: email.split("@")[0], fullEmail: email, count }))
+      .map(([email, count]) => ({ email: email.slice(0, 8), fullEmail: email, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    // Categories frequency
+    // Categories frequency (use action instead of action_category)
     const categoriesMap = new Map<string, number>();
     metricsLogs.forEach(log => {
-      const category = log.action_category || "OUTROS";
+      const category = log.action?.split("_")[0]?.toUpperCase() || "OUTROS";
       categoriesMap.set(category, (categoriesMap.get(category) || 0) + 1);
     });
     const categories = Array.from(categoriesMap.entries())
@@ -260,12 +271,12 @@ export const ActivityLogsTab = () => {
     }
 
     const exportLogs = logs.map(log => ({
-      "Data/Hora": format(new Date(log.created_at!), "dd/MM/yyyy HH:mm:ss", { locale: ptBR }),
-      "Usuário": log.user_email,
-      "Categoria": log.action_category,
+      "Data/Hora": log.created_at ? format(new Date(log.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR }) : "-",
+      "Usuário": log.user_id || "-",
+      "Recurso": log.resource || "-",
       "Ação": log.action,
       "Detalhes": JSON.stringify(log.details),
-      "Browser": log.user_agent?.substring(0, 50) || "-",
+      "IP": log.ip_address || "-",
     }));
 
     await exportData({
@@ -706,20 +717,18 @@ export const ActivityLogsTab = () => {
                       </TableHead>
                       <TableHead 
                         className="w-[200px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
-                        onClick={() => handleSort("user_email")}
+                        onClick={() => handleSort("resource")}
                       >
                         <div className="flex items-center font-bold text-foreground text-sm uppercase tracking-wide">
-                          Usuário
-                          {getSortIcon("user_email")}
+                          Recurso
+                          {getSortIcon("resource")}
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
-                        onClick={() => handleSort("action_category")}
+                        className="w-[120px]"
                       >
                         <div className="flex items-center font-bold text-foreground text-sm uppercase tracking-wide">
-                          Categoria
-                          {getSortIcon("action_category")}
+                          Usuário
                         </div>
                       </TableHead>
                       <TableHead 
@@ -740,12 +749,14 @@ export const ActivityLogsTab = () => {
                         <>
                           <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => toggleRow(log.id)}>
                             <TableCell className="font-mono text-xs">
-                              {format(new Date(log.created_at!), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                              {log.created_at ? format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "-"}
                             </TableCell>
-                            <TableCell className="text-sm truncate max-w-[200px]" title={log.user_email}>
-                              {log.user_email}
+                            <TableCell className="text-sm truncate max-w-[200px]" title={log.resource || ""}>
+                              {log.resource || "-"}
                             </TableCell>
-                            <TableCell>{getCategoryBadge(log.action_category)}</TableCell>
+                            <TableCell className="text-sm truncate max-w-[120px]" title={log.user_id || ""}>
+                              {log.user_id?.slice(0, 8) || "-"}
+                            </TableCell>
                             <TableCell className="text-sm">{log.action}</TableCell>
                             <TableCell>
                               <CollapsibleTrigger asChild>
