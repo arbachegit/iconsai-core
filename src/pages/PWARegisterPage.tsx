@@ -1,3 +1,11 @@
+// =============================================
+// PWA Register Page v7.0 - SIMPLIFICADO
+// Build: 2026-01-14
+// Funções: login_pwa, verify_pwa_code
+// Tabelas: pwa_invites, pwa_sessions
+// src/pages/PWARegisterPage.tsx
+// =============================================
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle2, XCircle, Phone, KeyRound, ArrowLeft } from "lucide-react";
@@ -17,14 +25,15 @@ interface InvitationData {
 }
 
 const PWA_BG_COLOR = "#0A0E1A";
-const STORAGE_KEY = 'pwa-verified-phone';
+const STORAGE_KEY = "pwa-verified-phone";
 
 export default function PWARegisterPage() {
   const { token: tokenParam } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
+  const code_param = searchParams.get("code");
   const token = tokenParam || searchParams.get("token") || undefined;
   const navigate = useNavigate();
-  
+
   const [pageState, setPageState] = useState<PageState>("loading");
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [phone, setPhone] = useState("");
@@ -36,73 +45,95 @@ export default function PWARegisterPage() {
   useEffect(() => {
     document.body.style.backgroundColor = PWA_BG_COLOR;
     document.documentElement.style.backgroundColor = PWA_BG_COLOR;
-    
+
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
       metaThemeColor.setAttribute("content", PWA_BG_COLOR);
     }
-    
+
     return () => {
       document.body.style.backgroundColor = "";
       document.documentElement.style.backgroundColor = "";
     };
   }, []);
 
-  // Validate token on load
+  // Validate token/code on load
   useEffect(() => {
-    const validateToken = async () => {
-      if (!token) {
-        setPageState("invalid");
-        return;
-      }
+    const validateInvite = async () => {
+      // Se tem código de convite (novo fluxo via pwa_invites)
+      if (code_param) {
+        try {
+          const { data, error: queryError } = await supabase
+            .from("pwa_invites")
+            .select("id, name, phone, email, invited_by, status, expires_at")
+            .eq("invite_code", code_param)
+            .eq("status", "pending")
+            .gt("expires_at", new Date().toISOString())
+            .single();
 
-      try {
-        // Find invitation by token
-        const { data, error: queryError } = await supabase
-          .from("user_invitations")
-          .select("id, name, phone, email, invited_by")
-          .eq("token", token)
-          .eq("has_app_access", true)
-          .gt("expires_at", new Date().toISOString())
-          .in("status", ["pending", "form_submitted"])
-          .single();
+          if (queryError || !data) {
+            console.error("Invalid invite code:", queryError);
+            setPageState("invalid");
+            return;
+          }
 
-        if (queryError || !data) {
-          console.error("Invalid token:", queryError);
+          setInvitation({
+            id: data.id,
+            name: data.name || "",
+            phone: data.phone || "",
+            email: data.email || undefined,
+          });
+          setPhone(data.phone || "");
+          setPageState("confirm");
+          return;
+        } catch (err) {
+          console.error("Error validating invite code:", err);
           setPageState("invalid");
           return;
         }
-
-        // Get inviter name if invited_by is set
-        let inviterName: string | undefined;
-        if (data.invited_by) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("first_name")
-            .eq("id", data.invited_by)
-            .single();
-          inviterName = profile?.first_name || undefined;
-        }
-
-        setInvitation({
-          id: data.id,
-          name: data.name,
-          phone: data.phone || "",
-          email: data.email || undefined,
-          invited_by: inviterName,
-        });
-        setPhone(data.phone || "");
-        setPageState("confirm");
-      } catch (err) {
-        console.error("Error validating token:", err);
-        setPageState("invalid");
       }
+
+      // Se tem token (fluxo antigo via user_invitations - manter compatibilidade)
+      if (token) {
+        try {
+          const { data, error: queryError } = await supabase
+            .from("pwa_invites")
+            .select("id, name, phone, email")
+            .eq("invite_code", token)
+            .eq("status", "pending")
+            .gt("expires_at", new Date().toISOString())
+            .single();
+
+          if (queryError || !data) {
+            console.error("Invalid token:", queryError);
+            setPageState("invalid");
+            return;
+          }
+
+          setInvitation({
+            id: data.id,
+            name: data.name || "",
+            phone: data.phone || "",
+            email: data.email || undefined,
+          });
+          setPhone(data.phone || "");
+          setPageState("confirm");
+          return;
+        } catch (err) {
+          console.error("Error validating token:", err);
+          setPageState("invalid");
+          return;
+        }
+      }
+
+      // Sem código nem token
+      setPageState("invalid");
     };
 
-    validateToken();
-  }, [token]);
+    validateInvite();
+  }, [token, code_param]);
 
-  // Confirm data and send OTP (usando função simplificada)
+  // Confirm data and send OTP
   const handleConfirm = async () => {
     if (!phone.trim()) {
       setError("Informe seu telefone");
@@ -113,8 +144,8 @@ export default function PWARegisterPage() {
     setError(null);
 
     try {
-      // Usar a função simplificada (sem fingerprint)
-      const { data, error: rpcError } = await supabase.rpc("login_pwa_by_phone_simple", {
+      // Usar a nova função login_pwa
+      const { data, error: rpcError } = await supabase.rpc("login_pwa", {
         p_phone: phone,
       });
 
@@ -124,30 +155,44 @@ export default function PWARegisterPage() {
         return;
       }
 
-      const result = data as { success: boolean; verification_code?: string; error?: string; message?: string; already_verified?: boolean };
+      const result = data as {
+        success: boolean;
+        verification_code?: string;
+        phone?: string;
+        user_name?: string;
+        error?: string;
+        already_verified?: boolean;
+      };
 
       // Se já está verificado, salvar e redirecionar
       if (result.already_verified) {
-        localStorage.setItem(STORAGE_KEY, phone);
+        const phoneToSave = result.phone || phone;
+        localStorage.setItem(STORAGE_KEY, phoneToSave);
         setPageState("success");
         setTimeout(() => navigate("/pwa"), 2000);
         return;
       }
 
       if (!result.success) {
-        setError(result.message || result.error || "Erro ao processar");
+        if (result.error === "no_invitation") {
+          setError("Você precisa de um convite para acessar o PWA.");
+        } else {
+          setError(result.error || "Erro ao processar");
+        }
         setIsSubmitting(false);
         return;
       }
 
-      // Send OTP via SMS
+      // Enviar SMS com código diretamente
       if (result.verification_code) {
-        await supabase.functions.invoke("send-pwa-notification", {
+        const normalizedPhone = result.phone || phone;
+        const smsMessage = `KnowYOU: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+
+        await supabase.functions.invoke("send-sms", {
           body: {
-            to: phone,
-            template: "otp",
-            variables: { "1": result.verification_code },
-            channel: "sms",
+            phoneNumber: normalizedPhone,
+            message: smsMessage,
+            eventType: "pwa_otp",
           },
         });
       }
@@ -161,7 +206,7 @@ export default function PWARegisterPage() {
     }
   };
 
-  // Verify OTP code (usando função simplificada)
+  // Verify OTP code
   const handleVerify = async () => {
     if (code.length !== 6) return;
 
@@ -169,8 +214,8 @@ export default function PWARegisterPage() {
     setError(null);
 
     try {
-      // Usar a função simplificada (por telefone, sem fingerprint)
-      const { data, error: rpcError } = await supabase.rpc("verify_pwa_code_simple", {
+      // Usar a nova função verify_pwa_code
+      const { data, error: rpcError } = await supabase.rpc("verify_pwa_code", {
         p_phone: phone,
         p_code: code,
       });
@@ -181,10 +226,23 @@ export default function PWARegisterPage() {
         return;
       }
 
-      const result = data as { success: boolean; error?: string; message?: string };
+      const result = data as {
+        success: boolean;
+        error?: string;
+        user_name?: string;
+        expires_at?: string;
+      };
 
       if (!result.success) {
-        setError(result.message || result.error || "Código inválido");
+        if (result.error === "invalid_code") {
+          setError("Código inválido. Tente novamente.");
+        } else if (result.error === "code_expired") {
+          setError("Código expirado. Solicite um novo código.");
+        } else if (result.error === "session_not_found") {
+          setError("Sessão não encontrada. Faça login novamente.");
+        } else {
+          setError(result.error || "Código inválido");
+        }
         setIsSubmitting(false);
         return;
       }
@@ -192,7 +250,7 @@ export default function PWARegisterPage() {
       // Success! Salvar telefone no localStorage
       localStorage.setItem(STORAGE_KEY, phone);
       setPageState("success");
-      
+
       // Redirect to /pwa after 2 seconds
       setTimeout(() => {
         navigate("/pwa");
@@ -229,9 +287,7 @@ export default function PWARegisterPage() {
               <XCircle className="h-8 w-8 text-destructive" />
             </div>
             <h1 className="text-xl font-bold text-foreground mb-2">Convite Inválido</h1>
-            <p className="text-muted-foreground text-sm mb-6">
-              Este link de convite é inválido ou expirou.
-            </p>
+            <p className="text-muted-foreground text-sm mb-6">Este link de convite é inválido ou expirou.</p>
             <Button onClick={() => navigate("/")} variant="outline" className="w-full">
               Voltar ao Início
             </Button>
@@ -251,9 +307,7 @@ export default function PWARegisterPage() {
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
             <h1 className="text-xl font-bold text-foreground mb-2">Cadastro Concluído!</h1>
-            <p className="text-muted-foreground text-sm mb-4">
-              Bem-vindo ao KnowYOU, {invitation?.name}!
-            </p>
+            <p className="text-muted-foreground text-sm mb-4">Bem-vindo ao KnowYOU, {invitation?.name || "Usuário"}!</p>
             <div className="flex items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Redirecionando...</span>
@@ -270,58 +324,48 @@ export default function PWARegisterPage() {
       <div className="min-h-[100dvh] flex flex-col bg-background p-4">
         <div className="flex-1 flex items-center justify-center">
           <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full border border-border">
-          <div className="text-center mb-6">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-              <Phone className="h-7 w-7 text-primary" />
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                <Phone className="h-7 w-7 text-primary" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">
+                {invitation?.name ? `Olá, ${invitation.name}!` : "Bem-vindo!"}
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1">Você foi convidado para o KnowYOU.</p>
             </div>
-            <h1 className="text-xl font-bold text-foreground">
-              Olá, {invitation?.name}!
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {invitation?.invited_by 
-                ? `${invitation.invited_by} te convidou para o KnowYOU.`
-                : "Você foi convidado para o KnowYOU."}
-            </p>
-          </div>
 
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4">
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
 
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                Confirme seu telefone
-              </label>
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(11) 99999-9999"
-                disabled={isSubmitting}
-                className="h-12"
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1.5 block">Confirme seu telefone</label>
+                <Input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  disabled={isSubmitting}
+                  className="h-12"
+                />
+              </div>
+              <Button onClick={handleConfirm} disabled={isSubmitting || !phone.trim()} className="w-full h-12">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enviando código...
+                  </>
+                ) : (
+                  "Continuar"
+                )}
+              </Button>
             </div>
-            <Button 
-              onClick={handleConfirm} 
-              disabled={isSubmitting || !phone.trim()} 
-              className="w-full h-12"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Enviando código...
-                </>
-              ) : (
-                "Continuar"
-              )}
-            </Button>
           </div>
         </div>
       </div>
-    </div>
     );
   }
 
@@ -331,48 +375,42 @@ export default function PWARegisterPage() {
       <div className="min-h-[100dvh] flex flex-col bg-background p-4">
         <div className="flex-1 flex items-center justify-center">
           <div className="bg-card rounded-2xl p-8 shadow-xl max-w-sm w-full border border-border">
-          <button
-            onClick={() => setPageState("confirm")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </button>
-
-          <div className="text-center mb-6">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="h-7 w-7 text-primary" />
-            </div>
-            <h1 className="text-xl font-bold text-foreground">Verificar Código</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Digite o código enviado para {phone}
-            </p>
-          </div>
-
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4">
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
-
-          <div className="flex justify-center mb-6">
-            <InputOTP maxLength={6} value={code} onChange={setCode}>
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
-          </div>
-
-            <Button 
-              onClick={handleVerify} 
-              disabled={isSubmitting || code.length !== 6} 
-              className="w-full h-12"
+            <button
+              onClick={() => setPageState("confirm")}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
             >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                <KeyRound className="h-7 w-7 text-primary" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">Verificar Código</h1>
+              <p className="text-muted-foreground text-sm mt-1">Digite o código enviado para {phone}</p>
+            </div>
+
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
+            <div className="flex justify-center mb-6">
+              <InputOTP maxLength={6} value={code} onChange={setCode}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <Button onClick={handleVerify} disabled={isSubmitting || code.length !== 6} className="w-full h-12">
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
