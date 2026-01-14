@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Smartphone, Mic, Zap, Shield, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
 
 const PWADesktopBlock = () => {
   const [copied, setCopied] = useState(false);
 
-  // Get clean URL for the PWA (without slugs)
-  const baseUrl = window.location.origin;
-  const pwaUrl = `${baseUrl}/pwa-register`;
+  // URL fixa para o PWA - sempre https://pwa.iconsai.ai/pwa
+  const pwaUrl = 'https://pwa.iconsai.ai/pwa';
+
+  // URL completa com token do convite (para o QR code)
+  const fullUrl = (() => {
+    const path = window.location.pathname;
+    const match = path.match(/\/pwa-register\/([^/]+)/);
+    const token = match ? match[1] : null;
+    return token ? `${pwaUrl}/${token}` : pwaUrl;
+  })();
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(pwaUrl);
+      await navigator.clipboard.writeText(fullUrl);
       setCopied(true);
       toast.success('Link copiado!');
       setTimeout(() => setCopied(false), 2000);
@@ -21,87 +29,82 @@ const PWADesktopBlock = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 flex items-center justify-center p-6">
-      <div className="max-w-md w-full space-y-8 animate-fade-in">
-        {/* Ícone principal */}
-        <div className="flex justify-center">
-          <div className="relative">
-            <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-blue-500/30 backdrop-blur-sm">
-              <Smartphone className="w-16 h-16 text-blue-400 animate-pulse" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 flex items-center justify-center p-4">
+      <div className="max-w-sm w-full space-y-4 animate-fade-in">
+        {/* Ícone e Título compactos */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-blue-500/30">
+              <Smartphone className="w-8 h-8 text-blue-400" />
             </div>
-            <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
-              <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             </div>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white">App Exclusivo para Celular</h1>
+            <p className="text-slate-400 text-sm">KnowYOU PWA - experiência mobile otimizada</p>
           </div>
         </div>
 
-        {/* Título */}
-        <div className="text-center space-y-3">
-          <h1 className="text-3xl font-bold text-white">
-            App Exclusivo para Celular
-          </h1>
-          <p className="text-slate-400 text-lg">
-            O KnowYOU PWA foi otimizado para a melhor experiência mobile
+        {/* QR Code */}
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
+          <p className="text-xs font-medium text-slate-300 uppercase tracking-wider text-center mb-3">
+            Escaneie o QR Code
+          </p>
+          <div className="flex justify-center">
+            <div className="bg-white p-3 rounded-lg">
+              <QRCodeSVG
+                value={fullUrl}
+                size={140}
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+          </div>
+          <p className="text-slate-500 text-xs text-center mt-2">
+            Aponte a câmera do celular para acessar
           </p>
         </div>
 
-        {/* Benefícios */}
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 space-y-4">
-          <h2 className="text-sm font-medium text-slate-300 uppercase tracking-wider">
-            Por que usar no celular?
-          </h2>
-          
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
-                <Mic className="w-5 h-5 text-rose-400" />
+        {/* Benefícios compactos */}
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-3 border border-slate-700/50">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                <Mic className="w-4 h-4 text-rose-400" />
               </div>
-              <span>Gravação de voz otimizada</span>
+              <span className="text-slate-400 text-xs">Voz</span>
             </div>
-            
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-amber-400" />
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Zap className="w-4 h-4 text-amber-400" />
               </div>
-              <span>Acesso rápido e prático</span>
+              <span className="text-slate-400 text-xs">Rápido</span>
             </div>
-            
-            <div className="flex items-center gap-3 text-slate-300">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-emerald-400" />
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-emerald-400" />
               </div>
-              <span>Segurança vinculada ao dispositivo</span>
+              <span className="text-slate-400 text-xs">Seguro</span>
             </div>
           </div>
         </div>
 
-        {/* Link copiável */}
-        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-          <div className="flex items-center gap-3">
+        {/* Link copiável compacto */}
+        <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
+          <div className="flex items-center gap-2">
             <div className="flex-1 overflow-hidden">
-              <p className="text-xs text-slate-400 mb-1">Link de acesso:</p>
-              <p className="text-blue-400 font-mono text-sm truncate">{pwaUrl}</p>
+              <p className="text-blue-400 font-mono text-xs truncate">{fullUrl}</p>
             </div>
             <button
               onClick={copyLink}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg text-blue-400 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg text-blue-400 transition-colors"
             >
-              {copied ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-              <span className="text-sm">{copied ? 'Copiado!' : 'Copiar'}</span>
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              <span className="text-xs">{copied ? 'OK' : 'Copiar'}</span>
             </button>
           </div>
-        </div>
-
-        {/* Dica */}
-        <div className="text-center">
-          <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
-            <Smartphone className="w-4 h-4" />
-            Acesse este link no navegador do seu celular
-          </p>
         </div>
       </div>
     </div>
