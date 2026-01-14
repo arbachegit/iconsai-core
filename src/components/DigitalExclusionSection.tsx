@@ -46,7 +46,7 @@ export const DigitalExclusionSection = () => {
       const { data, error } = await supabase
         .from('generated_images')
         .select('image_url')
-        .ilike('prompt', '%digital%exclusion%')
+        .eq('section_id', 'digital-exclusion')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

@@ -36,9 +36,9 @@ export const DraggablePreviewPanel = ({
       const { data, error } = await supabase
         .from("generated_images")
         .select("image_url")
-        .ilike("prompt", `%${sectionId}%`)
+        .eq("section_id", sectionId)
         .limit(1)
-        .maybeSingle();
+        .single();
       
       if (error) throw error;
       return data?.image_url;

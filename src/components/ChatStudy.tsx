@@ -140,13 +140,12 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     const fetchAgentCapabilities = async () => {
       const { data } = await supabase
         .from("chat_agents")
-        .select("metadata")
-        .eq("name", "study")
-        .maybeSingle();
+        .select("capabilities")
+        .eq("slug", "study")
+        .single();
       
-      const capabilities = (data?.metadata as Record<string, any>)?.capabilities;
-      if (capabilities) {
-        setAgentCapabilities(capabilities as Record<string, boolean>);
+      if (data?.capabilities) {
+        setAgentCapabilities(data.capabilities as Record<string, boolean>);
       }
     };
     fetchAgentCapabilities();
