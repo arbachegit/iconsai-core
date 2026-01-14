@@ -39,6 +39,9 @@ interface TimelineEvent {
   title: string;
   content: string;
   display_order: number;
+  category?: string;
+  tooltip_key?: string;
+  is_active?: boolean;
 }
 
 // Icon mapping for historical events
@@ -82,18 +85,27 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   
   const vimeoUrl = settings?.vimeo_history_url;
   
-  // Fetch timeline events from database ordered by display_order
+  // Fetch timeline events from database ordered by category
   const { data: dbEvents, isLoading: loadingEvents } = useQuery({
     queryKey: ['timeline-history-events'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tooltip_contents')
         .select('*')
-        .like('section_id', 'history-%')
-        .order('display_order', { ascending: true });
+        .like('tooltip_key', 'history-%')
+        .eq('is_active', true)
+        .order('category', { ascending: true });
       
       if (error) throw error;
-      return data as TimelineEvent[];
+      // Map database columns to expected interface
+      return (data || []).map((item, index) => ({
+        id: item.id,
+        section_id: item.tooltip_key || `history-${index}`,
+        header: item.category,
+        title: item.title,
+        content: item.content,
+        display_order: index,
+      })) as TimelineEvent[];
     }
   });
 
@@ -212,22 +224,25 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     endTime: (idx + 1) * 20
   }));
 
-  // Buscar imagens diretamente do banco (1 query em vez de 14 Edge Function calls)
+  // Buscar imagens diretamente do banco usando prompt como identificador
   const { data: cachedImages, isLoading: loadingImages } = useQuery({
     queryKey: ['timeline-history-images'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('generated_images')
-        .select('section_id, image_url')
-        .like('section_id', 'history-%');
+        .select('prompt, image_url')
+        .like('prompt', '%history%');
       
       if (error) throw error;
       
       // Converter para Record<eventId, imageUrl>
       const images: Record<string, string> = {};
       data?.forEach(img => {
-        const eventId = img.section_id.replace('history-', '');
-        images[eventId] = img.image_url;
+        // Extract event id from prompt if possible
+        const match = img.prompt?.match(/history[-_](\w+)/i);
+        if (match && img.image_url) {
+          images[match[1]] = img.image_url;
+        }
       });
       
       return images;
