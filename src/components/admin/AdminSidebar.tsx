@@ -36,7 +36,7 @@ import {
   LogOut,
   MessagesSquare,
   Image,
-  Youtube,
+  Video,
   BookOpen,
   Database,
   GitBranch,
@@ -86,7 +86,7 @@ import {
 import { NotificationBell } from './NotificationBell';
 
 
-type TabType = "dashboard" | "crm" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "security-audit-logs" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "data-flow" | "schema-monitor" | "whatsapp-tier" | "fallback-config" | "pwa-conversations";
+type TabType = "dashboard" | "crm" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "videos" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "security-audit-logs" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "data-flow" | "schema-monitor" | "whatsapp-tier" | "fallback-config" | "pwa-conversations";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -477,7 +477,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "podcasts" as TabType, label: "Podcasts", icon: Music },
         { id: "tooltips" as TabType, label: "Tooltips", icon: MessageCircle },
         { id: "images" as TabType, label: "Cache de Imagens", icon: Image },
-        { id: "youtube" as TabType, label: "Inserir Vídeos", icon: Youtube },
+        { id: "videos" as TabType, label: "Inserir Vídeos (Vimeo)", icon: Video },
       ]
     },
     {

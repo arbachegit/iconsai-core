@@ -1,6 +1,7 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 2.1.0 | DEPLOY: 2026-01-14
+// FIX: Usar SMS em vez de WhatsApp para alertas de seguranca
+// WhatsApp requer templates pre-aprovados (contentSid)
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -504,37 +505,41 @@ Scan concluído em: ${timestamp}`;
           }
 
           if (prefData.whatsapp_enabled && whatsappGlobalEnabled && whatsappPhone) {
-            console.log('[SECURITY-SCAN] Sending WhatsApp alert...');
-            
-            const whatsappMessage = template?.whatsapp_message
-              ? injectVars(template.whatsapp_message)
-              : `${severityIcon} ${timestamp} - Plataforma KnowYOU: Alerta de Segurança. ${summary.critical} críticos, ${summary.warning} avisos detectados.`;
+            console.log('[SECURITY-SCAN] Sending SMS alert (WhatsApp requires pre-approved templates)...');
+
+            // WhatsApp requires pre-approved templates (contentSid), so we use SMS for security alerts
+            // SMS allows freeform messages without pre-approval
+            const smsMessage = template?.whatsapp_message
+              ? injectVars(template.whatsapp_message).slice(0, 160) // SMS limit
+              : `KnowYOU: ${severityIcon} Alerta Seguranca - ${summary.critical} criticos, ${summary.warning} avisos`;
 
             try {
-              const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-whatsapp', {
+              const { data: smsData, error: smsError } = await supabase.functions.invoke('send-sms', {
                 body: {
                   phoneNumber: whatsappPhone,
-                  message: whatsappMessage,
+                  message: smsMessage,
                   eventType: 'security_alert'
                 }
               });
 
-              if (!whatsappError && whatsappData?.success) {
-                console.log('[SECURITY-SCAN] WhatsApp sent successfully');
+              if (!smsError && smsData?.success) {
+                console.log('[SECURITY-SCAN] SMS sent successfully');
+              } else {
+                console.warn('[SECURITY-SCAN] SMS failed:', smsData?.error || smsError?.message);
               }
 
               await supabase.from('notification_logs').insert({
                 event_type: 'security_alert',
-                channel: 'whatsapp',
+                channel: 'sms',
                 recipient: whatsappPhone,
                 subject: null,
-                message_body: whatsappMessage,
-                status: (!whatsappError && whatsappData?.success) ? 'success' : 'failed',
-                error_message: whatsappError?.message || null,
-                metadata: { variables }
+                message_body: smsMessage,
+                status: (!smsError && smsData?.success) ? 'success' : 'failed',
+                error_message: smsData?.error || smsError?.message || null,
+                metadata: { variables, provider: smsData?.provider }
               });
-            } catch (whatsappErr) {
-              console.error('[SECURITY-SCAN] Failed to send WhatsApp:', whatsappErr);
+            } catch (smsErr) {
+              console.error('[SECURITY-SCAN] Failed to send SMS:', smsErr);
             }
           }
 
