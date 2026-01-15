@@ -52,11 +52,11 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
     setIsLoading(true);
 
     try {
-      // URLs do Supabase
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gmflpmcepempcygdrayv.supabase.co";
+      // URLs do Supabase - projeto knowyou-production
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://uhazjwqfsvxqozepyjjj.supabase.co";
       const supabaseKey =
         import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZmxwbWNlcGVtcGN5Z2RyYXl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI1NzYyMDAsImV4cCI6MjA0ODE1MjIwMH0.K3sJfvYBVqCg8-FgWxZyEfRkjNfwvuLdP_sGqwe6Ryc";
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVoYXpqd3Fmc3Z4cW96ZXB5ampqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNzAxODIsImV4cCI6MjA3OTk0NjE4Mn0.q7Y5y5rDlw18PrJcIIb73jAP-b1NAA5eyIaTfuunVDc";
 
       console.log("[HOME] 📡 Fazendo fetch para TTS...");
 
