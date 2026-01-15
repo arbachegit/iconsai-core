@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseUntyped } from "@/integrations/supabase/typed-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -128,11 +129,11 @@ export function CRMTab() {
   const { data: visits = [], isLoading, refetch } = useQuery({
     queryKey: ['crm-visits', filters],
     queryFn: async () => {
-      let query = supabase
+      let query = supabaseUntyped
         .from('crm_visits')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (filters.topic && filters.topic !== 'all') {
         query = query.eq('presentation_topic', filters.topic);
       }
@@ -145,7 +146,7 @@ export function CRMTab() {
       if (filters.dateTo) {
         query = query.lte('created_at', endOfDay(new Date(filters.dateTo)).toISOString());
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data as CRMVisit[];
@@ -164,7 +165,7 @@ export function CRMTab() {
   // Mutation para atualizar status
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
+      const { error } = await supabaseUntyped
         .from('crm_visits')
         .update({ status })
         .eq('id', id);

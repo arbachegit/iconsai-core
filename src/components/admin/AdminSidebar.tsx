@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseUntyped } from "@/integrations/supabase/typed-client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
@@ -346,11 +347,11 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
   // Fetch unread notifications count
   const fetchUnreadNotifications = useCallback(async () => {
-    const { count } = await supabase
+    const { count } = await supabaseUntyped
       .from("notification_logs")
       .select("*", { count: "exact", head: true })
       .eq("is_read", false);
-    
+
     setUnreadNotificationsCount(count || 0);
   }, []);
 

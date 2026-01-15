@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseUntyped } from "@/integrations/supabase/typed-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,12 +78,12 @@ export const ContactMessagesTab = () => {
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['reply-templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseUntyped
         .from('reply_templates')
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      
+
       if (error) throw error;
       return data as ReplyTemplate[];
     }
@@ -238,13 +239,13 @@ export const ContactMessagesTab = () => {
   const { data: messages, isLoading, refetch } = useQuery({
     queryKey: ['contact-messages'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseUntyped
         .from('contact_messages')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      return data;
+      return data as any[];
     }
   });
 

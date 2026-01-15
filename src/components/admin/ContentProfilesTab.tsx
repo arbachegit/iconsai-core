@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseUntyped } from "@/integrations/supabase/typed-client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { Button } from "@/components/ui/button";
@@ -191,8 +192,8 @@ export const ContentProfilesTab = () => {
     queryKey: ["profile-taxonomies", selectedProfile?.code],
     queryFn: async () => {
       if (!selectedProfile?.code) return [];
-      
-      const { data, error } = await supabase
+
+      const { data, error } = await supabaseUntyped
         .from("profile_taxonomies")
         .select("*")
         .eq("profile_code", selectedProfile.code);

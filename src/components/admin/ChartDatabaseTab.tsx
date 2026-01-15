@@ -3,6 +3,7 @@ import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext"
 import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseUntyped } from "@/integrations/supabase/typed-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -470,7 +471,7 @@ export function ChartDatabaseTab() {
       
       while (hasMore) {
         // Always fetch regional data (uf_code > 0) and aggregate in frontend for nationals
-        const { data, error } = await supabase
+        const { data, error } = await supabaseUntyped
           .from("pmc_valores_reais")
           .select("reference_date, uf_code, valor_estimado_reais")
           .eq("pmc_indicator_code", queryCode)
@@ -478,9 +479,9 @@ export function ChartDatabaseTab() {
           .order("reference_date")
           .range(from, from + pageSize - 1);
         if (error) throw error;
-        
+
         if (data && data.length > 0) {
-          allData.push(...data);
+          allData.push(...(data as { reference_date: string; uf_code: number; valor_estimado_reais: number }[]));
           from += pageSize;
           hasMore = data.length === pageSize;
         } else {
@@ -515,14 +516,14 @@ export function ChartDatabaseTab() {
   const { data: indicatorStats = {}, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ["indicator-stats-chart-db"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseUntyped
         .from("indicator_stats_summary")
         .select("indicator_id, total_count, min_date, max_date, last_value");
-      
+
       if (error) throw error;
-      
+
       const stats: Record<string, { count: number; min: string; max: string; lastValue: number }> = {};
-      
+
       (data || []).forEach((row: any) => {
         stats[row.indicator_id] = {
           count: row.total_count,
@@ -531,7 +532,7 @@ export function ChartDatabaseTab() {
           lastValue: row.last_value,
         };
       });
-      
+
       return stats;
     },
     refetchOnWindowFocus: false,

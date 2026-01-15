@@ -10,6 +10,7 @@ import { Layout, Edit2, ChevronDown, ChevronUp, Save, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseUntyped } from "@/integrations/supabase/typed-client";
 import { useToast } from "@/hooks/use-toast";
 
 interface SectionContent {
@@ -29,7 +30,7 @@ export const ContentManagementTab = () => {
   const { data: sections, refetch } = useQuery({
     queryKey: ["section-contents"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseUntyped
         .from("section_contents")
         .select("*")
         .order("section_id");
@@ -40,13 +41,13 @@ export const ContentManagementTab = () => {
 
   const saveMutation = useMutation({
     mutationFn: async (data: { id: string; title: string; content: string; header: string }) => {
-      const { error } = await supabase
+      const { error } = await supabaseUntyped
         .from("section_contents")
-        .update({ 
-          title: data.title, 
+        .update({
+          title: data.title,
           content: data.content,
           header: data.header,
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString()
         })
         .eq("id", data.id);
       if (error) throw error;
@@ -54,7 +55,7 @@ export const ContentManagementTab = () => {
       // Create version entry
       const section = sections?.find(s => s.id === data.id);
       if (section) {
-        const { data: lastVersion } = await supabase
+        const { data: lastVersion } = await supabaseUntyped
           .from("section_content_versions")
           .select("version_number")
           .eq("section_id", section.section_id)
@@ -62,14 +63,14 @@ export const ContentManagementTab = () => {
           .limit(1)
           .maybeSingle();
 
-        await supabase
+        await supabaseUntyped
           .from("section_content_versions")
           .insert({
             section_id: section.section_id,
             header: data.header,
             title: data.title,
             content: data.content,
-            version_number: (lastVersion?.version_number || 0) + 1,
+            version_number: ((lastVersion as any)?.version_number || 0) + 1,
             change_description: "Atualização manual via ContentManagementTab"
           });
       }

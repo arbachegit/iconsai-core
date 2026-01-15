@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseUntyped } from '@/integrations/supabase/typed-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -280,7 +281,7 @@ export default function ApiManagementTab() {
 
   const fetchApis = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseUntyped
         .from('system_api_registry')
         .select('*')
         .order('provider', { ascending: true })
@@ -374,7 +375,7 @@ export default function ApiManagementTab() {
 
     try {
       if (editingApi) {
-        const { error } = await supabase
+        const { error } = await supabaseUntyped
           .from('system_api_registry')
           .update({
             name: formData.name,
@@ -390,7 +391,7 @@ export default function ApiManagementTab() {
         if (error) throw error;
         toast.success('API atualizada com sucesso');
       } else {
-        const { error } = await supabase
+        const { error } = await supabaseUntyped
           .from('system_api_registry')
           .insert({
             name: formData.name,
@@ -418,7 +419,7 @@ export default function ApiManagementTab() {
     if (!confirm(`Tem certeza que deseja excluir "${api.name}"?`)) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseUntyped
         .from('system_api_registry')
         .delete()
         .eq('id', api.id);
@@ -435,7 +436,7 @@ export default function ApiManagementTab() {
   const handleToggleStatus = async (api: ApiRegistry) => {
     try {
       const newStatus = api.status === 'active' ? 'inactive' : 'active';
-      const { error } = await supabase
+      const { error } = await supabaseUntyped
         .from('system_api_registry')
         .update({ status: newStatus })
         .eq('id', api.id);
@@ -703,7 +704,7 @@ export default function ApiManagementTab() {
 
   const handleToggleAutoFetch = async (api: ApiRegistry, enabled: boolean) => {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseUntyped
         .from('system_api_registry')
         .update({ auto_fetch_enabled: enabled })
         .eq('id', api.id);
@@ -774,7 +775,7 @@ export default function ApiManagementTab() {
     }
     
     try {
-      const { error } = await supabase
+      const { error } = await supabaseUntyped
         .from('system_api_registry')
         .update({ auto_fetch_interval: intervalValue })
         .eq('id', apiId);
