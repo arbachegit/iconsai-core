@@ -1,20 +1,38 @@
 /**
  * ============================================================
- * HomeContainer.tsx - Container INDEPENDENTE para HOME
+ * HomeContainer.tsx - Container PAI para HOME
  * ============================================================
- * Versão: 5.3.0 - 2026-01-08
- * CORREÇÃO: Autoplay usa useRef para evitar re-render cancelar o setTimeout
+ * Versão: 7.0.0 - 2026-01-15
+ *
+ * FIX PROBLEMAS 1 E 2:
+ * - Usa SEMPRE config.welcomeText do useConfigPWA (não chama generate-contextual-greeting)
+ * - Autoplay simplificado: toca assim que config estiver pronto
+ * - Sem chamadas externas desnecessárias
+ * ============================================================
+ * CHANGELOG v7.0.0:
+ * - Removida chamada a generate-contextual-greeting
+ * - Texto de boas-vindas vem DIRETO do useConfigPWA
+ * - Autoplay mais rápido e confiável
  * ============================================================
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { VoicePlayerBox } from "../voice/VoicePlayerBox";
+import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
+import { PlayButton } from "../voice/PlayButton";
 import { ModuleSelector } from "../voice/ModuleSelector";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
-import { supabase } from "@/integrations/supabase/client";
+import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
+
+// Cor padrão da Home (pode ser configurável no futuro)
+const HOME_CONFIG = {
+  name: "Home",
+  color: "#00D4FF", // Ciano - cor primária do KnowYOU
+  secondaryColor: "#8B5CF6", // Roxo - cor secundária
+};
 
 interface HomeContainerProps {
   onModuleSelect: (moduleId: Exclude<ModuleId, null>) => void;
@@ -22,218 +40,112 @@ interface HomeContainerProps {
 }
 
 export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, deviceId }) => {
+  // ============================================================
+  // HOOKS CENTRALIZADOS (mesma arquitetura dos módulos)
+  // ============================================================
+  const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
   const { config, isLoading: isConfigLoading } = useConfigPWA();
-  const { userName, playerState, setPlayerState } = usePWAVoiceStore();
+  const { userName } = usePWAVoiceStore();
 
   // Estados locais
-  const [greeting, setGreeting] = useState<string>("");
-  const [isGreetingReady, setIsGreetingReady] = useState(false);
+  const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
 
-  const frequencyAnimationRef = useRef<number | null>(null);
-  const mountedRef = useRef(true);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const hasPlayedAutoplayRef = useRef(false); // ✅ useRef ao invés de useState
+  // Refs
+  const animationRef = useRef<number | null>(null);
 
   // ============================================================
-  // FUNÇÃO SPEAK DIRETA (sem hook externo)
+  // ETAPA 1: TEXTO DE BOAS-VINDAS DIRETO DO CONFIG
+  // v7.0.0: Sem chamada externa, usa SEMPRE useConfigPWA
   // ============================================================
-  const speakDirect = useCallback(async (text: string) => {
-    if (!text.trim()) {
-      console.error("[HOME] ❌ Texto vazio!");
-      return;
-    }
+  const getWelcomeText = useCallback((): string => {
+    // Pegar texto do config (definido no banco pwa_config)
+    let text = config.welcomeText ||
+      "Olá! Eu sou o KnowYOU, seu assistente de voz desenvolvido pela Arbache AI. Escolha um módulo abaixo para começar.";
 
-    console.log("[HOME] 🎤 Iniciando TTS...");
-    setIsLoading(true);
-
-    try {
-      // URLs do Supabase - projeto knowyou-production
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://uhazjwqfsvxqozepyjjj.supabase.co";
-      const supabaseKey =
-        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVoYXpqd3Fmc3Z4cW96ZXB5ampqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNzAxODIsImV4cCI6MjA3OTk0NjE4Mn0.q7Y5y5rDlw18PrJcIIb73jAP-b1NAA5eyIaTfuunVDc";
-
-      console.log("[HOME] 📡 Fazendo fetch para TTS...");
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ text, voice: "fernando" }),
-      });
-
-      console.log("[HOME] 📡 Response status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const audioBlob = await response.blob();
-      console.log("[HOME] 📦 Blob size:", audioBlob.size);
-
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      // Limpar áudio anterior
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-      }
-
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onplay = () => {
-        console.log("[HOME] ▶️ Áudio tocando!");
-        setIsPlaying(true);
-        setIsLoading(false);
-      };
-
-      audio.onended = () => {
-        console.log("[HOME] ⏹️ Áudio terminou");
-        setIsPlaying(false);
-        setProgress(0);
-      };
-
-      audio.onerror = (e) => {
-        console.error("[HOME] ❌ Erro no áudio:", e);
-        setIsPlaying(false);
-        setIsLoading(false);
-      };
-
-      audio.ontimeupdate = () => {
-        if (audio.duration) {
-          setProgress((audio.currentTime / audio.duration) * 100);
-        }
-      };
-
-      console.log("[HOME] 🎵 Chamando audio.play()...");
-      await audio.play();
-      console.log("[HOME] ✅ Áudio iniciado com sucesso!");
-    } catch (err) {
-      console.error("[HOME] ❌ Erro no TTS:", err);
-      setIsLoading(false);
-    }
-  }, []);
-
-  const stopAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    setIsPlaying(false);
-    setProgress(0);
-  }, []);
-
-  // ============================================================
-  // ETAPA 1: BUSCAR SAUDAÇÃO DA HOME
-  // ============================================================
-  useEffect(() => {
-    mountedRef.current = true;
-
-    if (isConfigLoading) return;
-    if (!deviceId || deviceId === "") return;
-
-    const fetchHomeGreeting = async () => {
-      console.log("[HOME] 🔍 Buscando saudação...");
-
-      try {
-        const { data, error } = await supabase.functions.invoke("generate-contextual-greeting", {
-          body: {
-            deviceId: deviceId,
-            userName: userName || undefined,
-          },
-        });
-
-        if (!mountedRef.current) return;
-
-        if (error) {
-          console.warn("[HOME] ⚠️ Erro:", error);
-          const fallback =
-            config.welcomeText?.replace("[name]", userName || "") ||
-            "Olá! Eu sou o KnowYOU, seu assistente de voz. Escolha um módulo abaixo para começar.";
-          setGreeting(fallback);
-        } else if (data?.greeting) {
-          console.log("[HOME] ✅ Saudação recebida");
-          setGreeting(data.greeting);
-        } else {
-          const fallback =
-            config.welcomeText?.replace("[name]", userName || "") ||
-            "Olá! Eu sou o KnowYOU, seu assistente de voz. Escolha um módulo abaixo para começar.";
-          setGreeting(fallback);
-        }
-      } catch (err) {
-        console.error("[HOME] ❌ Exceção:", err);
-        if (mountedRef.current) {
-          setGreeting("Olá! Eu sou o KnowYOU, seu assistente de voz.");
-        }
-      } finally {
-        if (mountedRef.current) {
-          setIsGreetingReady(true);
-          console.log("[HOME] ✅ Greeting pronto!");
-        }
-      }
-    };
-
-    fetchHomeGreeting();
-
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [isConfigLoading, deviceId, userName, config.welcomeText]);
-
-  // ============================================================
-  // ETAPA 2: AUTOPLAY (usando useRef para não re-renderizar)
-  // ============================================================
-  useEffect(() => {
-    // Verificar condições
-    if (!isGreetingReady || !greeting || hasPlayedAutoplayRef.current) {
-      return;
-    }
-
-    // Marcar como executado IMEDIATAMENTE (usando ref, não causa re-render)
-    hasPlayedAutoplayRef.current = true;
-    console.log("[HOME] 🚀 Iniciando autoplay...");
-
-    // Executar após pequeno delay
-    const timer = setTimeout(() => {
-      if (mountedRef.current) {
-        console.log("[HOME] 🎯 Executando speakDirect()...");
-        speakDirect(greeting);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [isGreetingReady, greeting, speakDirect]);
-
-  // ============================================================
-  // ATUALIZAR PLAYER STATE
-  // ============================================================
-  useEffect(() => {
-    if (isLoading) {
-      setPlayerState("loading");
-    } else if (isPlaying) {
-      setPlayerState("playing");
+    // Substituir [name] pelo nome do usuário se disponível
+    if (userName) {
+      text = text.replace("[name]", userName);
     } else {
-      setPlayerState("waiting");
+      // Remover placeholder se não houver nome
+      text = text.replace("[name]", "").replace(/\s+/g, " ").trim();
     }
-  }, [isLoading, isPlaying, setPlayerState]);
+
+    return text;
+  }, [config.welcomeText, userName]);
+
+  // Flag para saber se o texto está pronto
+  const isGreetingReady = !isConfigLoading;
 
   // ============================================================
-  // CLEANUP
+  // ETAPA 2: AUTOPLAY (v7.0.0 - simplificado)
+  // ============================================================
+  useEffect(() => {
+    if (!isGreetingReady || hasPlayedAutoplay) return;
+
+    const welcomeText = getWelcomeText();
+    if (!welcomeText) return;
+
+    console.log("[HOME v7] 🚀 Executando autoplay com texto do config...");
+    setHasPlayedAutoplay(true);
+
+    // Classificar e enriquecer para TTS contextual
+    const executeAutoplay = async () => {
+      try {
+        const enrichment = await classifyAndEnrich(welcomeText, "home");
+        await speak(enrichment.enrichedText || welcomeText, "home", {
+          phoneticMapOverride: enrichment.phoneticMap,
+        });
+      } catch (err) {
+        console.warn("[HOME v7] ⚠️ Autoplay bloqueado ou erro:", err);
+        // O useTextToSpeech já salva em pendingPlay se for NotAllowedError
+        // SafariAudioUnlock vai fazer retry quando usuário interagir
+      }
+    };
+
+    executeAutoplay();
+  }, [isGreetingReady, hasPlayedAutoplay, getWelcomeText, speak]);
+
+  // ============================================================
+  // CAPTURA DE FREQUÊNCIAS DO AUDIO MANAGER
+  // ============================================================
+  useEffect(() => {
+    if (!audioManager.isPlaying) {
+      setFrequencyData([]);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      return;
+    }
+
+    const updateFrequency = () => {
+      const data = useAudioManager.getState().getFrequencyData();
+      if (data.length > 0) {
+        setFrequencyData(data);
+      }
+      animationRef.current = requestAnimationFrame(updateFrequency);
+    };
+
+    updateFrequency();
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    };
+  }, [audioManager.isPlaying]);
+
+  // ============================================================
+  // CLEANUP AO DESMONTAR
   // ============================================================
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
+      useAudioManager.getState().stopAllAndCleanup();
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
       }
     };
   }, []);
@@ -241,20 +153,39 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   // ============================================================
   // HANDLERS
   // ============================================================
-  const handleReplay = useCallback(() => {
-    if (greeting) {
-      speakDirect(greeting);
+  const handlePlayClick = useCallback(async () => {
+    if (isPlaying) {
+      stop();
+    } else {
+      const welcomeText = getWelcomeText();
+      if (welcomeText) {
+        try {
+          const enrichment = await classifyAndEnrich(welcomeText, "home");
+          await speak(enrichment.enrichedText || welcomeText, "home", {
+            phoneticMapOverride: enrichment.phoneticMap,
+          });
+        } catch (err) {
+          console.warn("[HOME v7] ⚠️ Erro ao reproduzir:", err);
+        }
+      }
     }
-  }, [greeting, speakDirect]);
+  }, [isPlaying, getWelcomeText, speak, stop]);
 
   const handleModuleClick = useCallback(
     (moduleId: Exclude<ModuleId, null>) => {
-      stopAudio();
+      // Parar áudio antes de navegar
+      stop();
       useAudioManager.getState().stopAllAndCleanup();
       onModuleSelect(moduleId);
     },
-    [stopAudio, onModuleSelect],
+    [stop, onModuleSelect],
   );
+
+  // ============================================================
+  // ESTADOS DO VISUALIZADOR E BOTÃO
+  // ============================================================
+  const visualizerState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
+  const buttonState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   // ============================================================
   // RENDER
@@ -276,35 +207,52 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
       >
         <div className="text-center overflow-hidden">
           <h1 className="text-2xl font-bold whitespace-nowrap">
-            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">KnowYOU</span>
+            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              KnowYOU
+            </span>
           </h1>
         </div>
       </motion.div>
 
-      {/* PLAYER BOX */}
+      {/* PLAYER AREA - Mesma estrutura dos módulos */}
       <motion.div
-        className="px-6 py-4"
+        className="flex-1 flex flex-col items-center justify-center px-6 gap-6"
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <VoicePlayerBox
-          state={playerState}
-          onPlay={handleReplay}
-          onPause={stopAudio}
-          audioProgress={progress}
+        {/* SPECTRUM ANALYZER - Microserviço reutilizável */}
+        <SpectrumAnalyzer
+          state={visualizerState}
           frequencyData={frequencyData}
+          primaryColor={HOME_CONFIG.color}
+          secondaryColor={HOME_CONFIG.secondaryColor}
+          height={100}
+          width={260}
+        />
+
+        {/* PLAY BUTTON - Microserviço reutilizável */}
+        <PlayButton
+          state={buttonState}
+          onClick={handlePlayClick}
+          progress={progress}
+          size="lg"
+          primaryColor={HOME_CONFIG.color}
         />
       </motion.div>
 
       {/* MODULE SELECTOR */}
       <motion.div
-        className="flex-1 px-4 pb-2 overflow-hidden"
+        className="px-4 pb-4 overflow-hidden"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
       >
-        <ModuleSelector onSelect={handleModuleClick} isPlaying={isPlaying} disabled={isPlaying || isLoading} />
+        <ModuleSelector
+          onSelect={handleModuleClick}
+          isPlaying={isPlaying}
+          disabled={isPlaying || isLoading}
+        />
       </motion.div>
 
       {/* FOOTER */}
@@ -317,7 +265,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         <p className="text-[10px] text-muted-foreground/60">KnowYOU © 2025</p>
       </motion.div>
 
-      {/* INDICADOR DE CARREGAMENTO */}
+      {/* INDICADOR DE CARREGAMENTO INICIAL */}
       {!isGreetingReady && (
         <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
           <motion.div

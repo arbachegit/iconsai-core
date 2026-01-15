@@ -2,11 +2,13 @@
  * ============================================================
  * WorldModuleContainer.tsx - Container INDEPENDENTE para Mundo
  * ============================================================
- * Versão: 5.6.0 - 2026-01-09
- * FIX: Verificação de deviceId vazio antes de chamar API
+ * Versão: 7.0.0 - 2026-01-15
+ * FIX: Usa SEMPRE texto do useConfigPWA (não chama edge functions)
  * ============================================================
- * CHANGELOG v5.6.0:
- * - Adicionado if (!deviceId) return; para evitar erro 400
+ * CHANGELOG v7.0.0:
+ * - Removida chamada a pwa-contextual-memory
+ * - Texto de boas-vindas vem DIRETO do useConfigPWA
+ * - Autoplay mais rápido e confiável
  * ============================================================
  */
 
@@ -22,14 +24,14 @@ import { useHistoryStore } from "@/stores/historyStore";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
+import { useSaveMessage } from "@/hooks/useSaveMessage";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 
 const MODULE_CONFIG = {
   type: "world" as const,
   name: "Mundo",
   color: "#10B981",
   bgColor: "bg-emerald-500/20",
-  defaultWelcome:
-    "Olá! Sou seu assistente do módulo Mundo. Posso te ajudar com notícias, acontecimentos globais, política, tecnologia e muito mais. O que gostaria de saber?",
 };
 
 interface WorldModuleContainerProps {
@@ -43,9 +45,9 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
   const audioManager = useAudioManager();
   const { addMessage } = useHistoryStore();
   const { userName } = usePWAVoiceStore();
+  const { saveConversationTurn } = useSaveMessage();
+  const { config: pwaConfig, isLoading: isConfigLoading } = useConfigPWA();
 
-  const [greeting, setGreeting] = useState<string | null>(null);
-  const [isGreetingReady, setIsGreetingReady] = useState(false);
   const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -55,57 +57,53 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
   const animationRef = useRef<number | null>(null);
 
   // ============================================================
-  // ETAPA 1: Buscar greeting com FALLBACK GARANTIDO
+  // ETAPA 1: TEXTO DE BOAS-VINDAS DIRETO DO CONFIG
+  // v7.0.0: Sem chamada externa, usa SEMPRE useConfigPWA
+  // ============================================================
+  const getWelcomeText = useCallback((): string => {
+    // Pegar texto do config (definido no banco pwa_config)
+    let text = pwaConfig.worldWelcomeText ||
+      "Olá! Eu sou seu assistente de conhecimento geral do KnowYOU. Pode me perguntar sobre qualquer assunto. Toque no microfone para começar!";
+
+    // Substituir [name] pelo nome do usuário se disponível
+    if (userName) {
+      text = text.replace("[name]", userName);
+    } else {
+      text = text.replace("[name]", "").replace(/\s+/g, " ").trim();
+    }
+
+    return text;
+  }, [pwaConfig.worldWelcomeText, userName]);
+
+  // Flag para saber se o texto está pronto
+  const isGreetingReady = !isConfigLoading;
+
+  // ============================================================
+  // ETAPA 2: Autoplay (v7.0.0 - simplificado)
   // ============================================================
   useEffect(() => {
-    if (isGreetingReady) return;
-    if (!deviceId) return; // FIX v5.6.0: Evitar chamada com deviceId vazio
+    if (!isGreetingReady || hasPlayedAutoplay) return;
 
-    const fetchGreeting = async () => {
+    const welcomeText = getWelcomeText();
+    if (!welcomeText) return;
+
+    console.log("[WorldContainer v7] 🚀 Executando autoplay com texto do config...");
+    setHasPlayedAutoplay(true);
+
+    // Usar classifyAndEnrich para TTS contextual
+    const executeAutoplay = async () => {
       try {
-        console.log("[WorldContainer] Buscando saudação contextual...");
-
-        const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
-          body: {
-            deviceId,
-            moduleType: MODULE_CONFIG.type,
-            action: "getGreeting",
-          },
+        const enrichment = await classifyAndEnrich(welcomeText, MODULE_CONFIG.type);
+        await speak(enrichment.enrichedText || welcomeText, MODULE_CONFIG.type, {
+          phoneticMapOverride: enrichment.phoneticMap,
         });
-
-        if (error) {
-          console.warn("[WorldContainer] Erro:", error);
-          setGreeting(MODULE_CONFIG.defaultWelcome);
-        } else if (data?.greeting) {
-          console.log("[WorldContainer] Saudação contextual recebida");
-          setGreeting(data.greeting);
-        } else {
-          setGreeting(MODULE_CONFIG.defaultWelcome.replace("[name]", userName || ""));
-        }
       } catch (err) {
-        console.warn("[WorldContainer] Exceção:", err);
-        setGreeting(MODULE_CONFIG.defaultWelcome);
-      } finally {
-        setIsGreetingReady(true);
+        console.warn("[WorldContainer v7] ⚠️ Autoplay bloqueado:", err);
       }
     };
 
-    fetchGreeting();
-  }, [deviceId, userName, isGreetingReady]);
-
-  // ============================================================
-  // ETAPA 2: Autoplay SÓ quando greeting está pronto
-  // ============================================================
-  useEffect(() => {
-    if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
-
-    console.log("[WorldContainer] Executando autoplay");
-    setHasPlayedAutoplay(true);
-
-    speak(greeting, MODULE_CONFIG.type).catch((err) => {
-      console.warn("[WorldContainer] Autoplay bloqueado:", err);
-    });
-  }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
+    executeAutoplay();
+  }, [isGreetingReady, hasPlayedAutoplay, getWelcomeText, speak]);
 
   // Captura de frequência
   useEffect(() => {
@@ -221,9 +219,14 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
 
       // Classificar e enriquecer para TTS contextual
       const enrichment = await classifyAndEnrich(aiResponse, MODULE_CONFIG.type);
-      
+
       await speak(enrichment.enrichedText || aiResponse, MODULE_CONFIG.type, {
         phoneticMapOverride: enrichment.phoneticMap
+      });
+
+      // ✅ SALVAR NO BANCO DE DADOS
+      saveConversationTurn(deviceId, MODULE_CONFIG.type, userText, aiResponse).then((result) => {
+        console.log("[WorldContainer] 💾 Mensagens salvas:", result);
       });
     } catch (error: any) {
       console.error("[WorldContainer] ERRO:", error);
@@ -241,13 +244,23 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     }
   };
 
-  const handlePlayClick = () => {
+  const handlePlayClick = useCallback(async () => {
     if (isPlaying) {
       stop();
-    } else if (greeting) {
-      speak(greeting, MODULE_CONFIG.type);
+    } else {
+      const welcomeText = getWelcomeText();
+      if (welcomeText) {
+        try {
+          const enrichment = await classifyAndEnrich(welcomeText, MODULE_CONFIG.type);
+          await speak(enrichment.enrichedText || welcomeText, MODULE_CONFIG.type, {
+            phoneticMapOverride: enrichment.phoneticMap,
+          });
+        } catch (err) {
+          console.warn("[WorldContainer v7] ⚠️ Erro ao reproduzir:", err);
+        }
+      }
     }
-  };
+  }, [isPlaying, getWelcomeText, speak, stop]);
 
   const visualizerState = isRecording
     ? "recording"

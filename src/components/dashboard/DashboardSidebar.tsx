@@ -5,11 +5,11 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  BarChart3, 
-  Bot, 
-  TrendingUp, 
-  MapPin, 
+import {
+  BarChart3,
+  Bot,
+  TrendingUp,
+  MapPin,
   Database,
   Monitor,
   LogOut,
@@ -27,7 +27,6 @@ import {
   MessageSquare,
   ShoppingCart,
   Gauge,
-  Building2,
   Brain,
   Heart,
   MapPinned
@@ -45,7 +44,6 @@ export type DashboardTabType =
   | "dataflow-talk-app"
   | "dataflow-retail-system"
   | "dataflow-autocontrol"
-  | "dataflow-gov-system-fontes"
   | "dataflow-gov-city-ai"
   | "dataflow-tutor"
   | "dataflow-healthcare";
@@ -70,7 +68,6 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
 
 const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
   { id: "dataflow-architecture", label: "Architecture", icon: Network },
-  { id: "dataflow-gov-system-fontes", label: "Gov System AI", icon: Building2 },
   { id: "dataflow-gov-city-ai", label: "Gov City AI", icon: MapPinned },
   { id: "dataflow-retail-system", label: "Retail System", icon: ShoppingCart },
   { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },

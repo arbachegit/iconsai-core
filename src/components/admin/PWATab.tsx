@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,23 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Smartphone, Copy, ExternalLink, CheckCircle, Mic, Loader2, Wifi, Battery,
-  Settings, Volume2, RotateCcw, Save, Play, Maximize2, X, HelpCircle, Globe, 
-  Heart, Lightbulb, RotateCw
+import {
+  Smartphone, Copy, ExternalLink, CheckCircle, Loader2,
+  Settings, Volume2, RotateCcw, Save, Play, HelpCircle, Globe,
+  Heart, Lightbulb, Monitor, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { PWASimulator } from "./PWASimulator";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
-import PWAInvitesManager from "./PWAInvitesManager";
-
-interface AgentInfo {
-  name: string;
-  slug: string;
-  is_active: boolean;
-  rag_collection: string | null;
-}
 
 const VOICE_OPTIONS = [
   { value: "fernando", label: "Fernando (PT-BR)", provider: "ElevenLabs" },
@@ -36,154 +26,79 @@ const VOICE_OPTIONS = [
   { value: "shimmer", label: "Shimmer (Suave)", provider: "OpenAI" },
 ];
 
-const ZOOM_STORAGE_KEY = 'pwaSimulatorZoomLevel';
-
 export default function PWATab() {
   const [copied, setCopied] = useState(false);
-  const [agent, setAgent] = useState<AgentInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showSimulator, setShowSimulator] = useState(false);
   const [testingVoice, setTestingVoice] = useState(false);
-  const [pwaKey, setPwaKey] = useState(0);
-  
-  // Fullscreen, zoom and landscape states
-  const [simulatorScale, setSimulatorScale] = useState(() => {
-    const saved = localStorage.getItem(ZOOM_STORAGE_KEY);
-    if (saved) {
-      const parsed = parseFloat(saved);
-      if (!isNaN(parsed) && parsed >= 0.5 && parsed <= 1.5) {
-        return parsed;
-      }
-    }
-    return 0.9;
-  });
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isLandscape, setIsLandscape] = useState(false);
-  
-  // Motion values para swipe gesture
-  const dragY = useMotionValue(0);
-  const dragOpacity = useTransform(dragY, [0, 100], [1, 0.5]);
+  const [allowDesktopAccess, setAllowDesktopAccess] = useState(false);
+  const [isLoadingDesktop, setIsLoadingDesktop] = useState(true);
+  const [isSavingDesktop, setIsSavingDesktop] = useState(false);
 
-  // Handler para swipe down
-  const handleDragEnd = useCallback((event: any, info: any) => {
-    if (info.offset.y > 100) {
-      // Swipe down > 100px = sair do fullscreen
-      setIsFullscreen(false);
-    }
-    // Sempre resetar posição do drag
-    dragY.set(0);
-  }, [dragY]);
-  
   const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
-  
+
   const pwaUrl = `${window.location.origin}/pwa`;
 
-  // Persist zoom level to localStorage
+  // Carregar configuração de acesso desktop
   useEffect(() => {
-    localStorage.setItem(ZOOM_STORAGE_KEY, simulatorScale.toString());
-  }, [simulatorScale]);
+    const loadDesktopConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("pwa_config")
+          .select("config_value")
+          .eq("config_key", "allow_desktop_access")
+          .single();
 
-  // Toggle fullscreen mode (internal overlay, not browser fullscreen)
-  const toggleFullscreen = useCallback(() => {
-    setIsFullscreen(prev => !prev);
-  }, []);
-
-  const toggleLandscape = useCallback(() => {
-    setIsLandscape(prev => !prev);
-  }, []);
-
-  const handleResetPWA = useCallback(() => {
-    setPwaKey(prev => prev + 1);
-    toast.info("PWA reiniciado");
-  }, []);
-
-  const handleZoomIn = useCallback(() => {
-    setSimulatorScale(prev => Math.min(prev + 0.1, 1.5));
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    setSimulatorScale(prev => Math.max(prev - 0.1, 0.5));
-  }, []);
-
-  const handleResetZoom = useCallback(() => {
-    setSimulatorScale(0.9);
-  }, []);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // ESC sempre sai do fullscreen
-      if (e.key === 'Escape' && isFullscreen) {
-        e.preventDefault();
-        setIsFullscreen(false);
-        return;
-      }
-      
-      if (!showSimulator) return;
-      
-      // Avoid conflict when typing in inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      switch (e.key) {
-        case '+':
-        case '=':
-          e.preventDefault();
-          handleZoomIn();
-          break;
-        case '-':
-          e.preventDefault();
-          handleZoomOut();
-          break;
-        case 'f':
-        case 'F':
-          e.preventDefault();
-          toggleFullscreen();
-          break;
-        case 'r':
-        case 'R':
-          e.preventDefault();
-          handleResetZoom();
-          break;
-        case 'l':
-        case 'L':
-          e.preventDefault();
-          toggleLandscape();
-          break;
-        case '0':
-          e.preventDefault();
-          handleResetPWA();
-          break;
+        if (!error && data) {
+          setAllowDesktopAccess(data.config_value === "true");
+        }
+      } catch (err) {
+        console.log("[PWATab] Config not found, using default");
+      } finally {
+        setIsLoadingDesktop(false);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSimulator, isFullscreen, handleZoomIn, handleZoomOut, handleResetZoom, toggleFullscreen, toggleLandscape, handleResetPWA]);
-  useEffect(() => {
-    const fetchAgent = async () => {
-      const { data } = await supabase
-        .from("chat_agents")
-        .select("name, slug, is_active, rag_collection")
-        .eq("slug", "economia")
-        .single();
-      
-      setAgent(data);
-      setLoading(false);
-    };
-    
-    fetchAgent();
+    loadDesktopConfig();
   }, []);
-  
+
+  // Toggle acesso desktop
+  const handleToggleDesktopAccess = async () => {
+    setIsSavingDesktop(true);
+    const newValue = !allowDesktopAccess;
+
+    try {
+      const { error } = await supabase
+        .from("pwa_config")
+        .upsert({
+          config_key: "allow_desktop_access",
+          config_value: String(newValue),
+          config_type: "boolean",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "config_key" });
+
+      if (error) throw error;
+
+      setAllowDesktopAccess(newValue);
+      toast.success(newValue ? "Acesso desktop liberado" : "Acesso desktop bloqueado");
+    } catch (err) {
+      console.error("[PWATab] Erro ao salvar:", err);
+      toast.error("Erro ao salvar configuração");
+    } finally {
+      setIsSavingDesktop(false);
+    }
+  };
+
   const copyLink = () => {
     navigator.clipboard.writeText(pwaUrl);
     setCopied(true);
     toast.success("Link copiado!");
     setTimeout(() => setCopied(false), 2000);
   };
-  
+
   const openPWA = () => {
+    if (!allowDesktopAccess) {
+      toast.error("Habilite o acesso desktop primeiro");
+      return;
+    }
     window.open(pwaUrl, '_blank');
   };
 
@@ -220,81 +135,96 @@ export default function PWATab() {
   };
 
   return (
-    <>
-      {/* === FULLSCREEN OVERLAY COM ANIMAÇÃO === */}
-      <AnimatePresence mode="wait">
-        {isFullscreen && (
-          <motion.div
-            key="fullscreen-overlay"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed inset-0 z-[9999] bg-black overflow-hidden"
-          >
-            {/* Área de drag para swipe down */}
-            <motion.div
-              className="absolute top-0 left-0 right-0 h-16 z-20 flex items-center justify-center cursor-grab active:cursor-grabbing"
-              drag="y"
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={0.2}
-              onDragEnd={handleDragEnd}
-              style={{ y: dragY, opacity: dragOpacity }}
-            >
-              {/* Indicador visual de swipe */}
-              <div className="w-12 h-1 bg-white/30 rounded-full mt-3" />
-            </motion.div>
-            
-            {/* Hint atualizado */}
-            <div className="absolute top-4 right-4 z-10 text-white/40 text-xs flex items-center gap-2">
-              <kbd className="px-2 py-1 bg-white/10 rounded text-xs">ESC</kbd>
-              <span>ou arraste para baixo</span>
-            </div>
-            
-            {/* Botão X para sair */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 left-4 z-10 text-white/50 hover:text-white hover:bg-white/10"
-              onClick={toggleFullscreen}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-            
-            {/* PWA com animação de entrada */}
-            <motion.div 
-              className="w-full h-full"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }}
-            >
-              <PWASimulator 
-                key={pwaKey}
-                showFrame={false}
-                frameless={true}
-                isFullscreen={true}
-                onToggleFullscreen={toggleFullscreen}
-                onReset={handleResetPWA}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* === CONTEÚDO NORMAL === */}
-      <div className="space-y-6 p-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30">
-            <Smartphone className="w-8 h-8 text-blue-400" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">PWA de Voz - KnowYOU</h2>
-            <p className="text-muted-foreground">
-              Aplicativo de voz para assistência inteligente
-            </p>
-          </div>
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30">
+          <Smartphone className="w-8 h-8 text-blue-400" />
         </div>
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Config. PWA - KnowYOU</h2>
+          <p className="text-muted-foreground">
+            Configurações do aplicativo de voz
+          </p>
+        </div>
+      </div>
+
+      {/* Acesso por Dispositivo */}
+      <Card className="border-2 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            Acesso por Dispositivo
+          </CardTitle>
+          <CardDescription>Controle o acesso ao PWA por tipo de dispositivo</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Toggle Acesso Desktop */}
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div className="flex items-center gap-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Monitor className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <Label htmlFor="allow-desktop" className="text-base font-medium">
+                  Permitir Acesso Desktop
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Quando ativado, o PWA pode ser acessado pelo computador (útil para testes)
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {isLoadingDesktop ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Badge variant={allowDesktopAccess ? "default" : "secondary"}>
+                    {allowDesktopAccess ? "Ativo" : "Inativo"}
+                  </Badge>
+                  <Switch
+                    id="allow-desktop"
+                    checked={allowDesktopAccess}
+                    onCheckedChange={handleToggleDesktopAccess}
+                    disabled={isSavingDesktop}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Aviso quando ativo */}
+          {allowDesktopAccess && (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-500">Modo de Teste Ativo</p>
+                    <p className="text-muted-foreground">
+                      O acesso desktop está liberado. Lembre-se de desativar após os testes
+                      para manter a experiência mobile-first do PWA.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Botão de Acesso ao PWA */}
+          <div className="pt-2">
+            <Button
+              onClick={openPWA}
+              disabled={!allowDesktopAccess}
+              className="w-full"
+              variant={allowDesktopAccess ? "default" : "secondary"}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              {allowDesktopAccess ? "Acessar PWA" : "Habilite o acesso desktop para abrir"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Link do PWA */}
       <Card>
@@ -306,21 +236,17 @@ export default function PWATab() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
-            <Input 
-              value={pwaUrl} 
-              readOnly 
+            <Input
+              value={pwaUrl}
+              readOnly
               className="bg-muted font-mono text-sm"
             />
             <Button onClick={copyLink} variant="outline">
               {copied ? <CheckCircle className="w-4 h-4 mr-2 text-green-500" /> : <Copy className="w-4 h-4 mr-2" />}
               {copied ? "Copiado!" : "Copiar"}
             </Button>
-            <Button onClick={openPWA}>
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Abrir
-            </Button>
           </div>
-          
+
           <div className="mt-4 p-4 bg-muted/50 rounded-lg">
             <p className="font-medium mb-2">Instruções para o usuário:</p>
             <ul className="text-sm text-muted-foreground space-y-1">
@@ -370,12 +296,10 @@ export default function PWATab() {
 
               <Separator />
 
-              {/* ============================================
-                  TEXTOS DE APRESENTAÇÃO DOS MÓDULOS
-                  ============================================ */}
+              {/* Textos de Apresentação dos Módulos */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                  🎙️ Textos de Apresentação dos Módulos
+                  Textos de Apresentação dos Módulos
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Estes textos serão reproduzidos automaticamente quando o usuário entrar em cada módulo.
@@ -494,9 +418,7 @@ export default function PWATab() {
 
               <Separator />
 
-              {/* ============================================
-                  CONTROLES DE VOZ ELEVENLABS
-                  ============================================ */}
+              {/* Controles de Voz ElevenLabs */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2">
                   <Volume2 className="w-5 h-5 text-purple-500" />
@@ -506,7 +428,7 @@ export default function PWATab() {
                   Ajuste os parâmetros da voz para obter a melhor qualidade de fala.
                 </p>
 
-                {/* Speed (Velocidade) */}
+                {/* Speed */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Velocidade (Speed)</Label>
@@ -529,7 +451,7 @@ export default function PWATab() {
                   </div>
                 </div>
 
-                {/* Stability (Estabilidade) */}
+                {/* Stability */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Estabilidade (Stability)</Label>
@@ -551,7 +473,7 @@ export default function PWATab() {
                   </div>
                 </div>
 
-                {/* Similarity (Fidelidade) */}
+                {/* Similarity */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Fidelidade (Similarity)</Label>
@@ -573,7 +495,7 @@ export default function PWATab() {
                   </div>
                 </div>
 
-                {/* Style Exaggeration */}
+                {/* Style */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Exagero de Estilo (Style)</Label>
@@ -612,7 +534,7 @@ export default function PWATab() {
                 {/* Dica */}
                 <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                   <p className="text-xs text-purple-300">
-                    💡 <strong>Dica:</strong> Para voz mais natural, mantenha Estabilidade em 50%, 
+                    <strong>Dica:</strong> Para voz mais natural, mantenha Estabilidade em 50%,
                     Fidelidade em 100% e Exagero de Estilo em 0%.
                   </p>
                 </div>
@@ -701,162 +623,6 @@ export default function PWATab() {
           )}
         </CardContent>
       </Card>
-
-      {/* Preview do PWA */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Preview do PWA</CardTitle>
-            <CardDescription>
-              {showSimulator ? "Simulador interativo do PWA" : "Simulação de como o aplicativo aparece no celular"}
-            </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            {showSimulator && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResetPWA}
-              >
-                <RotateCw className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
-            )}
-            {showSimulator && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleFullscreen}
-              >
-                <Maximize2 className="w-4 h-4 mr-2" />
-                Tela Cheia
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSimulator(!showSimulator)}
-            >
-              {showSimulator ? "Mostrar Estático" : "Abrir Simulador"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {showSimulator ? (
-            <div className="flex flex-col items-center justify-center py-4">
-              <PWASimulator 
-                key={pwaKey}
-                showFrame={true}
-                scale={simulatorScale}
-                onScaleChange={setSimulatorScale}
-                isFullscreen={isFullscreen}
-                onToggleFullscreen={toggleFullscreen}
-                showControls={true}
-                isLandscape={isLandscape}
-                onToggleLandscape={toggleLandscape}
-                onReset={handleResetPWA}
-              />
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-center">
-                {/* Simulação de celular */}
-                <div className="w-[280px] h-[560px] bg-[#0a0a0a] rounded-[40px] border-4 border-gray-700 overflow-hidden shadow-2xl relative">
-                  {/* Status bar */}
-                  <div className="h-8 bg-[#0a0a0a] flex items-center justify-between px-6 pt-2">
-                    <span className="text-white text-xs font-medium">9:41</span>
-                    <div className="flex items-center gap-1 text-white text-xs">
-                      <Wifi className="w-3 h-3" />
-                      <Battery className="w-4 h-3" />
-                    </div>
-                  </div>
-                  
-                  {/* App content */}
-                  <div className="flex flex-col items-center justify-center h-[480px] px-6">
-                    {/* Logo/Título */}
-                    <div className="text-center mb-10">
-                      <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                        <span className="text-2xl">🎙️</span>
-                      </div>
-                      <h3 className="text-lg font-bold text-white">KnowYOU</h3>
-                      <p className="text-gray-500 text-xs mt-1">Toque para falar</p>
-                    </div>
-                    
-                    {/* Botão principal */}
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-                      <Mic className="w-10 h-10 text-white" />
-                    </div>
-                    
-                    {/* Módulos */}
-                    <div className="mt-10 grid grid-cols-4 gap-3 w-full">
-                      {["💡", "🌍", "❤️", "🎯"].map((emoji, i) => (
-                        <div key={i} className="aspect-square rounded-xl bg-gray-800/50 flex items-center justify-center text-xl">
-                          {emoji}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Home indicator */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/20 rounded-full" />
-                </div>
-              </div>
-              
-              <p className="text-center text-xs text-muted-foreground mt-4">
-                Clique em "Abrir Simulador" para testar o PWA interativamente.
-              </p>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Status do Agente */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Status do Sistema</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-muted-foreground">Carregando...</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex items-center gap-2">
-                <Badge variant={agent?.is_active ? "default" : "destructive"} className="bg-green-500">
-                  {agent?.is_active ? "Ativo" : "Inativo"}
-                </Badge>
-                <span className="text-sm text-muted-foreground">Agente {agent?.name || "Economia"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="border-cyan-500 text-cyan-500">Whisper</Badge>
-                <span className="text-sm text-muted-foreground">STT (OpenAI)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="border-purple-500 text-purple-500">ElevenLabs</Badge>
-                <span className="text-sm text-muted-foreground">TTS (Voz)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="border-orange-500 text-orange-500">RAG</Badge>
-                <span className="text-sm text-muted-foreground">{agent?.rag_collection || "economia"}</span>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Seção de Convites PWA */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Convites PWA</CardTitle>
-          <CardDescription>Gerencie acessos ao aplicativo móvel</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PWAInvitesManager />
-        </CardContent>
-      </Card>
-      </div>
-    </>
+    </div>
   );
 }

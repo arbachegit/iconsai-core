@@ -1,7 +1,10 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { HelpCircle, Globe, Heart, Lightbulb } from "lucide-react";
-import { StatusIndicator } from "./StatusIndicator";
+// StatusIndicator também está na pasta _legacy
+const StatusIndicator: React.FC<{ isActive: boolean; size?: string }> = ({ isActive }) => (
+  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+);
 import { ModuleId } from "@/stores/pwaVoiceStore";
 
 interface FooterModulesProps {

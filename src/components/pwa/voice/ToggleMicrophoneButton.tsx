@@ -1,10 +1,22 @@
+/**
+ * ============================================================
+ * ToggleMicrophoneButton.tsx - Botão de Microfone PWA
+ * ============================================================
+ * Versão: 2.0.0 - 2026-01-15
+ * FIX: Adiciona timeslice para coleta periódica de dados
+ * FIX: Melhor suporte para iOS/Safari
+ * FIX: Logging detalhado para debug
+ * ============================================================
+ */
+
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getBrowserInfo } from "@/utils/safari-detect";
 
 /**
  * Estados da máquina de estados finitos do botão de microfone
- * 
+ *
  * IDLE -> LOADING -> RECORDING -> PROCESSING -> IDLE
  */
 type MicrophoneState = "idle" | "loading" | "recording" | "processing";
@@ -141,34 +153,63 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
   const startRecording = useCallback(async () => {
     if (state !== "idle") return;
 
+    const { isIOS, isSafari } = getBrowserInfo();
+    console.log("[Mic] 🎤 Iniciando gravação...", { isIOS, isSafari });
+
     setError(null);
     setState("loading");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        } 
+      // Configuração de áudio otimizada para mobile
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+
+      // iOS não suporta sampleRate no getUserMedia
+      if (!isIOS) {
+        audioConstraints.sampleRate = 44100;
+      }
+
+      console.log("[Mic] 📱 Solicitando permissão de microfone...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints,
       });
-      
+
+      console.log("[Mic] ✅ Permissão concedida, stream obtido");
       streamRef.current = stream;
 
-      // Determinar MIME type suportado
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : "";
+      // Determinar MIME type suportado - PRIORIZAR mp4 para iOS
+      let mimeType = "";
+      if (isIOS || isSafari) {
+        // iOS/Safari: tentar mp4 primeiro
+        if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          mimeType = "audio/mp4";
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          mimeType = "audio/webm";
+        }
+      } else {
+        // Outros navegadores: webm com opus é melhor
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          mimeType = "audio/webm;codecs=opus";
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          mimeType = "audio/webm";
+        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          mimeType = "audio/mp4";
+        }
+      }
+
+      console.log("[Mic] 🎵 MIME type selecionado:", mimeType || "(default)");
 
       const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
+      console.log("[Mic] 📼 MediaRecorder criado, mimeType real:", mediaRecorder.mimeType);
+
       mediaRecorder.ondataavailable = (event) => {
+        console.log("[Mic] 📦 Dados recebidos:", event.data.size, "bytes");
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
@@ -176,10 +217,12 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
 
       mediaRecorder.onstop = () => {
         const recordingDuration = Date.now() - recordingStartTimeRef.current;
+        console.log("[Mic] ⏹️ Gravação parada. Duração:", recordingDuration, "ms");
+        console.log("[Mic] 📦 Total de chunks:", audioChunksRef.current.length);
 
         // Verificar duração mínima
         if (recordingDuration < MIN_RECORDING_MS) {
-          console.log(`Recording too short: ${recordingDuration}ms`);
+          console.log("[Mic] ⚠️ Gravação muito curta:", recordingDuration, "ms");
           setError("Gravação muito curta. Fale por mais tempo.");
           setState("idle");
           cleanupResources();
@@ -187,23 +230,30 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
         }
 
         if (audioChunksRef.current.length > 0) {
+          const totalSize = audioChunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0);
+          console.log("[Mic] 📊 Tamanho total dos chunks:", totalSize, "bytes");
+
           const audioBlob = new Blob(audioChunksRef.current, {
             type: mediaRecorder.mimeType || "audio/webm",
           });
 
+          console.log("[Mic] 🎤 Blob criado:", audioBlob.size, "bytes, tipo:", audioBlob.type);
+
           if (audioBlob.size > 0) {
             setState("processing");
             onAudioCapture(audioBlob);
-            
+
             // Voltar para idle após enviar (o processing externo vai controlar)
             setTimeout(() => {
               setState("idle");
             }, 500);
           } else {
+            console.error("[Mic] ❌ Blob vazio após criação");
             setError("Áudio vazio. Tente novamente.");
             setState("idle");
           }
         } else {
+          console.error("[Mic] ❌ Nenhum chunk de áudio capturado");
           setError("Nenhum áudio capturado. Tente novamente.");
           setState("idle");
         }
@@ -211,34 +261,40 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
         cleanupResources();
       };
 
-      mediaRecorder.onerror = (event) => {
-        console.error("MediaRecorder error:", event);
+      mediaRecorder.onerror = (event: any) => {
+        console.error("[Mic] ❌ MediaRecorder error:", event.error || event);
         setError("Erro na gravação. Tente novamente.");
         setState("idle");
         cleanupResources();
       };
 
-      // Iniciar gravação
-      mediaRecorder.start();
+      // v2.0.0: Iniciar gravação COM timeslice para coleta periódica
+      // Isso garante que dados sejam coletados mesmo se stop() falhar
+      const timeslice = isIOS || isSafari ? 1000 : 500; // iOS precisa de intervalo maior
+      console.log("[Mic] ▶️ Iniciando gravação com timeslice:", timeslice, "ms");
+      mediaRecorder.start(timeslice);
       recordingStartTimeRef.current = Date.now();
-      
+
       // Setup analyser para visualização
       setupAudioAnalyser(stream);
 
       // Transição: LOADING -> RECORDING
       setState("recording");
+      console.log("[Mic] 🔴 GRAVANDO...");
 
     } catch (err: any) {
-      console.error("Error starting recording:", err);
-      
+      console.error("[Mic] ❌ Erro ao iniciar gravação:", err);
+
       if (err.name === "NotAllowedError") {
         setError("Permissão de microfone negada.");
       } else if (err.name === "NotFoundError") {
         setError("Microfone não encontrado.");
+      } else if (err.name === "NotReadableError") {
+        setError("Microfone em uso por outro app.");
       } else {
-        setError("Erro ao acessar microfone.");
+        setError(`Erro ao acessar microfone: ${err.message || err.name}`);
       }
-      
+
       setState("idle");
       cleanupResources();
     }
@@ -247,14 +303,30 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
   const stopRecording = useCallback(() => {
     if (state !== "recording" || !mediaRecorderRef.current) return;
 
+    console.log("[Mic] ⏹️ Parando gravação...");
+    console.log("[Mic] 📦 Chunks até agora:", audioChunksRef.current.length);
+
     try {
-      // Forçar flush dos dados antes de parar
-      if (mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.requestData();
-        mediaRecorderRef.current.stop();
+      const recorder = mediaRecorderRef.current;
+      if (recorder.state === "recording") {
+        // Forçar flush dos dados pendentes antes de parar
+        console.log("[Mic] 📤 Solicitando dados finais...");
+        recorder.requestData();
+
+        // Pequeno delay para garantir que requestData() processe
+        setTimeout(() => {
+          if (recorder.state === "recording") {
+            console.log("[Mic] 🛑 Chamando stop()...");
+            recorder.stop();
+          }
+        }, 100);
+      } else {
+        console.log("[Mic] ⚠️ Recorder não está gravando:", recorder.state);
+        setState("idle");
+        cleanupResources();
       }
     } catch (err) {
-      console.error("Error stopping recording:", err);
+      console.error("[Mic] ❌ Erro ao parar gravação:", err);
       setState("idle");
       cleanupResources();
     }

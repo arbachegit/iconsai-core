@@ -2,11 +2,13 @@
  * ============================================================
  * HealthModuleContainer.tsx - Container INDEPENDENTE para Saúde
  * ============================================================
- * Versão: 5.5.0 - 2026-01-09
- * FIX: Verificação de deviceId vazio antes de chamar API
+ * Versão: 7.0.0 - 2026-01-15
+ * FIX: Usa SEMPRE texto do useConfigPWA (não chama edge functions)
  * ============================================================
- * CHANGELOG v5.5.0:
- * - Adicionado if (!deviceId) return; para evitar erro 400
+ * CHANGELOG v7.0.0:
+ * - Removida chamada a pwa-contextual-memory
+ * - Texto de boas-vindas vem DIRETO do useConfigPWA
+ * - Autoplay mais rápido e confiável
  * ============================================================
  */
 
@@ -23,6 +25,7 @@ import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
+import { useSaveMessage } from "@/hooks/useSaveMessage";
 
 const MODULE_CONFIG = {
   name: "Saúde",
@@ -30,7 +33,6 @@ const MODULE_CONFIG = {
   color: "#F43F5E",
   bgColor: "bg-rose-500/20",
   moduleType: "health" as const,
-  defaultWelcome: "Olá! Sou sua assistente de saúde. Como posso ajudar você hoje?",
 };
 
 interface HealthModuleContainerProps {
@@ -43,11 +45,10 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
   const { addMessage } = useHistoryStore();
-  const { config: pwaConfig } = useConfigPWA();
+  const { config: pwaConfig, isLoading: isConfigLoading } = useConfigPWA();
   const { userName } = usePWAVoiceStore();
+  const { saveConversationTurn } = useSaveMessage();
 
-  const [greeting, setGreeting] = useState<string | null>(null);
-  const [isGreetingReady, setIsGreetingReady] = useState(false);
   const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,58 +58,49 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   const animationRef = useRef<number | null>(null);
 
   // ============================================================
-  // ETAPA 1: Buscar greeting com FALLBACK GARANTIDO
+  // ETAPA 1: TEXTO DE BOAS-VINDAS DIRETO DO CONFIG
+  // v7.0.0: Sem chamada externa, usa SEMPRE useConfigPWA
+  // ============================================================
+  const getWelcomeText = useCallback((): string => {
+    let text = pwaConfig.healthWelcomeText ||
+      "Olá! Sou sua assistente de saúde do KnowYOU. Vou te ajudar a entender melhor seus sintomas. Toque no microfone para começar.";
+
+    if (userName) {
+      text = text.replace("[name]", userName);
+    } else {
+      text = text.replace("[name]", "").replace(/\s+/g, " ").trim();
+    }
+
+    return text;
+  }, [pwaConfig.healthWelcomeText, userName]);
+
+  const isGreetingReady = !isConfigLoading;
+
+  // ============================================================
+  // ETAPA 2: Autoplay (v7.0.0 - simplificado)
   // ============================================================
   useEffect(() => {
-    if (isGreetingReady) return;
-    if (!deviceId) return; // FIX v5.5.0: Evitar chamada com deviceId vazio
+    if (!isGreetingReady || hasPlayedAutoplay) return;
 
-    const fetchGreeting = async () => {
+    const welcomeText = getWelcomeText();
+    if (!welcomeText) return;
+
+    console.log("[HealthContainer v7] 🚀 Executando autoplay com texto do config...");
+    setHasPlayedAutoplay(true);
+
+    const executeAutoplay = async () => {
       try {
-        console.log("[HealthContainer] Buscando saudação contextual...");
-
-        const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
-          body: {
-            deviceId,
-            moduleType: MODULE_CONFIG.moduleType,
-            action: "getGreeting",
-          },
+        const enrichment = await classifyAndEnrich(welcomeText, MODULE_CONFIG.moduleType);
+        await speak(enrichment.enrichedText || welcomeText, MODULE_CONFIG.moduleType, {
+          phoneticMapOverride: enrichment.phoneticMap,
         });
-
-        if (error) {
-          console.warn("[HealthContainer] Erro:", error);
-          setGreeting(MODULE_CONFIG.defaultWelcome);
-        } else if (data?.greeting) {
-          console.log("[HealthContainer] Saudação contextual recebida");
-          setGreeting(data.greeting);
-        } else {
-          const configWelcome = (pwaConfig as any)?.healthWelcomeText;
-          setGreeting(configWelcome?.replace("[name]", userName || "") || MODULE_CONFIG.defaultWelcome);
-        }
       } catch (err) {
-        console.warn("[HealthContainer] Exceção:", err);
-        setGreeting(MODULE_CONFIG.defaultWelcome);
-      } finally {
-        setIsGreetingReady(true);
+        console.warn("[HealthContainer v7] ⚠️ Autoplay bloqueado:", err);
       }
     };
 
-    fetchGreeting();
-  }, [deviceId, pwaConfig, userName, isGreetingReady]);
-
-  // ============================================================
-  // ETAPA 2: Autoplay SÓ quando greeting está pronto
-  // ============================================================
-  useEffect(() => {
-    if (!isGreetingReady || hasPlayedAutoplay || !greeting) return;
-
-    console.log("[HealthContainer] Executando autoplay");
-    setHasPlayedAutoplay(true);
-
-    speak(greeting, MODULE_CONFIG.moduleType).catch((err) => {
-      console.warn("[HealthContainer] Autoplay bloqueado:", err);
-    });
-  }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
+    executeAutoplay();
+  }, [isGreetingReady, hasPlayedAutoplay, getWelcomeText, speak]);
 
   // Captura de frequência
   useEffect(() => {
@@ -224,9 +216,14 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
 
       // Classificar e enriquecer para TTS contextual
       const enrichment = await classifyAndEnrich(aiResponse, MODULE_CONFIG.moduleType);
-      
+
       await speak(enrichment.enrichedText || aiResponse, MODULE_CONFIG.moduleType, {
         phoneticMapOverride: enrichment.phoneticMap
+      });
+
+      // ✅ SALVAR NO BANCO DE DADOS
+      saveConversationTurn(deviceId, MODULE_CONFIG.moduleType, userText, aiResponse).then((result) => {
+        console.log("[HealthContainer] 💾 Mensagens salvas:", result);
       });
     } catch (error: any) {
       console.error("[HealthContainer] ERRO:", error);
@@ -244,13 +241,23 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
     }
   };
 
-  const handlePlayClick = () => {
+  const handlePlayClick = useCallback(async () => {
     if (isPlaying) {
       stop();
-    } else if (greeting) {
-      speak(greeting, MODULE_CONFIG.moduleType);
+    } else {
+      const welcomeText = getWelcomeText();
+      if (welcomeText) {
+        try {
+          const enrichment = await classifyAndEnrich(welcomeText, MODULE_CONFIG.moduleType);
+          await speak(enrichment.enrichedText || welcomeText, MODULE_CONFIG.moduleType, {
+            phoneticMapOverride: enrichment.phoneticMap,
+          });
+        } catch (err) {
+          console.warn("[HealthContainer v7] ⚠️ Erro ao reproduzir:", err);
+        }
+      }
     }
-  };
+  }, [isPlaying, getWelcomeText, speak, stop]);
 
   const visualizerState = isRecording
     ? "recording"

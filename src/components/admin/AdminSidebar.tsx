@@ -439,7 +439,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       icon: MessageCircle,
       items: [
         { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
-        { id: "pwa" as TabType, label: "PWA Voz", icon: Smartphone },
+        { id: "pwa" as TabType, label: "Config. PWA", icon: Smartphone },
         { id: "pwa-conversations" as TabType, label: "Conversas PWA", icon: MessageSquare },
         { id: "maieutic-training" as TabType, label: "Treino IA Maiêutica", icon: Sparkles },
         { id: "maieutic-effectiveness" as TabType, label: "Eficácia Maiêutica", icon: Brain },
@@ -559,7 +559,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       icon: Settings,
       items: [
         { id: "app-config" as TabType, label: "Config. de Sistemas", icon: Settings },
-        { id: "pwa-config" as TabType, label: "Config PWA", icon: Smartphone },
         { id: "notification-settings" as TabType, label: "Config. Notificações", icon: Bell },
         { id: "whatsapp-tier" as TabType, label: "WhatsApp Tier", icon: TrendingUp },
         { id: "fallback-config" as TabType, label: "Fallback SMS", icon: ArrowRightLeft },
