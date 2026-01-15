@@ -1,12 +1,13 @@
 /**
  * ============================================================
- * PWAVoiceAssistant.tsx - v5.1.0
+ * PWAVoiceAssistant.tsx - v5.2.0
  * ============================================================
  * ARQUITETURA DE CONTAINERS INDEPENDENTES
  * - Cada container gerencia seu próprio autoplay
  * - Sem race conditions
  * - Sem refs compartilhadas
  * - SAFARI COMPATIBLE
+ * - FIX: useEffect movido para componente separado (React hooks rules)
  * ============================================================
  */
 
@@ -26,19 +27,29 @@ import SafariPWAInstallPrompt from "@/components/pwa/SafariPWAInstallPrompt";
 import { supabase } from "@/integrations/supabase/client";
 
 // Containers independentes
-import { 
-  HomeContainer, 
-  HealthModuleContainer, 
-  IdeasModuleContainer, 
-  WorldModuleContainer, 
-  HelpModuleContainer 
+import {
+  HomeContainer,
+  HealthModuleContainer,
+  IdeasModuleContainer,
+  WorldModuleContainer,
+  HelpModuleContainer
 } from "../containers";
 
-interface PWAVoiceAssistantProps {
-  embedded?: boolean;
+// ============================================================
+// COMPONENTE SEPARADO PARA CONTEÚDO AUTENTICADO
+// (Necessário para usar hooks corretamente)
+// ============================================================
+interface AuthenticatedContentProps {
+  userPhone: string;
+  pwaAccess: string[];
+  embedded: boolean;
 }
 
-export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded = false }) => {
+const AuthenticatedContent: React.FC<AuthenticatedContentProps> = ({
+  userPhone,
+  pwaAccess,
+  embedded
+}) => {
   const {
     appState,
     setAppState,
@@ -46,18 +57,135 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     setActiveModule,
     setPlayerState,
     setAuthenticated,
-    conversations,
   } = usePWAVoiceStore();
 
   const { initialize: initializeHistory } = useHistoryStore();
-  const audioManager = useAudioManager();
   const { config } = useConfigPWA();
 
-  const [isMobile, setIsMobile] = useState(true);
-  const [showDesktopWarning, setShowDesktopWarning] = useState(false);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [currentFingerprint, setCurrentFingerprint] = useState<string>("");
+
+  // Inicializar com userPhone - HOOK VÁLIDO em componente React
+  useEffect(() => {
+    if (userPhone) {
+      setCurrentFingerprint(userPhone);
+      setAuthenticated(true, userPhone);
+      initializeHistory(userPhone);
+    }
+  }, [userPhone, setAuthenticated, initializeHistory]);
+
+  const handleSplashComplete = useCallback(() => {
+    setAppState("idle");
+  }, [setAppState]);
+
+  const handleModuleSelect = useCallback((moduleId: Exclude<ModuleId, null>) => {
+    console.log("[PWA] Navegando para módulo:", moduleId);
+    useAudioManager.getState().stopAllAndCleanup();
+    setActiveModule(moduleId);
+  }, [setActiveModule]);
+
+  const handleBackToHome = useCallback(() => {
+    console.log("[PWA] Voltando para HOME");
+    useAudioManager.getState().stopAllAndCleanup();
+    setActiveModule(null);
+    setAppState("idle");
+    setPlayerState("idle");
+  }, [setActiveModule, setAppState, setPlayerState]);
+
+  const handleOpenHistoryFromModule = useCallback(() => {
+    setIsConversationsOpen(true);
+  }, []);
+
+  const renderModuleContainer = () => {
+    const commonProps = {
+      onBack: handleBackToHome,
+      onHistoryClick: handleOpenHistoryFromModule,
+      deviceId: currentFingerprint,
+    };
+
+    switch (activeModule) {
+      case "health":
+        return <HealthModuleContainer {...commonProps} />;
+      case "ideas":
+        return <IdeasModuleContainer {...commonProps} />;
+      case "world":
+        return <WorldModuleContainer {...commonProps} />;
+      case "help":
+        return <HelpModuleContainer {...commonProps} />;
+      default:
+        return null;
+    }
+  };
+
+  const wrapperClass = embedded
+    ? "absolute inset-0 bg-background flex flex-col pwa-no-select overflow-hidden"
+    : "fixed inset-0 bg-background flex flex-col pwa-no-select pwa-fullscreen overflow-hidden touch-none";
+
+  return (
+    <div className={wrapperClass}>
+      <SafariAudioUnlock />
+      <SafariPWAInstallPrompt />
+      <AnimatePresence mode="wait">
+        {appState === "splash" && (
+          <SplashScreen
+            key="splash"
+            onComplete={handleSplashComplete}
+            embedded={embedded}
+            duration={config.splashDurationMs || 3000}
+          />
+        )}
+
+        {(appState === "idle" || appState === "welcome") && !activeModule && (
+          <HomeContainer
+            key="home"
+            onModuleSelect={handleModuleSelect}
+            deviceId={currentFingerprint}
+          />
+        )}
+
+        {activeModule && (
+          <motion.div
+            key={`module-${activeModule}`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col overflow-hidden"
+          >
+            <div className="flex-1 overflow-hidden">
+              {renderModuleContainer()}
+            </div>
+            <FooterModules
+              activeModule={activeModule}
+              onSelectModule={handleModuleSelect}
+              showIndicators={true}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isConversationsOpen && (
+        <HistoryScreen
+          onBack={() => setIsConversationsOpen(false)}
+          filterModule={activeModule || undefined}
+          deviceId={currentFingerprint}
+        />
+      )}
+    </div>
+  );
+};
+
+// ============================================================
+// COMPONENTE PRINCIPAL - PWAVoiceAssistant
+// ============================================================
+interface PWAVoiceAssistantProps {
+  embedded?: boolean;
+}
+
+export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded = false }) => {
+  const [showDesktopWarning, setShowDesktopWarning] = useState(false);
   const [allowDesktopFromConfig, setAllowDesktopFromConfig] = useState(false);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   // Lock scroll
   useEffect(() => {
@@ -86,6 +214,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
         }
       } catch (err) {
         console.log("[PWAVoiceAssistant] Config not found, using default");
+      } finally {
+        setConfigLoaded(true);
       }
     };
 
@@ -94,81 +224,31 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
 
   // Check mobile - now respects allow_desktop_access config
   useEffect(() => {
+    if (!configLoaded) return; // Wait for config to load
+
     if (embedded) {
-      setIsMobile(true);
       setShowDesktopWarning(false);
       return;
     }
+
     const checkMobile = () => {
       const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
-      setIsMobile(mobile);
       // Only show desktop warning if NOT mobile AND config doesn't allow desktop
       setShowDesktopWarning(!mobile && !allowDesktopFromConfig);
     };
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
-  }, [embedded, allowDesktopFromConfig]);
+  }, [embedded, allowDesktopFromConfig, configLoaded]);
 
-  const handleSplashComplete = () => {
-    setAppState("idle");
-  };
-
-  // ============================================================
-  // SELEÇÃO DE MÓDULO - Navegação IMEDIATA
-  // ============================================================
-  const handleModuleSelect = useCallback((moduleId: Exclude<ModuleId, null>) => {
-    console.log("[PWA] Navegando para módulo:", moduleId);
-    
-    // Parar áudio IMEDIATAMENTE - usar getState() para evitar loop
-    useAudioManager.getState().stopAllAndCleanup();
-    
-    // Navegar para o módulo
-    setActiveModule(moduleId);
-  }, [setActiveModule]);
-
-  // ============================================================
-  // VOLTAR PARA HOME
-  // ============================================================
-  const handleBackToHome = useCallback(() => {
-    console.log("[PWA] Voltando para HOME");
-    
-    // Parar áudio - usar getState() para evitar loop
-    useAudioManager.getState().stopAllAndCleanup();
-    
-    // Resetar estados
-    setActiveModule(null);
-    setAppState("idle");
-    setPlayerState("idle");
-  }, [setActiveModule, setAppState, setPlayerState]);
-
-  const handleOpenHistoryFromModule = () => {
-    setIsConversationsOpen(true);
-  };
-
-  // ============================================================
-  // RENDERIZAR CONTAINER DO MÓDULO
-  // ============================================================
-  const renderModuleContainer = () => {
-    const commonProps = {
-      onBack: handleBackToHome,
-      onHistoryClick: handleOpenHistoryFromModule,
-      deviceId: currentFingerprint,
-    };
-
-    switch (activeModule) {
-      case "health":
-        return <HealthModuleContainer {...commonProps} />;
-      case "ideas":
-        return <IdeasModuleContainer {...commonProps} />;
-      case "world":
-        return <WorldModuleContainer {...commonProps} />;
-      case "help":
-        return <HelpModuleContainer {...commonProps} />;
-      default:
-        return null;
-    }
-  };
+  // Loading state while config loads
+  if (!configLoaded) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (showDesktopWarning) {
     return (
@@ -195,84 +275,27 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     );
   }
 
-  const renderContent = ({ userPhone, pwaAccess }: { userPhone: string; pwaAccess: string[] }) => {
-    useEffect(() => {
-      if (userPhone) {
-        setCurrentFingerprint(userPhone); // Using phone as device identifier
-        setAuthenticated(true, userPhone);
-        initializeHistory(userPhone);
-      }
-    }, [userPhone]);
-
-    const wrapperClass = embedded
-      ? "absolute inset-0 bg-background flex flex-col pwa-no-select overflow-hidden"
-      : "fixed inset-0 bg-background flex flex-col pwa-no-select pwa-fullscreen overflow-hidden touch-none";
-
-    return (
-      <div className={wrapperClass}>
-        {/* Safari compatibility components */}
-        <SafariAudioUnlock />
-        <SafariPWAInstallPrompt />
-        <AnimatePresence mode="wait">
-          {appState === "splash" && (
-            <SplashScreen
-              key="splash"
-              onComplete={handleSplashComplete}
-              embedded={embedded}
-              duration={config.splashDurationMs || 3000}
-            />
-          )}
-
-          {/* HOME - Container INDEPENDENTE */}
-          {(appState === "idle" || appState === "welcome") && !activeModule && (
-            <HomeContainer
-              key="home"
-              onModuleSelect={handleModuleSelect}
-              deviceId={currentFingerprint}
-            />
-          )}
-
-          {/* MÓDULO ATIVO - Container INDEPENDENTE */}
-          {activeModule && (
-            <motion.div
-              key={`module-${activeModule}`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col overflow-hidden"
-            >
-              <div className="flex-1 overflow-hidden">
-                {renderModuleContainer()}
-              </div>
-              <FooterModules 
-                activeModule={activeModule} 
-                onSelectModule={handleModuleSelect} 
-                showIndicators={true} 
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {isConversationsOpen && (
-          <HistoryScreen
-            onBack={() => setIsConversationsOpen(false)}
-            filterModule={activeModule || undefined}
-            deviceId={currentFingerprint}
-          />
-        )}
-      </div>
-    );
-  };
-
   if (embedded) {
-    return renderContent({
-      userPhone: "simulator-embedded",
-      pwaAccess: ["pwa", "help", "health", "world", "ideas"],
-    });
+    return (
+      <AuthenticatedContent
+        userPhone="simulator-embedded"
+        pwaAccess={["pwa", "help", "health", "world", "ideas"]}
+        embedded={embedded}
+      />
+    );
   }
 
-  return <PWAAuthGate>{(data) => renderContent(data)}</PWAAuthGate>;
+  return (
+    <PWAAuthGate>
+      {(data) => (
+        <AuthenticatedContent
+          userPhone={data.userPhone}
+          pwaAccess={data.pwaAccess}
+          embedded={embedded}
+        />
+      )}
+    </PWAAuthGate>
+  );
 };
 
 export default PWAVoiceAssistant;
