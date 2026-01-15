@@ -3203,6 +3203,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_device_fingerprints: {
+        Row: {
+          created_at: string | null
+          device_info: Json | null
+          fingerprint: string
+          id: string
+          phone: string
+          platform: string | null
+          screen_size: string | null
+          timezone: string | null
+          touch_points: number | null
+          updated_at: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_info?: Json | null
+          fingerprint: string
+          id?: string
+          phone: string
+          platform?: string | null
+          screen_size?: string | null
+          timezone?: string | null
+          touch_points?: number | null
+          updated_at?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_info?: Json | null
+          fingerprint?: string
+          id?: string
+          phone?: string
+          platform?: string | null
+          screen_size?: string | null
+          timezone?: string | null
+          touch_points?: number | null
+          updated_at?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       pwa_invites: {
         Row: {
           accepted_at: string | null
@@ -4355,6 +4397,60 @@ export type Database = {
           id?: string
           relationship?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string
+          has_app_access: boolean | null
+          has_platform_access: boolean | null
+          id: string
+          name: string
+          phone: string | null
+          pwa_access: string[] | null
+          role: string
+          send_via_email: boolean | null
+          send_via_whatsapp: boolean | null
+          status: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at: string
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
+          id?: string
+          name: string
+          phone?: string | null
+          pwa_access?: string[] | null
+          role?: string
+          send_via_email?: boolean | null
+          send_via_whatsapp?: boolean | null
+          status?: string
+          token: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
+          id?: string
+          name?: string
+          phone?: string | null
+          pwa_access?: string[] | null
+          role?: string
+          send_via_email?: boolean | null
+          send_via_whatsapp?: boolean | null
+          status?: string
+          token?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
