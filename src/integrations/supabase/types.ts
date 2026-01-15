@@ -511,28 +511,61 @@ export type Database = {
       }
       banned_devices: {
         Row: {
+          ban_reason: string | null
+          banned_at: string | null
           banned_by: string | null
           created_at: string | null
           device_fingerprint: string | null
           expires_at: string | null
           id: string
+          ip_address: string | null
+          is_active: boolean | null
+          is_permanent: boolean | null
           reason: string | null
+          unbanned_at: string | null
+          unbanned_by: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          violation_type: string | null
         }
         Insert: {
+          ban_reason?: string | null
+          banned_at?: string | null
           banned_by?: string | null
           created_at?: string | null
           device_fingerprint?: string | null
           expires_at?: string | null
           id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_permanent?: boolean | null
           reason?: string | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_type?: string | null
         }
         Update: {
+          ban_reason?: string | null
+          banned_at?: string | null
           banned_by?: string | null
           created_at?: string | null
           device_fingerprint?: string | null
           expires_at?: string | null
           id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_permanent?: boolean | null
           reason?: string | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_type?: string | null
         }
         Relationships: []
       }
@@ -1810,36 +1843,6 @@ export type Database = {
         }
         Relationships: []
       }
-      invitation_channel_audit: {
-        Row: {
-          channel: string | null
-          created_at: string | null
-          error_message: string | null
-          id: string
-          invitation_id: string | null
-          metadata: Json | null
-          status: string | null
-        }
-        Insert: {
-          channel?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          invitation_id?: string | null
-          metadata?: Json | null
-          status?: string | null
-        }
-        Update: {
-          channel?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          invitation_id?: string | null
-          metadata?: Json | null
-          status?: string | null
-        }
-        Relationships: []
-      }
       lexicon_terms: {
         Row: {
           antonyms: string[] | null
@@ -2975,36 +2978,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pwa_conv_summaries: {
-        Row: {
-          generated_at: string | null
-          id: string
-          key_topics: Json | null
-          session_id: string | null
-          summary_audio_url: string | null
-          summary_text: string | null
-          taxonomy_tags: string[] | null
-        }
-        Insert: {
-          generated_at?: string | null
-          id?: string
-          key_topics?: Json | null
-          session_id?: string | null
-          summary_audio_url?: string | null
-          summary_text?: string | null
-          taxonomy_tags?: string[] | null
-        }
-        Update: {
-          generated_at?: string | null
-          id?: string
-          key_topics?: Json | null
-          session_id?: string | null
-          summary_audio_url?: string | null
-          summary_text?: string | null
-          taxonomy_tags?: string[] | null
-        }
-        Relationships: []
-      }
       pwa_conversation_messages: {
         Row: {
           audio_duration: number | null
@@ -3158,249 +3131,48 @@ export type Database = {
         }
         Relationships: []
       }
-      pwa_devices: {
-        Row: {
-          block_reason: string | null
-          blocked_at: string | null
-          blocked_by: string | null
-          browser_name: string | null
-          browser_version: string | null
-          created_at: string | null
-          device_fingerprint: string | null
-          device_model: string | null
-          device_vendor: string | null
-          email: string | null
-          expires_at: string | null
-          failed_verification_attempts: number | null
-          first_seen_at: string | null
-          has_camera: boolean | null
-          has_geolocation: boolean | null
-          has_microphone: boolean | null
-          has_touch: boolean | null
-          id: string
-          invitation_id: string | null
-          ip_address: string | null
-          ip_city: string | null
-          ip_country: string | null
-          ip_isp: string | null
-          ip_region: string | null
-          is_blocked: boolean | null
-          is_trusted: boolean | null
-          is_verified: boolean | null
-          last_access_at: string | null
-          last_active_at: string | null
-          last_seen_at: string | null
-          latitude: number | null
-          location_accuracy: number | null
-          location_timestamp: string | null
-          longitude: number | null
-          metadata: Json | null
-          os_name: string | null
-          os_version: string | null
-          phone: string | null
-          phone_number: string | null
-          pixel_ratio: number | null
-          pwa_access: string[] | null
-          pwa_slugs: string[] | null
-          registration_id: string | null
-          screen_height: number | null
-          screen_width: number | null
-          total_messages: number | null
-          total_sessions: number | null
-          updated_at: string | null
-          user_agent: string | null
-          user_email: string | null
-          user_id: string | null
-          user_name: string | null
-          user_registration_id: string | null
-          verification_attempts: number | null
-          verification_code: string | null
-          verification_code_expires_at: string | null
-          verification_expires_at: string | null
-          verified_at: string | null
-        }
-        Insert: {
-          block_reason?: string | null
-          blocked_at?: string | null
-          blocked_by?: string | null
-          browser_name?: string | null
-          browser_version?: string | null
-          created_at?: string | null
-          device_fingerprint?: string | null
-          device_model?: string | null
-          device_vendor?: string | null
-          email?: string | null
-          expires_at?: string | null
-          failed_verification_attempts?: number | null
-          first_seen_at?: string | null
-          has_camera?: boolean | null
-          has_geolocation?: boolean | null
-          has_microphone?: boolean | null
-          has_touch?: boolean | null
-          id?: string
-          invitation_id?: string | null
-          ip_address?: string | null
-          ip_city?: string | null
-          ip_country?: string | null
-          ip_isp?: string | null
-          ip_region?: string | null
-          is_blocked?: boolean | null
-          is_trusted?: boolean | null
-          is_verified?: boolean | null
-          last_access_at?: string | null
-          last_active_at?: string | null
-          last_seen_at?: string | null
-          latitude?: number | null
-          location_accuracy?: number | null
-          location_timestamp?: string | null
-          longitude?: number | null
-          metadata?: Json | null
-          os_name?: string | null
-          os_version?: string | null
-          phone?: string | null
-          phone_number?: string | null
-          pixel_ratio?: number | null
-          pwa_access?: string[] | null
-          pwa_slugs?: string[] | null
-          registration_id?: string | null
-          screen_height?: number | null
-          screen_width?: number | null
-          total_messages?: number | null
-          total_sessions?: number | null
-          updated_at?: string | null
-          user_agent?: string | null
-          user_email?: string | null
-          user_id?: string | null
-          user_name?: string | null
-          user_registration_id?: string | null
-          verification_attempts?: number | null
-          verification_code?: string | null
-          verification_code_expires_at?: string | null
-          verification_expires_at?: string | null
-          verified_at?: string | null
-        }
-        Update: {
-          block_reason?: string | null
-          blocked_at?: string | null
-          blocked_by?: string | null
-          browser_name?: string | null
-          browser_version?: string | null
-          created_at?: string | null
-          device_fingerprint?: string | null
-          device_model?: string | null
-          device_vendor?: string | null
-          email?: string | null
-          expires_at?: string | null
-          failed_verification_attempts?: number | null
-          first_seen_at?: string | null
-          has_camera?: boolean | null
-          has_geolocation?: boolean | null
-          has_microphone?: boolean | null
-          has_touch?: boolean | null
-          id?: string
-          invitation_id?: string | null
-          ip_address?: string | null
-          ip_city?: string | null
-          ip_country?: string | null
-          ip_isp?: string | null
-          ip_region?: string | null
-          is_blocked?: boolean | null
-          is_trusted?: boolean | null
-          is_verified?: boolean | null
-          last_access_at?: string | null
-          last_active_at?: string | null
-          last_seen_at?: string | null
-          latitude?: number | null
-          location_accuracy?: number | null
-          location_timestamp?: string | null
-          longitude?: number | null
-          metadata?: Json | null
-          os_name?: string | null
-          os_version?: string | null
-          phone?: string | null
-          phone_number?: string | null
-          pixel_ratio?: number | null
-          pwa_access?: string[] | null
-          pwa_slugs?: string[] | null
-          registration_id?: string | null
-          screen_height?: number | null
-          screen_width?: number | null
-          total_messages?: number | null
-          total_sessions?: number | null
-          updated_at?: string | null
-          user_agent?: string | null
-          user_email?: string | null
-          user_id?: string | null
-          user_name?: string | null
-          user_registration_id?: string | null
-          verification_attempts?: number | null
-          verification_code?: string | null
-          verification_code_expires_at?: string | null
-          verification_expires_at?: string | null
-          verified_at?: string | null
-        }
-        Relationships: []
-      }
       pwa_invites: {
         Row: {
           accepted_at: string | null
           created_at: string | null
+          email: string | null
           expires_at: string | null
           id: string
           invite_code: string | null
           invited_by: string | null
+          name: string | null
           phone: string | null
+          pwa_access: string[] | null
           status: string | null
+          updated_at: string | null
         }
         Insert: {
           accepted_at?: string | null
           created_at?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           invite_code?: string | null
           invited_by?: string | null
+          name?: string | null
           phone?: string | null
+          pwa_access?: string[] | null
           status?: string | null
+          updated_at?: string | null
         }
         Update: {
           accepted_at?: string | null
           created_at?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           invite_code?: string | null
           invited_by?: string | null
+          name?: string | null
           phone?: string | null
+          pwa_access?: string[] | null
           status?: string | null
-        }
-        Relationships: []
-      }
-      pwa_messages: {
-        Row: {
-          agent_slug: string | null
-          audio_url: string | null
-          content: string | null
-          created_at: string | null
-          id: string
-          role: string | null
-          session_id: string | null
-        }
-        Insert: {
-          agent_slug?: string | null
-          audio_url?: string | null
-          content?: string | null
-          created_at?: string | null
-          id?: string
-          role?: string | null
-          session_id?: string | null
-        }
-        Update: {
-          agent_slug?: string | null
-          audio_url?: string | null
-          content?: string | null
-          created_at?: string | null
-          id?: string
-          role?: string | null
-          session_id?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -3412,12 +3184,20 @@ export type Database = {
           has_app_access: boolean | null
           id: string
           is_active: boolean | null
+          is_verified: boolean | null
           last_interaction: string | null
+          phone: string | null
           pwa_access: string[] | null
+          session_expires_at: string | null
           token: string | null
           total_messages: number | null
+          updated_at: string | null
           user_id: string | null
           user_name: string | null
+          verification_attempts: number | null
+          verification_code: string | null
+          verification_code_expires_at: string | null
+          verified_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -3426,12 +3206,20 @@ export type Database = {
           has_app_access?: boolean | null
           id?: string
           is_active?: boolean | null
+          is_verified?: boolean | null
           last_interaction?: string | null
+          phone?: string | null
           pwa_access?: string[] | null
+          session_expires_at?: string | null
           token?: string | null
           total_messages?: number | null
+          updated_at?: string | null
           user_id?: string | null
           user_name?: string | null
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
+          verified_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -3440,111 +3228,20 @@ export type Database = {
           has_app_access?: boolean | null
           id?: string
           is_active?: boolean | null
+          is_verified?: boolean | null
           last_interaction?: string | null
+          phone?: string | null
           pwa_access?: string[] | null
+          session_expires_at?: string | null
           token?: string | null
           total_messages?: number | null
+          updated_at?: string | null
           user_id?: string | null
           user_name?: string | null
-        }
-        Relationships: []
-      }
-      pwa_user_context: {
-        Row: {
-          context_data: Json | null
-          context_type: string | null
-          created_at: string | null
-          expires_at: string | null
-          id: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          context_data?: Json | null
-          context_type?: string | null
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          context_data?: Json | null
-          context_type?: string | null
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      pwa_user_devices: {
-        Row: {
-          created_at: string | null
-          device_fingerprint: string | null
-          device_info: Json | null
-          id: string
-          is_trusted: boolean | null
-          last_used_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          device_fingerprint?: string | null
-          device_info?: Json | null
-          id?: string
-          is_trusted?: boolean | null
-          last_used_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          device_fingerprint?: string | null
-          device_info?: Json | null
-          id?: string
-          is_trusted?: boolean | null
-          last_used_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      pwa_users: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string | null
-          id: string
-          last_seen_at: string | null
-          metadata: Json | null
-          name: string | null
-          phone: string | null
-          status: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          last_seen_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          phone?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          last_seen_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          phone?: string | null
-          status?: string | null
-          updated_at?: string | null
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
+          verified_at?: string | null
         }
         Relationships: []
       }
@@ -4009,33 +3706,42 @@ export type Database = {
       }
       security_violations: {
         Row: {
+          action_taken: string | null
           created_at: string | null
-          details: Json | null
+          device_fingerprint: string | null
           id: string
           ip_address: string | null
           resolved_at: string | null
           severity: string | null
+          user_email: string | null
           user_id: string | null
+          violation_details: Json | null
           violation_type: string | null
         }
         Insert: {
+          action_taken?: string | null
           created_at?: string | null
-          details?: Json | null
+          device_fingerprint?: string | null
           id?: string
           ip_address?: string | null
           resolved_at?: string | null
           severity?: string | null
+          user_email?: string | null
           user_id?: string | null
+          violation_details?: Json | null
           violation_type?: string | null
         }
         Update: {
+          action_taken?: string | null
           created_at?: string | null
-          details?: Json | null
+          device_fingerprint?: string | null
           id?: string
           ip_address?: string | null
           resolved_at?: string | null
           severity?: string | null
+          user_email?: string | null
           user_id?: string | null
+          violation_details?: Json | null
           violation_type?: string | null
         }
         Relationships: []
@@ -4496,33 +4202,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_invitations: {
-        Row: {
-          created_at: string | null
-          expires_at: string | null
-          id: string
-          invite_code: string
-          phone_number: string
-          status: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          invite_code: string
-          phone_number: string
-          status?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          invite_code?: string
-          phone_number?: string
-          status?: string | null
-        }
-        Relationships: []
-      }
       user_preferences: {
         Row: {
           created_at: string | null
@@ -4604,42 +4283,120 @@ export type Database = {
       user_registrations: {
         Row: {
           approved_at: string | null
+          approved_by: string | null
+          ban_reason: string | null
+          ban_type: string | null
+          banned_at: string | null
+          banned_by: string | null
+          city: string | null
+          complement: string | null
           created_at: string | null
           dns_origin: string | null
           email: string | null
+          first_name: string | null
           full_name: string | null
+          has_app_access: boolean | null
+          has_platform_access: boolean | null
           id: string
           institution_study: string | null
           institution_work: string | null
+          is_banned: boolean | null
+          last_name: string | null
+          mass_import_at: string | null
+          neighborhood: string | null
           phone: string | null
+          pwa_access: Json | null
+          pwa_registered_at: string | null
+          registration_source: string | null
           rejection_reason: string | null
+          requested_at: string | null
+          role: string | null
+          state: string | null
           status: string | null
+          street: string | null
+          street_number: string | null
+          unbanned_at: string | null
+          unbanned_by: string | null
+          updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
           approved_at?: string | null
+          approved_by?: string | null
+          ban_reason?: string | null
+          ban_type?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string | null
           dns_origin?: string | null
           email?: string | null
+          first_name?: string | null
           full_name?: string | null
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
           id?: string
           institution_study?: string | null
           institution_work?: string | null
+          is_banned?: boolean | null
+          last_name?: string | null
+          mass_import_at?: string | null
+          neighborhood?: string | null
           phone?: string | null
+          pwa_access?: Json | null
+          pwa_registered_at?: string | null
+          registration_source?: string | null
           rejection_reason?: string | null
+          requested_at?: string | null
+          role?: string | null
+          state?: string | null
           status?: string | null
+          street?: string | null
+          street_number?: string | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
           approved_at?: string | null
+          approved_by?: string | null
+          ban_reason?: string | null
+          ban_type?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string | null
           dns_origin?: string | null
           email?: string | null
+          first_name?: string | null
           full_name?: string | null
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
           id?: string
           institution_study?: string | null
           institution_work?: string | null
+          is_banned?: boolean | null
+          last_name?: string | null
+          mass_import_at?: string | null
+          neighborhood?: string | null
           phone?: string | null
+          pwa_access?: Json | null
+          pwa_registered_at?: string | null
+          registration_source?: string | null
           rejection_reason?: string | null
+          requested_at?: string | null
+          role?: string | null
+          state?: string | null
           status?: string | null
+          street?: string | null
+          street_number?: string | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          updated_at?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }
@@ -4871,6 +4628,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_pwa_access: { Args: { p_phone: string }; Returns: Json }
+      login_pwa: { Args: { p_phone: string }; Returns: Json }
       search_documents: {
         Args: {
           match_count?: number
@@ -4883,6 +4642,10 @@ export type Database = {
           id: string
           similarity: number
         }[]
+      }
+      verify_pwa_code: {
+        Args: { p_code: string; p_phone: string }
+        Returns: Json
       }
     }
     Enums: {
