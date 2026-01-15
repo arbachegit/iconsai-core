@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * PWAVoiceAssistant.tsx - v5.2.0
+ * PWAVoiceAssistant.tsx - v5.4.0
  * ============================================================
  * ARQUITETURA DE CONTAINERS INDEPENDENTES
  * - Cada container gerencia seu próprio autoplay
@@ -8,6 +8,8 @@
  * - Sem refs compartilhadas
  * - SAFARI COMPATIBLE
  * - FIX: useEffect movido para componente separado (React hooks rules)
+ * - NEW: MobileFrame para visualização desktop em formato celular
+ * - NEW: Coleta de fingerprint do dispositivo
  * ============================================================
  */
 
@@ -24,6 +26,8 @@ import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
 import SafariAudioUnlock from "@/components/pwa/SafariAudioUnlock";
 import SafariPWAInstallPrompt from "@/components/pwa/SafariPWAInstallPrompt";
+import { MobileFrame } from "@/components/pwa/MobileFrame";
+import { useDeviceFingerprint } from "@/hooks/useDeviceFingerprint";
 import { supabase } from "@/integrations/supabase/client";
 
 // Containers independentes
@@ -62,17 +66,24 @@ const AuthenticatedContent: React.FC<AuthenticatedContentProps> = ({
   const { initialize: initializeHistory } = useHistoryStore();
   const { config } = useConfigPWA();
 
+  // Coletar fingerprint do dispositivo
+  const { fingerprint: deviceFingerprint } = useDeviceFingerprint(userPhone);
+
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [currentFingerprint, setCurrentFingerprint] = useState<string>("");
 
-  // Inicializar com userPhone - HOOK VÁLIDO em componente React
+  // Inicializar com userPhone e fingerprint - HOOK VÁLIDO em componente React
   useEffect(() => {
     if (userPhone) {
-      setCurrentFingerprint(userPhone);
+      // Usar fingerprint do dispositivo ou fallback para userPhone
+      const fpToUse = deviceFingerprint || userPhone;
+      setCurrentFingerprint(fpToUse);
       setAuthenticated(true, userPhone);
       initializeHistory(userPhone);
+
+      console.log("[PWA v5.4.0] Authenticated with fingerprint:", fpToUse.substring(0, 20) + "...");
     }
-  }, [userPhone, setAuthenticated, initializeHistory]);
+  }, [userPhone, deviceFingerprint, setAuthenticated, initializeHistory]);
 
   const handleSplashComplete = useCallback(() => {
     setAppState("idle");
@@ -186,6 +197,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [showDesktopWarning, setShowDesktopWarning] = useState(false);
   const [allowDesktopFromConfig, setAllowDesktopFromConfig] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [isDesktopView, setIsDesktopView] = useState(false);
 
   // Lock scroll
   useEffect(() => {
@@ -228,6 +240,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
 
     if (embedded) {
       setShowDesktopWarning(false);
+      setIsDesktopView(false);
       return;
     }
 
@@ -235,6 +248,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
       const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
       // Only show desktop warning if NOT mobile AND config doesn't allow desktop
       setShowDesktopWarning(!mobile && !allowDesktopFromConfig);
+      // Set desktop view for MobileFrame
+      setIsDesktopView(!mobile && allowDesktopFromConfig);
     };
     checkMobile();
     window.addEventListener("resize", checkMobile);
@@ -285,6 +300,24 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     );
   }
 
+  // Desktop view with MobileFrame wrapper
+  if (isDesktopView) {
+    return (
+      <MobileFrame>
+        <PWAAuthGate>
+          {(data) => (
+            <AuthenticatedContent
+              userPhone={data.userPhone}
+              pwaAccess={data.pwaAccess}
+              embedded={true}
+            />
+          )}
+        </PWAAuthGate>
+      </MobileFrame>
+    );
+  }
+
+  // Mobile view - full screen
   return (
     <PWAAuthGate>
       {(data) => (

@@ -1,7 +1,7 @@
 // =============================================
-// PWA Auth Gate v4.0 - SIMPLIFICAÇÃO RADICAL
-// Build: 2026-01-12T15:00:00Z
-// Telefone como identificador (sem fingerprint)
+// PWA Auth Gate v4.1 - Com VoiceSpectrum
+// Build: 2026-01-15T06:00:00Z
+// Telefone como identificador + VoiceSpectrum
 // =============================================
 
 import { ReactNode, useState, useEffect, useCallback } from "react";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
+import { VoiceSpectrum } from "@/components/pwa/VoiceSpectrum";
 
 interface PWAAuthGateProps {
   children: ReactNode | ((data: { userPhone: string; pwaAccess: string[] }) => ReactNode);
@@ -470,16 +471,9 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     console.log('[PWAAuthGate v4.0] Status:', status, '| Phone:', userPhone?.substring(0, 8) + '...');
   }, [status, userPhone]);
 
-  // Loading state
+  // Loading state - Agora com VoiceSpectrum animado
   if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col items-center justify-center gap-6">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm">Verificando acesso...</p>
-        </div>
-      </div>
-    );
+    return <VoiceSpectrum isActive={true} message="Verificando acesso..." />;
   }
 
   // Blocked state
@@ -487,9 +481,9 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     return <BlockedScreen reason={blockReason} />;
   }
 
-  // Sending code state (transição)
+  // Sending code state (transição) - Com VoiceSpectrum
   if (status === "sending_code") {
-    return <SendingCodeScreen phone={userPhone || ""} />;
+    return <VoiceSpectrum isActive={true} message="Enviando código de verificação..." />;
   }
 
   // Login state
@@ -555,11 +549,7 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
   }
 
   // Fallback loading
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-  );
+  return <VoiceSpectrum isActive={true} message="Carregando..." />;
 }
 
 export default PWAAuthGate;
