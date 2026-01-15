@@ -9,55 +9,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Activity, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock, FileText, Copy, Check, Database, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { formatDate } from '@/lib/date-utils';
-
-interface SyncMetadata {
-  extracted_count?: number;
-  period_start?: string;
-  period_end?: string;
-  fields_detected?: string[];
-  last_record_value?: number;
-  fetch_timestamp?: string;
-}
-
-interface ApiRegistry {
-  id: string;
-  name: string;
-  provider: string;
-  base_url: string;
-  fetch_start_date: string | null;
-  fetch_end_date: string | null;
-  target_table: string | null;
-  last_http_status: number | null;
-  last_sync_metadata: SyncMetadata | null;
-  last_checked_at: string | null;
-}
 
 interface ApiTestResult {
   apiId: string;
   apiName: string;
   provider: string;
   baseUrl: string;
-  targetTable: string | null;
   testResult: 'SIM' | 'NÃO' | 'PENDING';
   statusCode: number | null;
   latencyMs: number;
-  // Configured dates
-  configuredStart: string | null;
-  configuredEnd: string | null;
-  // Actual dates found
-  firstDateFound: string | null;
-  lastDateFound: string | null;
-  // Data info
-  extractedCount: number | null;
-  fieldsDetected: string[] | null;
-  lastRecordValue: number | null;
-  lastSyncAt: string | null;
-  // Error info
   errorMessage: string | null;
-  diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'API_ERROR' | 'LOW_COVERAGE' | 'COVERAGE_INDETERMINATE' | 'PENDING';
-  diagnosisMessage: string | null;
-  coveragePercent: number | null;
 }
 
 interface ApiDiagnosticModalProps {
@@ -66,808 +27,159 @@ interface ApiDiagnosticModalProps {
 }
 
 export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnosticModalProps) {
-  const [apis, setApis] = useState<ApiRegistry[]>([]);
   const [results, setResults] = useState<ApiTestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [hasRun, setHasRun] = useState(false);
-  const [showErrorReport, setShowErrorReport] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setHasRun(false);
       setResults([]);
-      setApis([]);
-      setShowErrorReport(false);
     }
   }, [open]);
 
-  // Fetch APIs when modal opens
+  // Fetch APIs when modal opens - using api_test_staging table instead
   useEffect(() => {
-    if (open && !hasRun && apis.length === 0) {
+    if (open && !hasRun && results.length === 0) {
       fetchApis();
     }
-  }, [open, hasRun, apis.length]);
+  }, [open, hasRun, results.length]);
 
   const fetchApis = async () => {
+    // Use api_test_staging table which exists in the schema
     const { data, error } = await supabase
-      .from('system_api_registry')
-      .select('id, name, provider, base_url, fetch_start_date, fetch_end_date, target_table, last_http_status, last_sync_metadata, last_checked_at')
-      .in('provider', ['BCB', 'IBGE', 'IPEADATA', 'WorldBank'])
-      .order('provider', { ascending: true });
+      .from('api_test_staging')
+      .select('id, name, provider, base_url, status, http_status, error_message, test_timestamp')
+      .order('provider', { ascending: true })
+      .limit(50);
 
     if (error) {
       logger.error('[API_DIAGNOSTIC] Error fetching APIs:', error);
       return;
     }
 
-    const apiList = (data || []) as ApiRegistry[];
-    setApis(apiList);
+    const apiList = data || [];
     
-    // Initialize results with PENDING status
-    const initialResults: ApiTestResult[] = apiList.map(api => {
-      const syncMeta = api.last_sync_metadata as SyncMetadata | null;
-      return {
-        apiId: api.id,
-        apiName: api.name,
-        provider: api.provider,
-        baseUrl: api.base_url,
-        targetTable: api.target_table,
-        testResult: 'PENDING',
-        statusCode: null,
-        latencyMs: 0,
-        configuredStart: api.fetch_start_date?.substring(0, 10) || null,
-        configuredEnd: api.fetch_end_date?.substring(0, 10) || null,
-        firstDateFound: null,
-        lastDateFound: null,
-        extractedCount: null,
-        fieldsDetected: syncMeta?.fields_detected || null,
-        lastRecordValue: syncMeta?.last_record_value || null,
-        lastSyncAt: api.last_checked_at || null,
-        errorMessage: null,
-        diagnosis: 'PENDING',
-        diagnosisMessage: null,
-        coveragePercent: null
-      };
-    });
+    // Initialize results from existing test data
+    const initialResults: ApiTestResult[] = apiList.map(api => ({
+      apiId: api.id,
+      apiName: api.name || 'Unknown',
+      provider: api.provider || 'Unknown',
+      baseUrl: api.base_url || '',
+      testResult: api.status === 'success' ? 'SIM' : api.status === 'error' ? 'NÃO' : 'PENDING',
+      statusCode: api.http_status,
+      latencyMs: 0,
+      errorMessage: api.error_message,
+    }));
     
     setResults(initialResults);
-    
-    // Auto-start tests
-    runTests(apiList, initialResults);
-  };
-
-  const calculateCoverage = (configStart: string | null, configEnd: string | null, actualStart: string | null, actualEnd: string | null): number | null => {
-    // If no actual start date found, coverage is indeterminate
-    if (!actualStart) return null;
-    
-    // Use today as effective end date if configEnd is null
-    const effectiveConfigEnd = configEnd || new Date().toISOString().substring(0, 10);
-    // Use a reasonable default start (2010) if configStart is null
-    const effectiveConfigStart = configStart || '2010-01-01';
-    
-    const configStartDate = new Date(effectiveConfigStart);
-    const configEndDate = new Date(effectiveConfigEnd);
-    const actualStartDate = new Date(actualStart);
-    const actualEndDate = actualEnd ? new Date(actualEnd) : new Date();
-    
-    const configDays = Math.abs(configEndDate.getTime() - configStartDate.getTime()) / (1000 * 60 * 60 * 24);
-    
-    if (configDays === 0) return 100;
-    
-    // Calculate how much of the configured range is covered
-    const overlapStart = Math.max(configStartDate.getTime(), actualStartDate.getTime());
-    const overlapEnd = Math.min(configEndDate.getTime(), actualEndDate.getTime());
-    const overlapDays = Math.max(0, (overlapEnd - overlapStart) / (1000 * 60 * 60 * 24));
-    
-    return Math.min(100, Math.round((overlapDays / configDays) * 100));
-  };
-
-  const runTests = useCallback(async (apiList: ApiRegistry[], initialResults: ApiTestResult[]) => {
-    setIsRunning(true);
-    setCurrentIndex(0);
-    
-    const updatedResults = [...initialResults];
-    
-    for (let i = 0; i < apiList.length; i++) {
-      const api = apiList[i];
-      setCurrentIndex(i + 1);
-      
-      logger.log(`[API_DIAGNOSTIC] Testing ${i + 1}/${apiList.length}: ${api.name}`);
-      
-      try {
-        const startTime = Date.now();
-        
-        const { data, error } = await supabase.functions.invoke('test-api-connection', {
-          body: { apiId: api.id, baseUrl: api.base_url }
-        });
-        
-        const latency = Date.now() - startTime;
-        
-        if (error) {
-          updatedResults[i] = {
-            ...updatedResults[i],
-            testResult: 'NÃO',
-            latencyMs: latency,
-            errorMessage: error.message || 'Edge Function error',
-            diagnosis: 'API_ERROR',
-            diagnosisMessage: 'Erro ao chamar Edge Function'
-          };
-        } else if (data?.success) {
-          const firstDate = data.syncMetadata?.period_start || null;
-          const lastDate = data.syncMetadata?.period_end || null;
-          const extractedCount = data.syncMetadata?.extracted_count || 0;
-          const fieldsDetected = data.syncMetadata?.fields_detected || [];
-          const lastValue = data.syncMetadata?.last_record_value || null;
-          const configStart = api.fetch_start_date?.substring(0, 10) || null;
-          const configEnd = api.fetch_end_date?.substring(0, 10) || null;
-          
-          // Calculate coverage
-          const coverage = calculateCoverage(configStart, configEnd, firstDate, lastDate);
-          
-          // Diagnose historical integrity - Protocol V7.0: Accept native period limitations
-          // NEW: Coverage < 50% is now treated as LOW_COVERAGE error
-          let diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'LOW_COVERAGE' | 'COVERAGE_INDETERMINATE' = 'OK';
-          let diagnosisMessage: string | null = null;
-          
-          // Check for COVERAGE_INDETERMINATE (has data but period not detected)
-          if (coverage === null && extractedCount > 0) {
-            diagnosis = 'COVERAGE_INDETERMINATE';
-            diagnosisMessage = `${extractedCount} registros extraídos mas período não identificado`;
-            logger.log(`[API_DIAGNOSTIC] COVERAGE_INDETERMINATE: ${api.name} has ${extractedCount} records but no period`);
-          }
-          // Check for LOW_COVERAGE first (< 50%)
-          else if (coverage !== null && coverage < 50 && extractedCount > 0) {
-            diagnosis = 'LOW_COVERAGE';
-            diagnosisMessage = `Cobertura insuficiente: ${coverage}% (mínimo 50% requerido)`;
-            logger.log(`[API_DIAGNOSTIC] LOW_COVERAGE: ${api.name} has only ${coverage}% coverage`);
-          } else if (configStart && firstDate) {
-            const configDate = new Date(configStart);
-            const actualDate = new Date(firstDate);
-            const daysDiff = Math.floor((actualDate.getTime() - configDate.getTime()) / (1000 * 60 * 60 * 24));
-            
-            // Protocol V7.0: If API returns data but starts after configured date,
-            // this is a NATIVE LIMITATION of the data source, not an error.
-            // Accept the actual period as the "real" period and suppress warnings.
-            const isNativePeriodLimitation = daysDiff > 30 && extractedCount > 0;
-            
-            if (isNativePeriodLimitation) {
-              // Series starts later than configured - this is acceptable per V7.0
-              // Register actual period as DATA_INICIO_REAL and suppress alert
-              diagnosis = 'OK'; // Changed from PARTIAL_HISTORY to OK
-              diagnosisMessage = `Período nativo: ${firstDate} (fonte não possui dados anteriores)`;
-              logger.log(`[API_DIAGNOSTIC] V7.0: Accepting native period ${firstDate} for ${api.name}`);
-            } else if (daysDiff > 365 && extractedCount === 0) {
-              const yearsDiff = Math.floor(daysDiff / 365);
-              diagnosis = 'API_NO_HISTORY';
-              diagnosisMessage = `API não possui dados antes de ${firstDate} (${yearsDiff} ano(s) após configurado)`;
-            }
-          }
-          
-          updatedResults[i] = {
-            ...updatedResults[i],
-            testResult: 'SIM',
-            statusCode: data.statusCode || 200,
-            latencyMs: data.latency || latency,
-            firstDateFound: firstDate,
-            lastDateFound: lastDate,
-            extractedCount,
-            fieldsDetected,
-            lastRecordValue: lastValue,
-            errorMessage: null,
-            diagnosis,
-            diagnosisMessage,
-            coveragePercent: coverage
-          };
-        } else {
-          updatedResults[i] = {
-            ...updatedResults[i],
-            testResult: 'NÃO',
-            statusCode: data?.statusCode || null,
-            latencyMs: data?.latency || latency,
-            errorMessage: data?.error || 'API retornou erro',
-            diagnosis: 'API_ERROR',
-            diagnosisMessage: data?.error || 'Falha na resposta da API'
-          };
-        }
-      } catch (err) {
-        logger.error(`[API_DIAGNOSTIC] Error testing ${api.name}:`, err);
-        updatedResults[i] = {
-          ...updatedResults[i],
-          testResult: 'NÃO',
-          errorMessage: err instanceof Error ? err.message : 'Erro desconhecido',
-          diagnosis: 'API_ERROR',
-          diagnosisMessage: 'Exceção durante teste'
-        };
-      }
-      
-      // Update results in real-time
-      setResults([...updatedResults]);
-      
-      // Delay between requests to avoid rate limiting
-      if (i < apiList.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    setIsRunning(false);
     setHasRun(true);
-    logger.log('[API_DIAGNOSTIC] All tests completed');
-  }, []);
+  };
 
   const handleRetest = () => {
     setHasRun(false);
+    setResults([]);
     fetchApis();
   };
 
   const handleClose = () => {
     setHasRun(false);
     setResults([]);
-    setApis([]);
-    setShowErrorReport(false);
     onOpenChange(false);
   };
 
-  // Using centralized formatDate from @/lib/date-utils (imported via date-fns format)
-
-  const generateProblemAnalysis = (result: ApiTestResult): string => {
-    const analyses: string[] = [];
-    
-    // N/A - API returned valid response but no data
-    if (result.extractedCount === 0 && result.testResult === 'SIM') {
-      analyses.push(
-        `A API retornou resposta HTTP válida (${result.statusCode || 200}) mas sem registros de dados.\n` +
-        `  Causas prováveis:\n` +
-        `  • Série histórica descontinuada ou ainda não publicada para o período solicitado\n` +
-        `  • Parâmetros de consulta (datas, códigos) podem estar incorretos\n` +
-        `  • Formato de requisição incompatível com a estrutura esperada pela API\n` +
-        `  Recomendação: Verificar documentação da API e validar parâmetros de período`
-      );
-    }
-    
-    // Connection/HTTP error
-    if (result.testResult === 'NÃO') {
-      analyses.push(
-        `Falha na comunicação com a API (HTTP ${result.statusCode || 'timeout'}).\n` +
-        `  Causas prováveis:\n` +
-        `  • Servidor da API temporariamente indisponível ou em manutenção\n` +
-        `  • Rate limiting (excesso de requisições em curto período)\n` +
-        `  • Timeout de rede ou bloqueio por firewall\n` +
-        `  • URL do endpoint alterada ou descontinuada\n` +
-        `  Recomendação: Tentar novamente em alguns minutos; verificar se URL está atualizada`
-      );
-    }
-    
-    // No history data
-    if (result.diagnosis === 'API_NO_HISTORY') {
-      analyses.push(
-        `API funcional mas sem dados históricos disponíveis.\n` +
-        `  Causas prováveis:\n` +
-        `  • A série pode ter sido descontinuada ou migrada para outro endpoint\n` +
-        `  • Dados históricos foram removidos ou arquivados\n` +
-        `  • Período solicitado anterior ao início da coleta de dados\n` +
-        `  Recomendação: Verificar período de disponibilidade na documentação oficial`
-      );
-    }
-    
-    // Partial history
-    if (result.diagnosis === 'PARTIAL_HISTORY') {
-      const coverageInfo = result.coveragePercent !== null ? ` (${result.coveragePercent}% de cobertura)` : '';
-      analyses.push(
-        `Cobertura incompleta do período configurado${coverageInfo}.\n` +
-        `  Causas prováveis:\n` +
-        `  • Série iniciou após a data inicial configurada\n` +
-        `  • Lacunas na publicação de dados em determinados períodos\n` +
-        `  • Dados mais recentes ainda não foram publicados\n` +
-        `  Recomendação: Ajustar período de coleta para coincidir com disponibilidade real`
-      );
-    }
-    
-    // Low coverage (< 50%) - NEW ERROR TYPE
-    if (result.diagnosis === 'LOW_COVERAGE') {
-      analyses.push(
-        `⚠️ COBERTURA CRÍTICA: Apenas ${result.coveragePercent}% dos dados esperados estão disponíveis.\n` +
-        `  Causas prováveis:\n` +
-        `  • Série descontinuada ou migrada para outro endpoint\n` +
-        `  • Problemas de parsing na resposta da API\n` +
-        `  • Dados regionais não estão sendo salvos corretamente no banco\n` +
-        `  • Parser não reconhece formato de resposta (SIDRA Flat vs JSON)\n` +
-        `  Recomendação: Verificar logs do Edge Function para diagnóstico detalhado,\n` +
-        `  re-sincronizar os dados via "Sincronizar Dados" após correção`
-      );
-    }
-    
-    // Coverage indeterminate - has data but no period parsed
-    if (result.diagnosis === 'COVERAGE_INDETERMINATE') {
-      analyses.push(
-        `⚠️ COBERTURA INDETERMINADA: ${result.extractedCount} registros foram extraídos mas período não identificado.\n` +
-        `  Causas prováveis:\n` +
-        `  • Parser não reconhece formato de datas da API (D3C, D4C, etc.)\n` +
-        `  • Campo de período possui estrutura não prevista\n` +
-        `  • Resposta JSON possui formato nested não esperado\n` +
-        `  Recomendação: Verificar logs do Edge Function test-api-connection e estrutura JSON`
-      );
-    }
-    
-    // Period unavailable
-    if (result.firstDateFound === null && result.extractedCount && result.extractedCount > 0 && result.diagnosis !== 'COVERAGE_INDETERMINATE') {
-      analyses.push(
-        `Dados extraídos mas período não identificado.\n` +
-        `  Causas prováveis:\n` +
-        `  • Formato de data na resposta JSON difere do padrão esperado\n` +
-        `  • Campo de data possui nome não reconhecido pelo parser\n` +
-        `  Recomendação: Verificar estrutura JSON e ajustar parsing se necessário`
-      );
-    }
-    
-    return analyses.length > 0 ? analyses.join('\n\n') : 'Sem problemas identificados.';
-  };
-
-  const generateErrorReport = (): string => {
-    const now = new Date().toLocaleString('pt-BR');
-    
-    // Expanded filter to include all problem types
-    const problems = results.filter(r => 
-      r.testResult === 'NÃO' || 
-      r.diagnosis === 'API_NO_HISTORY' || 
-      r.diagnosis === 'PARTIAL_HISTORY' ||
-      r.diagnosis === 'LOW_COVERAGE' ||
-      r.diagnosis === 'COVERAGE_INDETERMINATE' ||
-      r.extractedCount === 0 ||
-      r.firstDateFound === null
-    );
-    
-    // Statistics
-    const functional = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE' && r.diagnosis !== 'COVERAGE_INDETERMINATE').length;
-    const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
-    const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
-    const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
-    const lowCoverage = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
-    const indeterminateCoverage = results.filter(r => r.diagnosis === 'COVERAGE_INDETERMINATE').length;
-    
-    let report = `${'═'.repeat(70)}\n`;
-    report += `            RELATÓRIO DE DIAGNÓSTICO DE APIs\n`;
-    report += `${'═'.repeat(70)}\n`;
-    report += `Data de Geração: ${now}\n\n`;
-    
-    // Legend section
-    report += `LEGENDA DE PROBLEMAS:\n`;
-    report += `${'─'.repeat(70)}\n`;
-    report += `• N/A (Não Disponível): API retornou resposta válida mas sem dados para\n`;
-    report += `  o período solicitado. Possíveis causas: série descontinuada, dados ainda\n`;
-    report += `  não publicados, ou formato de requisição inválido.\n\n`;
-    report += `• Cobertura Incompleta: API não possui dados para todo o período configurado.\n`;
-    report += `  Possíveis causas: série iniciou após data configurada, ou dados\n`;
-    report += `  históricos foram removidos.\n\n`;
-    report += `• Período Indisponível: API não retornou informações de período válidas.\n`;
-    report += `  Possíveis causas: formato de resposta inesperado, ou erro de parsing.\n\n`;
-    report += `• Erro de Conexão: Falha ao comunicar com a API.\n`;
-    report += `  Possíveis causas: timeout, servidor indisponível, ou rate limiting.\n\n`;
-    report += `• Cobertura Baixa (< 50%): API retornou dados insuficientes.\n`;
-    report += `  Possíveis causas: parser incorreto, dados regionais não salvos,\n`;
-    report += `  ou série descontinuada. CRÍTICO: requer investigação imediata.\n\n`;
-    report += `• Cobertura Indeterminada: API retornou dados mas período não foi parseado.\n`;
-    report += `  Possíveis causas: formato de datas não reconhecido (D3C, D4C, etc),\n`;
-    report += `  ou estrutura JSON inesperada. Requer análise do parser.\n\n`;
-    report += `${'═'.repeat(70)}\n\n`;
-    
-    // Statistics summary
-    report += `RESUMO ESTATÍSTICO:\n`;
-    report += `${'─'.repeat(70)}\n`;
-    report += `  Total de APIs Testadas:     ${results.length}\n`;
-    report += `  ✓ APIs Funcionais:          ${functional}\n`;
-    report += `  ✗ APIs com Erro Conexão:    ${connectionErrors}\n`;
-    report += `  ○ APIs com Dados N/A:       ${naApis}\n`;
-    report += `  ◐ APIs com Cobertura Parcial: ${partialCoverage}\n`;
-    report += `  ⚠ APIs com Cobertura < 50%: ${lowCoverage}\n`;
-    report += `  ? APIs com Período Indeterminado: ${indeterminateCoverage}\n`;
-    report += `\n${'═'.repeat(70)}\n\n`;
-    
-    if (problems.length === 0) {
-      report += `✓ Nenhum problema encontrado. Todas as APIs estão funcionando corretamente.\n`;
-      return report;
-    }
-    
-    report += `DETALHAMENTO DOS PROBLEMAS (${problems.length} APIs):\n`;
-    report += `${'═'.repeat(70)}\n\n`;
-    
-    problems.forEach((result, index) => {
-      const problemType = result.testResult === 'NÃO' ? '✗ ERRO' : 
-                          result.extractedCount === 0 ? '○ N/A' :
-                          result.diagnosis === 'LOW_COVERAGE' ? '⚠ COBERTURA CRÍTICA' :
-                          result.diagnosis === 'COVERAGE_INDETERMINATE' ? '? PERÍODO INDET.' :
-                          result.diagnosis === 'API_NO_HISTORY' ? '◐ SEM HISTÓRICO' :
-                          result.diagnosis === 'PARTIAL_HISTORY' ? '◐ PARCIAL' : '⚠ AVISO';
-      
-      report += `[${problemType}] ${index + 1}. ${result.apiName}\n`;
-      report += `${'─'.repeat(50)}\n`;
-      report += `Provedor: ${result.provider}\n`;
-      report += `Tabela Destino: ${result.targetTable || 'Não definida'}\n`;
-      report += `URL: ${result.baseUrl}\n\n`;
-      
-      report += `PERÍODO:\n`;
-      report += `  Encontrado: ${result.firstDateFound || 'N/A'} → ${result.lastDateFound || 'N/A'}\n`;
-      report += `  Cobertura: ${result.coveragePercent !== null ? `${result.coveragePercent}%` : 'N/A'}\n\n`;
-      
-      report += `DADOS:\n`;
-      report += `  Registros: ${result.extractedCount?.toLocaleString() || 0}\n`;
-      report += `  Campos: ${result.fieldsDetected?.join(', ') || 'Nenhum detectado'}\n`;
-      report += `  Último Valor: ${result.lastRecordValue !== null ? result.lastRecordValue.toLocaleString('pt-BR') : 'N/A'}\n\n`;
-      
-      report += `STATUS: ${result.testResult} | HTTP: ${result.statusCode || 'N/A'} | Latência: ${result.latencyMs}ms\n\n`;
-      
-      report += `ANÁLISE DO PROBLEMA:\n`;
-      report += generateProblemAnalysis(result);
-      report += `\n`;
-      
-      if (result.errorMessage) {
-        report += `\nMensagem de Erro Original: ${result.errorMessage}\n`;
-      }
-      
-      report += `\n${'═'.repeat(70)}\n\n`;
-    });
-    
-    return report;
-  };
-
-  const handleCopyReport = async () => {
-    const report = generateErrorReport();
-    await navigator.clipboard.writeText(report);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const getCoverageColor = (coverage: number | null, diagnosis: string): string => {
-    if (diagnosis === 'COVERAGE_INDETERMINATE') return 'text-amber-500'; // Warning for indeterminate
-    if (coverage === null) return 'text-muted-foreground';
-    if (diagnosis === 'LOW_COVERAGE') return 'text-red-500'; // Critical coverage error
-    if (diagnosis === 'API_NO_HISTORY') return 'text-red-400';
-    if (diagnosis === 'PARTIAL_HISTORY') return 'text-amber-400';
-    if (coverage >= 90) return 'text-emerald-400';
-    if (coverage >= 70) return 'text-amber-400';
-    if (coverage < 50) return 'text-red-500'; // Coverage below 50% is critical
-    return 'text-red-400';
-  };
-
   const successCount = results.filter(r => r.testResult === 'SIM').length;
-  const failCount = results.filter(r => r.testResult === 'NÃO').length;
-  const historyWarnings = results.filter(r => r.diagnosis === 'API_NO_HISTORY' || r.diagnosis === 'PARTIAL_HISTORY').length;
-  const lowCoverageCount = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
-  const indeterminateCount = results.filter(r => r.diagnosis === 'COVERAGE_INDETERMINATE').length;
-  const hasErrors = failCount > 0 || historyWarnings > 0 || lowCoverageCount > 0 || indeterminateCount > 0;
-
-  // Error Report Modal
-  if (showErrorReport) {
-    return (
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Relatório de Erros
-            </DialogTitle>
-            <DialogDescription>
-              Relatório em texto puro para análise e tratamento dos erros
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="relative">
-              <pre className="bg-muted/50 border rounded-lg p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto max-h-[55vh] overflow-y-auto">
-                {generateErrorReport()}
-              </pre>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowErrorReport(false)}
-              >
-                Voltar ao Diagnóstico
-              </Button>
-              <Button 
-                onClick={handleCopyReport}
-                className="gap-2"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copiado!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copiar Relatório
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  const errorCount = results.filter(r => r.testResult === 'NÃO').length;
+  const pendingCount = results.filter(r => r.testResult === 'PENDING').length;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Diagnóstico de APIs Externas
-            <Badge variant="secondary" className="text-xs ml-1">
-              {apis.length}
-            </Badge>
+            <Activity className="h-5 w-5" />
+            Diagnóstico de APIs
           </DialogTitle>
           <DialogDescription>
-            Testando conectividade e integridade histórica de todas as APIs configuradas (BCB, IBGE, IPEADATA e WorldBank)
+            Verificação de status das APIs configuradas
           </DialogDescription>
         </DialogHeader>
 
-        {/* Progress indicator */}
-        {isRunning && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              <span>Testando {currentIndex} de {apis.length}...</span>
-            </div>
-            <Progress value={(currentIndex / apis.length) * 100} className="h-2" />
-          </div>
-        )}
+        {/* Stats */}
+        <div className="flex gap-4 py-2">
+          <Badge variant="outline" className="bg-green-500/10 text-green-600">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            {successCount} OK
+          </Badge>
+          <Badge variant="outline" className="bg-red-500/10 text-red-600">
+            <XCircle className="h-3 w-3 mr-1" />
+            {errorCount} Erros
+          </Badge>
+          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600">
+            <Clock className="h-3 w-3 mr-1" />
+            {pendingCount} Pendente
+          </Badge>
+        </div>
 
         {/* Results Table */}
-        <div className="border rounded-lg overflow-hidden">
+        <div className="flex-1 overflow-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="w-[26%]">API</TableHead>
-                <TableHead className="w-[20%]">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Período
-                  </div>
-                </TableHead>
-                <TableHead className="w-[12%] text-center">Status</TableHead>
-                <TableHead className="w-[20%]">
-                  <div className="flex items-center gap-1">
-                    <Database className="h-3 w-3" />
-                    Registros
-                  </div>
-                </TableHead>
-                <TableHead className="w-[22%]">Cobertura</TableHead>
+              <TableRow>
+                <TableHead>API</TableHead>
+                <TableHead>Provider</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>HTTP</TableHead>
+                <TableHead>Erro</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {results.map((result) => (
-                <TableRow key={result.apiId} className="group">
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant="outline" 
-                          className={`text-[10px] px-1.5 py-0 ${
-                            result.provider === 'BCB' 
-                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' 
-                              : result.provider === 'WorldBank'
-                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                              : 'bg-purple-500/20 border-purple-500/40 text-purple-400'
-                          }`}
-                        >
-                          {result.provider}
-                        </Badge>
-                        <span className="font-medium text-sm">{result.apiName}</span>
-                      </div>
-                      {result.targetTable && (
-                        <div className="text-[10px] text-muted-foreground">
-                          → {result.targetTable}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  
-                  <TableCell>
-                    {result.testResult === 'PENDING' ? (
-                      <span className="text-xs text-muted-foreground italic">Aguardando...</span>
-                    ) : result.testResult === 'SIM' && result.firstDateFound ? (
-                      <div className="space-y-0.5">
-                        <div className={`text-xs font-mono ${getCoverageColor(result.coveragePercent, result.diagnosis)}`}>
-                          {formatDate(result.firstDateFound)}
-                        </div>
-                        <div className={`text-xs font-mono ${getCoverageColor(result.coveragePercent, result.diagnosis)}`}>
-                          → {formatDate(result.lastDateFound)}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-red-400 italic">Indisponível</span>
-                    )}
-                  </TableCell>
-                  
-                  <TableCell className="text-center">
-                    {result.testResult === 'PENDING' && (
-                      <Clock className="h-4 w-4 text-muted-foreground animate-pulse mx-auto" />
-                    )}
-                    {result.testResult === 'SIM' && (
-                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 gap-1">
-                        <CheckCircle className="h-3 w-3" />
-                        SIM
-                      </Badge>
-                    )}
-                    {result.testResult === 'NÃO' && (
-                      <Badge variant="destructive" className="gap-1">
-                        <XCircle className="h-3 w-3" />
-                        NÃO
-                      </Badge>
-                    )}
-                  </TableCell>
-                  
-                  <TableCell>
-                    {result.testResult === 'PENDING' ? (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    ) : result.testResult === 'SIM' ? (
-                      <div className="space-y-0.5">
-                        <div className="text-sm font-medium text-foreground">
-                          {result.extractedCount?.toLocaleString() || 0}
-                        </div>
-                        {result.lastRecordValue !== null && (
-                          <div className="text-[10px] text-muted-foreground">
-                            Último: {result.lastRecordValue.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-red-400">Erro</span>
-                    )}
-                  </TableCell>
-                  
-                  <TableCell>
-                    {result.testResult === 'PENDING' ? (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    ) : result.testResult === 'SIM' ? (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all ${
-                                result.diagnosis === 'OK' ? 'bg-emerald-500' :
-                                result.diagnosis === 'PARTIAL_HISTORY' ? 'bg-amber-500' : 
-                                result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'bg-amber-500' : 'bg-red-500'
-                              }`}
-                              style={{ width: `${result.coveragePercent || 0}%` }}
-                            />
-                          </div>
-                          <span className={`text-xs font-medium ${getCoverageColor(result.coveragePercent, result.diagnosis)}`}>
-                            {result.diagnosis === 'COVERAGE_INDETERMINATE' ? '?' : 
-                             result.coveragePercent !== null ? `${result.coveragePercent}%` : 'N/A'}
-                          </span>
-                        </div>
-                        {result.diagnosis !== 'OK' && (
-                          <div className="flex items-center gap-1">
-                            <AlertTriangle className={`h-3 w-3 ${
-                              result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500' : 
-                              result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'text-amber-500' : 'text-amber-400'
-                            }`} />
-                            <span className={`text-[10px] truncate ${
-                              result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500 font-medium' : 
-                              result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'text-amber-500 font-medium' : 'text-amber-400'
-                            }`} title={result.diagnosisMessage || ''}>
-                              {result.diagnosis === 'LOW_COVERAGE' ? 'Cobertura < 50%' :
-                               result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'Período não detectado' :
-                               result.diagnosis === 'API_NO_HISTORY' ? 'Sem histórico' : 'Parcial'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-red-400 truncate" title={result.errorMessage || ''}>
-                        {result.errorMessage?.substring(0, 30) || 'Erro'}
-                      </div>
-                    )}
+              {results.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    {isRunning ? 'Carregando...' : 'Nenhuma API encontrada'}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                results.map((result) => (
+                  <TableRow key={result.apiId}>
+                    <TableCell className="font-medium">{result.apiName}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{result.provider}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {result.testResult === 'SIM' ? (
+                        <Badge className="bg-green-500">OK</Badge>
+                      ) : result.testResult === 'NÃO' ? (
+                        <Badge variant="destructive">Erro</Badge>
+                      ) : (
+                        <Badge variant="outline">Pendente</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {result.statusCode || '-'}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                      {result.errorMessage || '-'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Summary - Expanded Statistics */}
-        {!isRunning && results.length > 0 && (() => {
-          const functionalApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE' && r.diagnosis !== 'COVERAGE_INDETERMINATE').length;
-          const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
-          const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
-          const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
-          const lowCoverageApis = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
-          const indeterminateApis = results.filter(r => r.diagnosis === 'COVERAGE_INDETERMINATE').length;
-          const hasProblems = connectionErrors > 0 || naApis > 0 || partialCoverage > 0 || lowCoverageApis > 0 || indeterminateApis > 0;
-          
-          return (
-            <div className="space-y-3 p-4 bg-muted/20 rounded-lg border">
-              {/* Statistics Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="flex items-center gap-2 p-2 bg-emerald-500/10 rounded border border-emerald-500/20">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
-                  <div>
-                    <div className="text-lg font-bold text-emerald-400">{functionalApis}</div>
-                    <div className="text-[10px] text-muted-foreground">APIs Funcionais</div>
-                  </div>
-                </div>
-                <div className={`flex items-center gap-2 p-2 rounded border ${connectionErrors > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-muted/30 border-muted'}`}>
-                  <XCircle className={`h-4 w-4 ${connectionErrors > 0 ? 'text-red-400' : 'text-muted-foreground'}`} />
-                  <div>
-                    <div className={`text-lg font-bold ${connectionErrors > 0 ? 'text-red-400' : 'text-muted-foreground'}`}>{connectionErrors}</div>
-                    <div className="text-[10px] text-muted-foreground">Erros Conexão</div>
-                  </div>
-                </div>
-                <div className={`flex items-center gap-2 p-2 rounded border ${naApis > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-muted/30 border-muted'}`}>
-                  <AlertTriangle className={`h-4 w-4 ${naApis > 0 ? 'text-amber-400' : 'text-muted-foreground'}`} />
-                  <div>
-                    <div className={`text-lg font-bold ${naApis > 0 ? 'text-amber-400' : 'text-muted-foreground'}`}>{naApis}</div>
-                    <div className="text-[10px] text-muted-foreground">Dados N/A</div>
-                  </div>
-                </div>
-                <div className={`flex items-center gap-2 p-2 rounded border ${partialCoverage > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-muted/30 border-muted'}`}>
-                  <AlertTriangle className={`h-4 w-4 ${partialCoverage > 0 ? 'text-orange-400' : 'text-muted-foreground'}`} />
-                  <div>
-                    <div className={`text-lg font-bold ${partialCoverage > 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>{partialCoverage}</div>
-                    <div className="text-[10px] text-muted-foreground">Cobertura Parcial</div>
-                  </div>
-                </div>
-                <div className={`flex items-center gap-2 p-2 rounded border ${lowCoverageApis > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-muted/30 border-muted'}`}>
-                  <XCircle className={`h-4 w-4 ${lowCoverageApis > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
-                  <div>
-                    <div className={`text-lg font-bold ${lowCoverageApis > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>{lowCoverageApis}</div>
-                    <div className="text-[10px] text-muted-foreground">Cobertura &lt; 50%</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                <div className="text-xs text-muted-foreground">
-                  Total: {results.length} APIs testadas
-                </div>
-                <div className="flex items-center gap-2">
-                  {hasProblems && (
-                    <>
-                      <Button 
-                        onClick={handleCopyReport}
-                        variant="outline" 
-                        size="sm"
-                        className="gap-2 border-red-500/40 text-red-400 hover:bg-red-500/10"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="h-3 w-3" />
-                            Copiado!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3" />
-                            Copiar Relatório
-                          </>
-                        )}
-                      </Button>
-                      <Button 
-                        onClick={() => setShowErrorReport(true)} 
-                        variant="outline" 
-                        size="sm"
-                        className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
-                      >
-                        <FileText className="h-3 w-3" />
-                        Ver Relatório
-                      </Button>
-                    </>
-                  )}
-                  <Button onClick={handleRetest} variant="outline" size="sm" className="gap-2">
-                    <RefreshCw className="h-3 w-3" />
-                    Testar Novamente
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={handleRetest} disabled={isRunning}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRunning ? 'animate-spin' : ''}`} />
+            Recarregar
+          </Button>
+          <Button onClick={handleClose}>
+            Fechar
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

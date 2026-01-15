@@ -17,9 +17,6 @@ import {
   AlertTriangle,
   Info,
   Clock,
-  Database,
-  Wifi,
-  Settings,
   FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -27,65 +24,45 @@ import { ptBR } from 'date-fns/locale';
 
 interface AuditLog {
   id: string;
-  api_id: string | null;
-  api_name: string;
-  event_type: string;
-  event_category: string;
-  severity: string;
-  action_description: string;
-  records_affected: number;
-  execution_time_ms: number | null;
-  http_status: number | null;
-  user_email: string | null;
-  user_role: string | null;
-  error_message: string | null;
-  created_at: string;
+  user_id: string | null;
+  method: string | null;
+  endpoint: string | null;
+  response_status: number | null;
+  response_time_ms: number | null;
+  ip_address: string | null;
+  created_at: string | null;
 }
 
-const severityConfig = {
-  SUCCESS: { icon: CheckCircle2, color: 'bg-green-500/10 text-green-500 border-green-500/20' },
-  INFO: { icon: Info, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  WARNING: { icon: AlertTriangle, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-  ERROR: { icon: XCircle, color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-};
-
-const categoryConfig = {
-  CONFIG: { icon: Settings, label: 'Configuração' },
-  CONNECTION: { icon: Wifi, label: 'Conexão' },
-  SYNC: { icon: RefreshCw, label: 'Sincronização' },
-  DATA: { icon: Database, label: 'Dados' },
+const getStatusConfig = (status: number | null) => {
+  if (!status) return { icon: Info, color: 'bg-gray-500/10 text-gray-500 border-gray-500/20', label: 'N/A' };
+  if (status >= 200 && status < 300) return { icon: CheckCircle2, color: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'OK' };
+  if (status >= 400 && status < 500) return { icon: AlertTriangle, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Client Error' };
+  if (status >= 500) return { icon: XCircle, color: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Server Error' };
+  return { icon: Info, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Info' };
 };
 
 export function ApiAuditLogsTab() {
   const [filters, setFilters] = useState({
     search: '',
-    severity: 'all',
-    category: 'all',
-    apiId: 'all',
+    method: 'all',
     dateRange: '7d',
   });
 
-  // Fetch logs
+  // Fetch logs from api_audit_logs table
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['api-audit-logs', filters],
     queryFn: async () => {
       let query = supabase
         .from('api_audit_logs')
-        .select('*')
+        .select('id, user_id, method, endpoint, response_status, response_time_ms, ip_address, created_at')
         .order('created_at', { ascending: false })
         .limit(500);
 
-      if (filters.severity !== 'all') {
-        query = query.eq('severity', filters.severity);
-      }
-      if (filters.category !== 'all') {
-        query = query.eq('event_category', filters.category);
-      }
-      if (filters.apiId !== 'all') {
-        query = query.eq('api_id', filters.apiId);
+      if (filters.method !== 'all') {
+        query = query.eq('method', filters.method);
       }
       if (filters.search) {
-        query = query.or(`api_name.ilike.%${filters.search}%,action_description.ilike.%${filters.search}%`);
+        query = query.ilike('endpoint', `%${filters.search}%`);
       }
 
       if (filters.dateRange !== 'all') {
@@ -109,28 +86,16 @@ export function ApiAuditLogsTab() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as AuditLog[];
-    },
-  });
-
-  // Fetch APIs for filter
-  const { data: apis } = useQuery({
-    queryKey: ['apis-for-audit-filter'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('system_api_registry')
-        .select('id, name')
-        .order('name');
-      return data;
+      return (data || []) as AuditLog[];
     },
   });
 
   // Stats
   const stats = useMemo(() => ({
     total: logs?.length || 0,
-    success: logs?.filter(l => l.severity === 'SUCCESS').length || 0,
-    errors: logs?.filter(l => l.severity === 'ERROR').length || 0,
-    warnings: logs?.filter(l => l.severity === 'WARNING').length || 0,
+    success: logs?.filter(l => l.response_status && l.response_status >= 200 && l.response_status < 300).length || 0,
+    errors: logs?.filter(l => l.response_status && l.response_status >= 500).length || 0,
+    warnings: logs?.filter(l => l.response_status && l.response_status >= 400 && l.response_status < 500).length || 0,
   }), [logs]);
 
   // Export CSV
@@ -138,17 +103,15 @@ export function ApiAuditLogsTab() {
     if (!logs) return;
     
     const csv = [
-      ['Data/Hora', 'API', 'Evento', 'Categoria', 'Severidade', 'Descrição', 'Registros', 'Tempo (ms)', 'Usuário'].join(','),
+      ['Data/Hora', 'Método', 'Endpoint', 'Status', 'Tempo (ms)', 'IP', 'Usuário'].join(','),
       ...logs.map(log => [
-        format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss'),
-        `"${log.api_name}"`,
-        log.event_type,
-        log.event_category,
-        log.severity,
-        `"${log.action_description.replace(/"/g, '""')}"`,
-        log.records_affected,
-        log.execution_time_ms || '',
-        log.user_email || 'Sistema'
+        log.created_at ? format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss') : '',
+        log.method || '',
+        `"${log.endpoint || ''}"`,
+        log.response_status || '',
+        log.response_time_ms || '',
+        log.ip_address || '',
+        log.user_id || 'Sistema'
       ].join(','))
     ].join('\n');
 
@@ -170,7 +133,7 @@ export function ApiAuditLogsTab() {
           <div>
             <h1 className="text-2xl font-bold">Log de APIs</h1>
             <p className="text-muted-foreground text-sm">
-              Auditoria completa de todas as operações do sistema de APIs
+              Auditoria de requisições à API
             </p>
           </div>
         </div>
@@ -223,52 +186,27 @@ export function ApiAuditLogsTab() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Buscar endpoint..."
                 className="pl-9 h-10"
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               />
             </div>
             
-            <Select value={filters.severity} onValueChange={(v) => setFilters({ ...filters, severity: v })}>
+            <Select value={filters.method} onValueChange={(v) => setFilters({ ...filters, method: v })}>
               <SelectTrigger className="h-10">
-                <SelectValue placeholder="Severidade" />
+                <SelectValue placeholder="Método" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="SUCCESS">✅ Sucesso</SelectItem>
-                <SelectItem value="INFO">ℹ️ Info</SelectItem>
-                <SelectItem value="WARNING">⚠️ Aviso</SelectItem>
-                <SelectItem value="ERROR">❌ Erro</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.category} onValueChange={(v) => setFilters({ ...filters, category: v })}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="CONFIG">⚙️ Configuração</SelectItem>
-                <SelectItem value="CONNECTION">📡 Conexão</SelectItem>
-                <SelectItem value="SYNC">🔄 Sincronização</SelectItem>
-                <SelectItem value="DATA">💾 Dados</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.apiId} onValueChange={(v) => setFilters({ ...filters, apiId: v })}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="API" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as APIs</SelectItem>
-                {apis?.map((api) => (
-                  <SelectItem key={api.id} value={api.id}>{api.name}</SelectItem>
-                ))}
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="GET">GET</SelectItem>
+                <SelectItem value="POST">POST</SelectItem>
+                <SelectItem value="PUT">PUT</SelectItem>
+                <SelectItem value="DELETE">DELETE</SelectItem>
               </SelectContent>
             </Select>
 
@@ -295,77 +233,64 @@ export function ApiAuditLogsTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[160px]">Data/Hora</TableHead>
-                  <TableHead>API</TableHead>
-                  <TableHead className="w-[160px]">Evento</TableHead>
-                  <TableHead className="w-[100px]">Categoria</TableHead>
+                  <TableHead className="w-[80px]">Método</TableHead>
+                  <TableHead>Endpoint</TableHead>
                   <TableHead className="w-[90px]">Status</TableHead>
-                  <TableHead className="w-[70px] text-right">Reg.</TableHead>
-                  <TableHead className="w-[70px] text-right">Tempo</TableHead>
-                  <TableHead className="w-[140px]">Usuário</TableHead>
+                  <TableHead className="w-[80px] text-right">Tempo</TableHead>
+                  <TableHead className="w-[120px]">IP</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
                       <span className="text-sm text-muted-foreground">Carregando logs...</span>
                     </TableCell>
                   </TableRow>
                 ) : logs?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Nenhum log encontrado
                     </TableCell>
                   </TableRow>
                 ) : (
                   logs?.map((log) => {
-                    const SeverityIcon = severityConfig[log.severity as keyof typeof severityConfig]?.icon || Info;
-                    const CategoryIcon = categoryConfig[log.event_category as keyof typeof categoryConfig]?.icon || Settings;
-                    const categoryLabel = categoryConfig[log.event_category as keyof typeof categoryConfig]?.label || log.event_category;
+                    const statusConfig = getStatusConfig(log.response_status);
+                    const StatusIcon = statusConfig.icon;
                     
                     return (
                       <TableRow key={log.id} className="hover:bg-muted/50">
                         <TableCell className="font-mono text-xs">
                           <div className="flex items-center gap-1.5">
                             <Clock className="h-3 w-3 text-muted-foreground" />
-                            {format(new Date(log.created_at), "dd/MM HH:mm:ss", { locale: ptBR })}
+                            {log.created_at ? format(new Date(log.created_at), "dd/MM HH:mm:ss", { locale: ptBR }) : '-'}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-sm">{log.api_name}</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[250px]" title={log.action_description}>
-                            {log.action_description}
-                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {log.method || 'N/A'}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                            {log.event_type}
-                          </code>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-xs">
-                            <CategoryIcon className="h-3.5 w-3.5" />
-                            <span>{categoryLabel}</span>
+                          <div className="text-sm truncate max-w-[300px]" title={log.endpoint || ''}>
+                            {log.endpoint || '-'}
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge 
                             variant="outline" 
-                            className={`text-xs ${severityConfig[log.severity as keyof typeof severityConfig]?.color}`}
+                            className={`text-xs ${statusConfig.color}`}
                           >
-                            <SeverityIcon className="h-3 w-3 mr-1" />
-                            {log.severity}
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {log.response_status || 'N/A'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono text-xs">
-                          {log.records_affected > 0 ? log.records_affected.toLocaleString() : '-'}
+                          {log.response_time_ms ? `${log.response_time_ms}ms` : '-'}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-xs">
-                          {log.execution_time_ms ? `${log.execution_time_ms}ms` : '-'}
-                        </TableCell>
-                        <TableCell className="text-xs truncate max-w-[140px]" title={log.user_email || 'Sistema'}>
-                          {log.user_email || <span className="text-muted-foreground italic">Sistema</span>}
+                        <TableCell className="text-xs truncate max-w-[120px]" title={log.ip_address || ''}>
+                          {log.ip_address || '-'}
                         </TableCell>
                       </TableRow>
                     );
