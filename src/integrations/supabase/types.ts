@@ -1509,6 +1509,45 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string | null
+          variables: Json | null
+          variables_used: string[] | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject?: string | null
+          variables?: Json | null
+          variables_used?: string[] | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string | null
+          variables?: Json | null
+          variables_used?: string[] | null
+        }
+        Relationships: []
+      }
       entity_tags: {
         Row: {
           confidence: number | null
@@ -1754,6 +1793,39 @@ export type Database = {
           reference_date?: string
           uf_code?: number
           value?: number | null
+        }
+        Relationships: []
+      }
+      indicator_stats_summary: {
+        Row: {
+          created_at: string | null
+          id: string
+          indicator_id: string | null
+          indicator_name: string | null
+          last_date: string | null
+          last_value: number | null
+          total_records: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          indicator_id?: string | null
+          indicator_name?: string | null
+          last_date?: string | null
+          last_value?: number | null
+          total_records?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          indicator_id?: string | null
+          indicator_name?: string | null
+          last_date?: string | null
+          last_value?: number | null
+          total_records?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -3853,6 +3925,90 @@ export type Database = {
           priority?: number | null
           replacement?: string | null
           rule_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      system_api_registry: {
+        Row: {
+          auto_fetch_enabled: boolean | null
+          auto_fetch_interval: string | null
+          base_url: string
+          created_at: string | null
+          description: string | null
+          discovered_period_end: string | null
+          discovered_period_start: string | null
+          fetch_end_date: string | null
+          fetch_start_date: string | null
+          id: string
+          last_checked_at: string | null
+          last_http_status: number | null
+          last_latency_ms: number | null
+          last_raw_response: Json | null
+          last_response_at: string | null
+          last_sync_metadata: Json | null
+          method: string | null
+          name: string
+          period_discovery_date: string | null
+          provider: string
+          source_data_message: string | null
+          source_data_status: string | null
+          status: string | null
+          target_table: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_fetch_enabled?: boolean | null
+          auto_fetch_interval?: string | null
+          base_url: string
+          created_at?: string | null
+          description?: string | null
+          discovered_period_end?: string | null
+          discovered_period_start?: string | null
+          fetch_end_date?: string | null
+          fetch_start_date?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_http_status?: number | null
+          last_latency_ms?: number | null
+          last_raw_response?: Json | null
+          last_response_at?: string | null
+          last_sync_metadata?: Json | null
+          method?: string | null
+          name: string
+          period_discovery_date?: string | null
+          provider: string
+          source_data_message?: string | null
+          source_data_status?: string | null
+          status?: string | null
+          target_table?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_fetch_enabled?: boolean | null
+          auto_fetch_interval?: string | null
+          base_url?: string
+          created_at?: string | null
+          description?: string | null
+          discovered_period_end?: string | null
+          discovered_period_start?: string | null
+          fetch_end_date?: string | null
+          fetch_start_date?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_http_status?: number | null
+          last_latency_ms?: number | null
+          last_raw_response?: Json | null
+          last_response_at?: string | null
+          last_sync_metadata?: Json | null
+          method?: string | null
+          name?: string
+          period_discovery_date?: string | null
+          provider?: string
+          source_data_message?: string | null
+          source_data_status?: string | null
+          status?: string | null
+          target_table?: string | null
           updated_at?: string | null
         }
         Relationships: []
