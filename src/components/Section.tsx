@@ -15,19 +15,9 @@ interface SectionProps {
 }
 
 const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteAuthor }: SectionProps) => {
-  const { data: sectionImage, isLoading } = useQuery({
-    queryKey: ['section-image', id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('generated_images')
-        .select('image_url')
-        .eq('section_id', id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data?.image_url;
-    }
-  });
+  // Section images - disabled since generated_images table doesn't have section_id/image_url columns
+  const sectionImage: string | undefined = undefined;
+  const isLoading = false;
 
   return (
     <section id={id} className="py-8 relative">
