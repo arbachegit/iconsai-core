@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -5,13 +6,68 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Loader2, Save, RotateCcw, Smartphone, Volume2, Clock, MessageSquare, Mic, Zap, Heart, Lightbulb, Globe, HelpCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Save, RotateCcw, Smartphone, Volume2, Clock, MessageSquare, Zap, Heart, Lightbulb, Globe, HelpCircle, Monitor, AlertTriangle, RefreshCw } from "lucide-react";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const PWAConfigTab = () => {
   const { config, isLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
+  const [allowDesktopAccess, setAllowDesktopAccess] = useState(false);
+  const [isLoadingDesktop, setIsLoadingDesktop] = useState(true);
+  const [isSavingDesktop, setIsSavingDesktop] = useState(false);
 
-  if (isLoading) {
+  // Carregar configuração de acesso desktop
+  useEffect(() => {
+    const loadDesktopConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("pwa_config")
+          .select("config_value")
+          .eq("config_key", "allow_desktop_access")
+          .single();
+
+        if (!error && data) {
+          setAllowDesktopAccess(data.config_value === "true");
+        }
+      } catch (err) {
+        console.log("[PWAConfigTab] Config not found, using default");
+      } finally {
+        setIsLoadingDesktop(false);
+      }
+    };
+
+    loadDesktopConfig();
+  }, []);
+
+  // Toggle acesso desktop
+  const handleToggleDesktopAccess = async () => {
+    setIsSavingDesktop(true);
+    const newValue = !allowDesktopAccess;
+
+    try {
+      const { error } = await supabase
+        .from("pwa_config")
+        .update({
+          config_value: String(newValue),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("config_key", "allow_desktop_access");
+
+      if (error) throw error;
+
+      setAllowDesktopAccess(newValue);
+      toast.success(newValue ? "Acesso desktop liberado!" : "Acesso desktop bloqueado!");
+    } catch (err) {
+      console.error("[PWAConfigTab] Error updating desktop access:", err);
+      toast.error("Erro ao atualizar configuração");
+    } finally {
+      setIsSavingDesktop(false);
+    }
+  };
+
+  if (isLoading || isLoadingDesktop) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -41,6 +97,64 @@ const PWAConfigTab = () => {
           </Button>
         </div>
       </div>
+
+      {/* Toggle Acesso Desktop - Para testes */}
+      <Card className="border-2 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            Acesso por Dispositivo
+          </CardTitle>
+          <CardDescription>Controle o acesso ao PWA por tipo de dispositivo</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Toggle Acesso Desktop */}
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div className="flex items-center gap-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Monitor className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <Label htmlFor="allow-desktop" className="text-base font-medium">
+                  Permitir Acesso Desktop
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Quando ativado, o PWA pode ser acessado pelo computador (útil para testes)
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant={allowDesktopAccess ? "default" : "secondary"}>
+                {allowDesktopAccess ? "Ativo" : "Inativo"}
+              </Badge>
+              <Switch
+                id="allow-desktop"
+                checked={allowDesktopAccess}
+                onCheckedChange={handleToggleDesktopAccess}
+                disabled={isSavingDesktop}
+              />
+            </div>
+          </div>
+
+          {/* Aviso quando ativo */}
+          {allowDesktopAccess && (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-500">Modo de Teste Ativo</p>
+                    <p className="text-muted-foreground">
+                      O acesso desktop está liberado. Lembre-se de desativar após os testes
+                      para manter a experiência mobile-first do PWA.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Configurações Gerais */}
       <Card>
