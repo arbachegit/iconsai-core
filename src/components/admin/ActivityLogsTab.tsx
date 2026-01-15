@@ -145,18 +145,25 @@ export const ActivityLogsTab = () => {
     return null;
   };
 
+  // Activity logs interface for type safety
+  interface ActivityLog {
+    id: string;
+    created_at: string;
+    user_email: string | null;
+    action: string;
+    action_category: string | null;
+    details: Record<string, unknown> | null;
+    user_agent: string | null;
+  }
+
   const { data: logs, isLoading } = useQuery({
     queryKey: ["activity-logs", categoryFilter, periodFilter, searchQuery],
     queryFn: async () => {
       let query = supabase
-        .from("user_activity_logs")
-        .select("*")
+        .from("activity_logs")
+        .select("id, created_at, user_id, action, resource, resource_id, details, user_agent")
         .order("created_at", { ascending: false })
         .limit(500);
-
-      if (categoryFilter !== "all") {
-        query = query.eq("action_category", categoryFilter);
-      }
 
       const dateFilter = getDateFilter();
       if (dateFilter) {
@@ -164,12 +171,21 @@ export const ActivityLogsTab = () => {
       }
 
       if (searchQuery) {
-        query = query.or(`action.ilike.%${searchQuery}%,user_email.ilike.%${searchQuery}%`);
+        query = query.ilike("action", `%${searchQuery}%`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      // Map to expected format
+      return (data || []).map(log => ({
+        id: log.id,
+        created_at: log.created_at || new Date().toISOString(),
+        user_email: log.user_id,
+        action: log.action,
+        action_category: log.resource || 'NAVIGATION',
+        details: log.details as Record<string, unknown> | null,
+        user_agent: log.user_agent
+      })) as ActivityLog[];
     },
   });
 
@@ -178,8 +194,8 @@ export const ActivityLogsTab = () => {
     queryKey: ["activity-logs-metrics", metricsPeriod, customDateRange],
     queryFn: async () => {
       let query = supabase
-        .from("user_activity_logs")
-        .select("*")
+        .from("activity_logs")
+        .select("id, created_at, user_id, action, resource, details")
         .order("created_at", { ascending: false });
 
       const dateFilter = getMetricsDateFilter();
@@ -194,7 +210,14 @@ export const ActivityLogsTab = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return (data || []).map(log => ({
+        id: log.id,
+        created_at: log.created_at || new Date().toISOString(),
+        user_email: log.user_id,
+        action: log.action,
+        action_category: log.resource || 'NAVIGATION',
+        details: log.details as Record<string, unknown> | null
+      })) as ActivityLog[];
     },
   });
 
@@ -771,12 +794,6 @@ export const ActivityLogsTab = () => {
                                     <div>
                                       <span className="font-semibold text-muted-foreground">Browser: </span>
                                       <span className="text-xs text-muted-foreground">{log.user_agent}</span>
-                                    </div>
-                                  )}
-                                  {log.ip_address && (
-                                    <div>
-                                      <span className="font-semibold text-muted-foreground">IP: </span>
-                                      <span className="text-xs">{log.ip_address}</span>
                                     </div>
                                   )}
                                 </div>

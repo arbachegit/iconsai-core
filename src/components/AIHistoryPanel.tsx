@@ -34,11 +34,10 @@ interface AIHistoryPanelProps {
 
 interface TimelineEvent {
   id: string;
-  section_id: string;
-  header: string | null;
+  tooltip_key: string;
   title: string;
   content: string;
-  display_order: number;
+  category: string | null;
 }
 
 // Icon mapping for historical events
@@ -59,8 +58,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'history-current': Rocket
 };
 
-// Extract event ID from section_id (e.g., 'history-talos' -> 'talos')
-const getEventId = (sectionId: string) => sectionId.replace('history-', '');
+// Extract event ID from tooltip_key (e.g., 'history-talos' -> 'talos')
+const getEventId = (tooltipKey: string) => tooltipKey.replace('history-', '');
 
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const { t } = useTranslation();
@@ -82,31 +81,30 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   
   const vimeoUrl = settings?.vimeo_history_url;
   
-  // Fetch timeline events from database ordered by display_order
+  // Fetch timeline events from database
   const { data: dbEvents, isLoading: loadingEvents } = useQuery({
     queryKey: ['timeline-history-events'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tooltip_contents')
-        .select('*')
-        .like('section_id', 'history-%')
-        .order('display_order', { ascending: true });
+        .select('id, tooltip_key, title, content, category')
+        .like('tooltip_key', 'history-%');
       
       if (error) throw error;
-      return data as TimelineEvent[];
+      return (data || []) as TimelineEvent[];
     }
   });
 
   // Map database events to timeline format with icons
   const timelineData = (dbEvents || []).map(event => {
-    const eventId = getEventId(event.section_id);
+    const eventId = getEventId(event.tooltip_key);
     return {
       id: eventId,
-      section_id: event.section_id,
-      date: event.header || '',
+      tooltip_key: event.tooltip_key,
+      date: event.category || '',
       title: event.title,
       description: event.content,
-      icon: ICON_MAP[event.section_id] || Rocket,
+      icon: ICON_MAP[event.tooltip_key] || Rocket,
       era: eventId
     };
   });
@@ -212,28 +210,8 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     endTime: (idx + 1) * 20
   }));
 
-  // Buscar imagens diretamente do banco (1 query em vez de 14 Edge Function calls)
-  const { data: cachedImages, isLoading: loadingImages } = useQuery({
-    queryKey: ['timeline-history-images'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('generated_images')
-        .select('section_id, image_url')
-        .like('section_id', 'history-%');
-      
-      if (error) throw error;
-      
-      // Converter para Record<eventId, imageUrl>
-      const images: Record<string, string> = {};
-      data?.forEach(img => {
-        const eventId = img.section_id.replace('history-', '');
-        images[eventId] = img.image_url;
-      });
-      
-      return images;
-    },
-    staleTime: 1000 * 60 * 10, // Cache por 10 minutos
-  });
+  // Images cache - disabled since generated_images table doesn't have section_id column
+  const cachedImages: Record<string, string> = {};
 
   // Derivar eventImages do cache
   const eventImages = cachedImages || {};
@@ -560,7 +538,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                 events={timelineData}
                 currentEventId={currentEventId}
                 eventImages={eventImages}
-                loadingImages={loadingImages}
+                loadingImages={false}
                 onEventSelect={handleJumpToEvent}
               />
             </div>
@@ -787,7 +765,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                       {/* Imagem do evento */}
                       <div className="w-40 flex-shrink-0">
                         <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-muted/50 border border-border">
-                          {loadingImages ? (
+                        {false ? (
                             <Skeleton className="w-full h-full" />
                           ) : eventImages[event.id] ? (
                             <img

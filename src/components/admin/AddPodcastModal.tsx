@@ -9,15 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Music, Link, Search } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Music } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-interface SpotifyMetadata {
-  title: string;
-  description: string;
-}
 
 interface AddPodcastModalProps {
   open: boolean;
@@ -28,94 +24,18 @@ interface AddPodcastModalProps {
 export const AddPodcastModal = ({ open, onOpenChange, onPodcastCreated }: AddPodcastModalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [spotifyLink, setSpotifyLink] = useState("");
-  const [isFetching, setIsFetching] = useState(false);
-  const [metadata, setMetadata] = useState<SpotifyMetadata | null>(null);
-
-  const extractSpotifyId = (link: string): string | null => {
-    // Handle direct ID
-    if (/^[a-zA-Z0-9]{22}$/.test(link.trim())) {
-      return link.trim();
-    }
-    // Extract from URL: https://open.spotify.com/episode/2lORJJJIGECuG57sxtbmTx
-    const match = link.match(/episode\/([a-zA-Z0-9]+)/);
-    return match ? match[1] : null;
-  };
-
-  const fetchSpotifyMetadata = async (episodeId: string): Promise<SpotifyMetadata | null> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-spotify-metadata', {
-        body: { episodeId },
-      });
-
-      if (error) {
-        console.error("Error fetching Spotify metadata:", error);
-        return null;
-      }
-
-      if (data?.error) {
-        console.error("Spotify API error:", data.error);
-        return null;
-      }
-
-      return {
-        title: data.title || "Podcast",
-        description: data.description || "Episódio do Spotify",
-      };
-    } catch (error) {
-      console.error("Error fetching Spotify metadata:", error);
-      return null;
-    }
-  };
-
-  const handleFetchMetadata = async () => {
-    const episodeId = extractSpotifyId(spotifyLink);
-    if (!episodeId) {
-      toast({
-        title: "Link inválido",
-        description: "Cole um link válido do Spotify ou o ID do episódio.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsFetching(true);
-    const result = await fetchSpotifyMetadata(episodeId);
-    setIsFetching(false);
-
-    if (result) {
-      setMetadata(result);
-      toast({
-        title: "Metadados obtidos",
-        description: `Título: ${result.title}`,
-      });
-    } else {
-      toast({
-        title: "Não foi possível obter metadados",
-        description: "O podcast será criado com título padrão.",
-        variant: "destructive",
-      });
-    }
-  };
+  const [title, setTitle] = useState("");
+  const [audioUrl, setAudioUrl] = useState("");
+  const [description, setDescription] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: async (episodeId: string) => {
-      // Get current max display_order
-      const { data: existing } = await supabase
-        .from("podcast_contents")
-        .select("display_order")
-        .order("display_order", { ascending: false })
-        .limit(1);
-      
-      const nextOrder = (existing?.[0]?.display_order ?? -1) + 1;
-
+    mutationFn: async () => {
       const { data, error } = await supabase
-        .from("podcast_contents")
+        .from("audio_contents")
         .insert({
-          title: metadata?.title || "Novo Podcast",
-          spotify_episode_id: episodeId,
-          description: metadata?.description || "Descrição do podcast",
-          display_order: nextOrder,
+          title: title || "Novo Podcast",
+          audio_url: audioUrl,
+          description: description || "Descrição do podcast",
           is_active: true,
         })
         .select()
@@ -129,10 +49,11 @@ export const AddPodcastModal = ({ open, onOpenChange, onPodcastCreated }: AddPod
       queryClient.invalidateQueries({ queryKey: ["podcasts"] });
       toast({
         title: "Podcast adicionado",
-        description: metadata?.title ? `"${metadata.title}" criado com sucesso.` : "Preencha os dados do podcast.",
+        description: title ? `"${title}" criado com sucesso.` : "Preencha os dados do podcast.",
       });
-      setSpotifyLink("");
-      setMetadata(null);
+      setTitle("");
+      setAudioUrl("");
+      setDescription("");
       onOpenChange(false);
       onPodcastCreated(data.id);
     },
@@ -146,32 +67,15 @@ export const AddPodcastModal = ({ open, onOpenChange, onPodcastCreated }: AddPod
   });
 
   const handleSubmit = () => {
-    const episodeId = extractSpotifyId(spotifyLink);
-    if (!episodeId) {
+    if (!title.trim()) {
       toast({
-        title: "Link inválido",
-        description: "Cole um link válido do Spotify ou o ID do episódio.",
+        title: "Título obrigatório",
+        description: "Preencha o título do podcast.",
         variant: "destructive",
       });
       return;
     }
-    createMutation.mutate(episodeId);
-  };
-
-  // Auto-fetch metadata when link changes
-  const handleLinkChange = async (value: string) => {
-    setSpotifyLink(value);
-    setMetadata(null);
-    
-    const episodeId = extractSpotifyId(value);
-    if (episodeId) {
-      setIsFetching(true);
-      const result = await fetchSpotifyMetadata(episodeId);
-      setIsFetching(false);
-      if (result) {
-        setMetadata(result);
-      }
-    }
+    createMutation.mutate();
   };
 
   return (
@@ -179,39 +83,39 @@ export const AddPodcastModal = ({ open, onOpenChange, onPodcastCreated }: AddPod
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Music className="h-5 w-5 text-[#1DB954]" />
-            Adicionar Podcast Spotify
+            <Music className="h-5 w-5 text-primary" />
+            Adicionar Podcast
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Link ou ID do Episódio</Label>
-            <div className="relative">
-              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={spotifyLink}
-                onChange={(e) => handleLinkChange(e.target.value)}
-                placeholder="https://open.spotify.com/episode/..."
-                className="pl-10 border-blue-400/60 focus:border-blue-500"
-              />
-              {isFetching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Cole o link completo do episódio ou apenas o ID (ex: 2lORJJJIGECuG57sxtbmTx)
-            </p>
+            <Label className="text-sm font-medium">Título</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Nome do podcast"
+            />
           </div>
 
-          {/* Preview dos metadados */}
-          {metadata && (
-            <div className="p-3 bg-[#1DB954]/10 border border-[#1DB954]/30 rounded-lg space-y-1">
-              <p className="text-sm font-medium text-[#1DB954]">✓ Metadados obtidos:</p>
-              <p className="text-sm"><strong>Título:</strong> {metadata.title}</p>
-              <p className="text-xs text-muted-foreground">{metadata.description}</p>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">URL do Áudio</Label>
+            <Input
+              value={audioUrl}
+              onChange={(e) => setAudioUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Descrição</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descrição do podcast"
+              rows={3}
+            />
+          </div>
         </div>
 
         <DialogFooter>
@@ -220,8 +124,7 @@ export const AddPodcastModal = ({ open, onOpenChange, onPodcastCreated }: AddPod
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={!spotifyLink.trim() || createMutation.isPending}
-            className="bg-[#1DB954] hover:bg-[#1ed760] text-black"
+            disabled={createMutation.isPending}
           >
             {createMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />

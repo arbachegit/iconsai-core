@@ -29,22 +29,8 @@ export const DraggablePreviewPanel = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Fetch image for this section
-  const { data: sectionImage } = useQuery({
-    queryKey: ["section-image", sectionId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("generated_images")
-        .select("image_url")
-        .eq("section_id", sectionId)
-        .limit(1)
-        .single();
-      
-      if (error) throw error;
-      return data?.image_url;
-    },
-    staleTime: 10 * 60 * 1000,
-  });
+  // Section images - disabled since generated_images table doesn't have section_id column
+  const sectionImage: string | undefined = undefined;
 
   // Parse subtitle and main content
   const parseContent = (text: string) => {

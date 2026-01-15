@@ -29,7 +29,7 @@ export function DocumentAttachButton({
       const {
         data,
         error
-      } = await supabase.from("documents").select("*").eq("target_chat", "health").eq("status", "completed").order("created_at", {
+      } = await supabase.from("documents").select("id, title, content, category, source, tags, created_at").order("created_at", {
         ascending: false
       }).limit(20);
       if (error) throw error;
@@ -43,7 +43,9 @@ export function DocumentAttachButton({
   };
   return <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        
+        <Button variant="ghost" size="icon" disabled={disabled}>
+          <Paperclip className="h-4 w-4" />
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
@@ -55,21 +57,18 @@ export function DocumentAttachButton({
             <span className="ml-2 text-sm text-muted-foreground">{t('documentAttach.loading')}</span>
           </div> : <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-2">
-              {documents && documents.length > 0 ? documents.map(doc => <button key={doc.id} onClick={() => handleAttach(doc.id, doc.filename)} className={cn("w-full p-4 rounded-lg border-2 text-left transition-all", "hover:border-primary hover:bg-primary/5", "focus:outline-none focus:ring-2 focus:ring-primary")}>
+              {documents && documents.length > 0 ? documents.map(doc => <button key={doc.id} onClick={() => handleAttach(doc.id, doc.title)} className={cn("w-full p-4 rounded-lg border-2 text-left transition-all", "hover:border-primary hover:bg-primary/5", "focus:outline-none focus:ring-2 focus:ring-primary")}>
                     <div className="flex items-start gap-3">
                       <FileText className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{doc.filename}</div>
-                        {doc.ai_summary && <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {doc.ai_summary}
+                        <div className="font-medium truncate">{doc.title}</div>
+                        {doc.category && <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {doc.category}
                           </div>}
                         <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {doc.total_chunks || 0} {t('documentAttach.chunks')}
-                          </Badge>
-                          {doc.is_readable && <Badge variant="outline" className="text-xs">
-                              {t('documentAttach.readable')}
-                            </Badge>}
+                          {doc.source && <Badge variant="secondary" className="text-xs">
+                            {doc.source}
+                          </Badge>}
                         </div>
                       </div>
                     </div>

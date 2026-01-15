@@ -136,17 +136,20 @@ export default function ChatKnowYOU() {
     requestLocation();
   }, []);
 
-  // Fetch agent capabilities
+  // Agent capabilities - using metadata field since capabilities column doesn't exist
   useEffect(() => {
     const fetchAgentCapabilities = async () => {
       const { data } = await supabase
         .from("chat_agents")
-        .select("capabilities")
-        .eq("slug", "health")
+        .select("metadata")
+        .eq("name", "health")
         .single();
       
-      if (data?.capabilities) {
-        setAgentCapabilities(data.capabilities as Record<string, boolean>);
+      if (data?.metadata && typeof data.metadata === 'object') {
+        const meta = data.metadata as Record<string, unknown>;
+        if (meta.capabilities && typeof meta.capabilities === 'object') {
+          setAgentCapabilities(meta.capabilities as Record<string, boolean>);
+        }
       }
     };
     fetchAgentCapabilities();

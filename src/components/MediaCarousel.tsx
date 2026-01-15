@@ -9,10 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 interface Podcast {
   id: string;
   title: string;
-  spotify_episode_id: string;
+  audio_url: string;
   description: string;
-  display_order: number | null;
-  is_active: boolean | null;
+  duration_seconds: number | null;
 }
 
 // MEMORY OPTIMIZATION: Lazy-loaded Spotify iframe component
@@ -90,13 +89,17 @@ export const MediaCarousel = () => {
     queryKey: ["podcasts"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("podcast_contents")
-        .select("*")
-        .eq("is_active", true)
-        .order("display_order")
+        .from("audio_contents")
+        .select("id, title, audio_url, description")
         .limit(3);
       if (error) throw error;
-      return data as Podcast[];
+      return (data || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        audio_url: item.audio_url || '',
+        description: item.description || '',
+        duration_seconds: null
+      })) as Podcast[];
     },
   });
 
@@ -133,8 +136,15 @@ export const MediaCarousel = () => {
                   </Button>
                 </div>
                 
-                {/* MEMORY OPTIMIZATION: Lazy-loaded Spotify Embed */}
-                <LazySpotifyEmbed episodeId={podcast.spotify_episode_id} />
+                {/* Audio player - using audio_url from podcasts table */}
+                {podcast.audio_url && (
+                  <audio 
+                    controls 
+                    src={podcast.audio_url} 
+                    className="w-full"
+                    preload="metadata"
+                  />
+                )}
               </CardContent>
             </Card>
           ))}

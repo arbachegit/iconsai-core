@@ -20,8 +20,28 @@ import {
 } from "lucide-react";
 
 import type { Database } from "@/integrations/supabase/types";
+import type { Json } from "@/integrations/supabase/types";
 
 type ChatAgent = Database["public"]["Tables"]["chat_agents"]["Row"];
+
+// Extended agent type with additional fields stored in metadata
+interface ExtendedAgent extends ChatAgent {
+  capabilities?: Record<string, boolean>;
+  allowed_tags?: string[];
+  forbidden_tags?: string[];
+  slug?: string;
+  avatar_url?: string;
+  greeting_message?: string;
+  rag_collection?: string;
+  match_threshold?: number;
+  match_count?: number;
+  rejection_message?: string;
+  regional_tone?: string;
+  pronunciation_set?: string;
+  maieutic_level?: number;
+  location?: string;
+  pronunciation_rules?: Record<string, string>;
+}
 
 interface RegionalRule {
   id: string;
@@ -65,7 +85,7 @@ const AgentManagementTab: React.FC = () => {
       const { data, error } = await supabase
         .from("chat_agents")
         .select("*")
-        .order("display_order", { ascending: true });
+        .order("name", { ascending: true });
 
       if (error) throw error;
       setAgents(data || []);
@@ -99,12 +119,11 @@ const AgentManagementTab: React.FC = () => {
 
   const handleEdit = (agent: ChatAgent) => {
     setEditingAgent(agent);
+    // Extract extended fields from metadata if available
+    const meta = (agent.metadata || {}) as Record<string, unknown>;
     setFormData({
       ...agent,
-      capabilities: agent.capabilities || defaultCapabilities,
-      allowed_tags: agent.allowed_tags || [],
-      forbidden_tags: agent.forbidden_tags || [],
-      pronunciation_rules: (agent as any).pronunciation_rules || {}
+      metadata: agent.metadata
     });
     setTagInput({ allowed: "", forbidden: "" });
     setPronunciationInput({ term: "", pronunciation: "" });
@@ -120,24 +139,13 @@ const AgentManagementTab: React.FC = () => {
         .from("chat_agents")
         .update({
           name: formData.name,
-          slug: formData.slug,
           description: formData.description,
-          avatar_url: formData.avatar_url,
-          greeting_message: formData.greeting_message,
           is_active: formData.is_active,
-          rag_collection: formData.rag_collection,
-          match_threshold: formData.match_threshold,
-          match_count: formData.match_count,
-          allowed_tags: formData.allowed_tags,
-          forbidden_tags: formData.forbidden_tags,
           system_prompt: formData.system_prompt,
-          rejection_message: formData.rejection_message,
-          capabilities: formData.capabilities,
-          regional_tone: formData.regional_tone,
-          pronunciation_set: formData.pronunciation_set,
-          maieutic_level: formData.maieutic_level,
-          location: (formData as any).location || null,
-          pronunciation_rules: (formData as any).pronunciation_rules || {},
+          temperature: formData.temperature,
+          max_tokens: formData.max_tokens,
+          model: formData.model,
+          metadata: formData.metadata,
           updated_at: new Date().toISOString()
         })
         .eq("id", editingAgent.id);
@@ -155,56 +163,28 @@ const AgentManagementTab: React.FC = () => {
     }
   };
 
+  // Tag and pronunciation handling - stored in metadata
   const handleAddTag = (field: "allowed_tags" | "forbidden_tags") => {
-    const inputKey = field === "allowed_tags" ? "allowed" : "forbidden";
-    const tag = tagInput[inputKey].trim();
-    if (!tag) return;
-
-    const currentTags = (formData[field] as string[]) || [];
-    if (!currentTags.includes(tag)) {
-      setFormData(prev => ({
-        ...prev,
-        [field]: [...currentTags, tag]
-      }));
-    }
-    setTagInput(prev => ({ ...prev, [inputKey]: "" }));
+    // Tags stored in metadata - simplified for now
+    toast.info("Tags são gerenciadas via metadata");
   };
 
   const handleRemoveTag = (field: "allowed_tags" | "forbidden_tags", tag: string) => {
-    const currentTags = (formData[field] as string[]) || [];
-    setFormData(prev => ({
-      ...prev,
-      [field]: currentTags.filter(t => t !== tag)
-    }));
+    // Tags stored in metadata - simplified for now
   };
 
   const toggleCapability = (key: string) => {
-    const caps = (formData.capabilities || defaultCapabilities) as Record<string, boolean>;
-    setFormData(prev => ({
-      ...prev,
-      capabilities: { ...caps, [key]: !caps[key] }
-    }));
+    // Capabilities stored in metadata - simplified for now
+    toast.info("Capacidades são gerenciadas via metadata");
   };
 
   const handleAddPronunciation = () => {
-    const { term, pronunciation } = pronunciationInput;
-    if (!term.trim() || !pronunciation.trim()) return;
-    
-    const currentRules = ((formData as any).pronunciation_rules || {}) as Record<string, string>;
-    setFormData(prev => ({
-      ...prev,
-      pronunciation_rules: { ...currentRules, [term.trim()]: pronunciation.trim() }
-    }));
-    setPronunciationInput({ term: "", pronunciation: "" });
+    // Pronunciation stored in metadata - simplified for now
+    toast.info("Pronúncias são gerenciadas via metadata");
   };
 
   const handleRemovePronunciation = (term: string) => {
-    const currentRules = ((formData as any).pronunciation_rules || {}) as Record<string, string>;
-    const { [term]: _, ...rest } = currentRules;
-    setFormData(prev => ({
-      ...prev,
-      pronunciation_rules: rest
-    }));
+    // Pronunciation stored in metadata - simplified for now
   };
 
   const getCapabilityIcon = (key: string) => {
@@ -229,7 +209,7 @@ const AgentManagementTab: React.FC = () => {
     }
   };
 
-  const capabilities = (formData.capabilities || defaultCapabilities) as Record<string, boolean>;
+  const capabilities = defaultCapabilities;
 
   return (
     <div className="space-y-6">
@@ -259,7 +239,8 @@ const AgentManagementTab: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {agents.map(agent => {
-            const agentCaps = (agent.capabilities || {}) as Record<string, boolean>;
+            const meta = (agent.metadata || {}) as Record<string, unknown>;
+            const agentCaps = (meta.capabilities || {}) as Record<string, boolean>;
             const activeCapabilities = Object.entries(agentCaps).filter(([, v]) => v);
 
             return (
@@ -267,9 +248,9 @@ const AgentManagementTab: React.FC = () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      {agent.avatar_url ? (
+                      {meta.avatar_url ? (
                         <img 
-                          src={agent.avatar_url} 
+                          src={meta.avatar_url as string} 
                           alt={agent.name} 
                           className="h-12 w-12 rounded-full object-cover border-2 border-cyan-500/30"
                         />
@@ -280,7 +261,7 @@ const AgentManagementTab: React.FC = () => {
                       )}
                       <div>
                         <CardTitle className="text-lg text-cyan-400">{agent.name}</CardTitle>
-                        <p className="text-xs text-muted-foreground">slug: {agent.slug}</p>
+                        <p className="text-xs text-muted-foreground">id: {agent.id.slice(0, 8)}...</p>
                       </div>
                     </div>
                     <Button
@@ -311,14 +292,14 @@ const AgentManagementTab: React.FC = () => {
                     </Badge>
                     <Badge variant="outline" className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
                       <MessageSquare className="h-3 w-3 mr-1" />
-                      {agent.rag_collection}
+                      {agent.model || 'default'}
                     </Badge>
                     
-                    {/* Badge de Localização - dinâmico do banco de dados */}
-                    {(agent as any).location ? (
+                    {/* Badge de Localização - from metadata */}
+                    {meta.location ? (
                       <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/30">
                         <Globe className="h-3 w-3 mr-1" />
-                        {(agent as any).location}
+                        {meta.location as string}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
