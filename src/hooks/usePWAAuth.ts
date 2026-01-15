@@ -3,6 +3,7 @@
 // Build: 2026-01-14
 // Funções: login_pwa, verify_pwa_code, check_pwa_access
 // Tabelas: pwa_invites, pwa_sessions
+// src/hooks/usePWAAuth.ts
 // =============================================
 
 import { useState, useEffect, useCallback } from "react";
