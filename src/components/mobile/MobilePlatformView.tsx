@@ -12,8 +12,8 @@ interface MobilePlatformViewProps {
   isAdmin?: boolean;
 }
 
-type ViewType = 'chat' | 'api' | 'dataflow-architecture' | 'dataflow-new-domain' | 
-  'dataflow-talk-app' | 'dataflow-retail-system' | 'dataflow-autocontrol' | 'dataflow-gov-system';
+type ViewType = 'chat' | 'api' | 'dataflow-architecture' | 'dataflow-new-domain' |
+  'dataflow-talk-app' | 'dataflow-retail-system' | 'dataflow-autocontrol';
 
 const STORAGE_KEY = 'knowyou-mobile-last-view';
 
@@ -23,7 +23,6 @@ const dataFlowItems: { id: ViewType; label: string }[] = [
   { id: 'dataflow-talk-app', label: 'Talk APP' },
   { id: 'dataflow-retail-system', label: 'Retail System' },
   { id: 'dataflow-autocontrol', label: 'AutoControl' },
-  { id: 'dataflow-gov-system', label: 'Gov System AI' },
 ];
 
 export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps) {
