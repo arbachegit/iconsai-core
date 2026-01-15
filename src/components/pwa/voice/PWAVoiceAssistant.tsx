@@ -23,6 +23,7 @@ import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
 import SafariAudioUnlock from "@/components/pwa/SafariAudioUnlock";
 import SafariPWAInstallPrompt from "@/components/pwa/SafariPWAInstallPrompt";
+import { supabase } from "@/integrations/supabase/client";
 
 // Containers independentes
 import { 
@@ -56,6 +57,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [showDesktopWarning, setShowDesktopWarning] = useState(false);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [currentFingerprint, setCurrentFingerprint] = useState<string>("");
+  const [allowDesktopFromConfig, setAllowDesktopFromConfig] = useState(false);
 
   // Lock scroll
   useEffect(() => {
@@ -68,7 +70,29 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     };
   }, [embedded]);
 
-  // Check mobile
+  // Load desktop access config from database
+  useEffect(() => {
+    const loadDesktopConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("pwa_config")
+          .select("config_value")
+          .eq("config_key", "allow_desktop_access")
+          .single();
+
+        if (!error && data?.config_value === "true") {
+          console.log("[PWAVoiceAssistant] allow_desktop_access = true (from config)");
+          setAllowDesktopFromConfig(true);
+        }
+      } catch (err) {
+        console.log("[PWAVoiceAssistant] Config not found, using default");
+      }
+    };
+
+    loadDesktopConfig();
+  }, []);
+
+  // Check mobile - now respects allow_desktop_access config
   useEffect(() => {
     if (embedded) {
       setIsMobile(true);
@@ -78,12 +102,13 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     const checkMobile = () => {
       const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
       setIsMobile(mobile);
-      setShowDesktopWarning(!mobile);
+      // Only show desktop warning if NOT mobile AND config doesn't allow desktop
+      setShowDesktopWarning(!mobile && !allowDesktopFromConfig);
     };
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
-  }, [embedded]);
+  }, [embedded, allowDesktopFromConfig]);
 
   const handleSplashComplete = () => {
     setAppState("idle");
