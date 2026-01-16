@@ -2,13 +2,18 @@
  * ============================================================
  * HomeContainer.tsx - Container PAI para HOME
  * ============================================================
- * Versão: 7.1.0 - 2026-01-16
+ * Versão: 8.0.0 - 2026-01-16
  *
  * FIX PROBLEMAS 1 E 2:
  * - Usa SEMPRE config.welcomeText do useConfigPWA (não chama generate-contextual-greeting)
  * - Autoplay simplificado: toca assim que config estiver pronto
  * - Sem chamadas externas desnecessárias
  * ============================================================
+ * CHANGELOG v8.0.0:
+ * - NEW: HomePlayButton exclusivo com design do knowyou-nexus
+ * - NEW: Efeito de luminosidade girando (conic-gradient)
+ * - NEW: Anel externo escuro com borda ciano
+ * - NEW: Glow quando animando, pulse quando waiting
  * CHANGELOG v7.1.0:
  * - FIX: Autoplay usando useRef para evitar re-execução
  * - FIX: Removido speak do array de dependências do useEffect
@@ -22,7 +27,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
-import { PlayButton } from "../voice/PlayButton";
+import { HomePlayButton } from "../microservices/HomePlayButton";
 import { ModuleSelector } from "../voice/ModuleSelector";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
@@ -194,10 +199,9 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   );
 
   // ============================================================
-  // ESTADOS DO VISUALIZADOR E BOTÃO
+  // ESTADOS DO VISUALIZADOR
   // ============================================================
   const visualizerState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
-  const buttonState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   // ============================================================
   // RENDER
@@ -243,13 +247,13 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
           width={180}
         />
 
-        {/* PLAY BUTTON - Microserviço reutilizável */}
-        <PlayButton
-          state={buttonState}
-          onClick={handlePlayClick}
-          progress={progress}
-          size="lg"
-          primaryColor={HOME_CONFIG.color}
+        {/* HOME PLAY BUTTON - Design exclusivo com anel externo */}
+        <HomePlayButton
+          state={visualizerState === "loading" ? "loading" : visualizerState === "playing" ? "playing" : "idle"}
+          onPlay={handlePlayClick}
+          onPause={handlePlayClick}
+          audioProgress={progress}
+          disabled={false}
         />
       </motion.div>
 
