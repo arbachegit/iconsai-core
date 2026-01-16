@@ -2,11 +2,16 @@
  * ============================================================
  * PlayButton.tsx - Botão de Play Centralizado
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-04
- * 
+ * Versão: 2.0.0 - 2026-01-16
+ *
  * Descrição: Botão de play/pause com múltiplos estados visuais.
- * Inclui animações de loading e indicador de progresso.
+ * Inclui animações de loading, indicador de progresso e
+ * efeito de glow azul pronunciado.
+ * ============================================================
+ * CHANGELOG v2.0.0:
+ * - Adicionado anel externo escuro para efeito de profundidade
+ * - Glow azul mais pronunciado ao redor do botão
+ * - Sombra interna para efeito 3D
  * ============================================================
  */
 
@@ -34,14 +39,16 @@ interface PlayButtonProps {
   label?: string;
   /** Classe CSS adicional */
   className?: string;
+  /** Mostrar anel externo escuro (efeito de profundidade) */
+  showOuterRing?: boolean;
 }
 
-// Configuração de tamanhos
+// Configuração de tamanhos - aumentado para acomodar anel externo
 const SIZE_CONFIG = {
-  sm: { button: 48, icon: 20, ring: 56, label: "text-xs" },
-  md: { button: 64, icon: 28, ring: 76, label: "text-sm" },
-  lg: { button: 80, icon: 36, ring: 96, label: "text-base" },
-  xl: { button: 96, icon: 44, ring: 112, label: "text-lg" },
+  sm: { button: 48, icon: 20, ring: 56, outer: 72, label: "text-xs" },
+  md: { button: 64, icon: 28, ring: 76, outer: 96, label: "text-sm" },
+  lg: { button: 80, icon: 36, ring: 100, outer: 130, label: "text-base" },
+  xl: { button: 96, icon: 44, ring: 120, outer: 156, label: "text-lg" },
 };
 
 // Função auxiliar para ajustar cor (escurecer/clarear)
@@ -58,15 +65,16 @@ export const PlayButton: React.FC<PlayButtonProps> = ({
   onClick,
   progress = 0,
   size = "lg",
-  primaryColor = "#3B82F6",
+  primaryColor = "#00D4FF", // Ciano KnowYOU como padrão
   disabled = false,
   label,
   className = "",
+  showOuterRing = true, // Ativar por padrão
 }) => {
   const config = SIZE_CONFIG[size];
-  
+
   // Calcular o stroke-dasharray para o progresso circular
-  const circumference = 2 * Math.PI * ((config.ring - 4) / 2);
+  const circumference = 2 * Math.PI * ((config.ring - 8) / 2);
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   // Determinar qual ícone mostrar
@@ -98,101 +106,138 @@ export const PlayButton: React.FC<PlayButtonProps> = ({
 
   return (
     <div className={`flex flex-col items-center gap-3 ${className}`}>
-      {/* Container do botão com anel de progresso */}
-      <div className="relative" style={{ width: config.ring, height: config.ring }}>
-        {/* Anel de progresso (SVG) */}
-        <svg
-          className="absolute inset-0 -rotate-90"
-          width={config.ring}
-          height={config.ring}
-        >
-          {/* Anel de fundo */}
-          <circle
-            cx={config.ring / 2}
-            cy={config.ring / 2}
-            r={(config.ring - 4) / 2}
-            fill="none"
-            stroke="rgba(255,255,255,0.1)"
-            strokeWidth={3}
-          />
-          
-          {/* Anel de progresso */}
-          <motion.circle
-            cx={config.ring / 2}
-            cy={config.ring / 2}
-            r={(config.ring - 4) / 2}
-            fill="none"
-            stroke={primaryColor}
-            strokeWidth={3}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          />
-        </svg>
-
-        {/* Botão principal */}
-        <motion.button
-          onClick={onClick}
-          disabled={disabled || state === "loading"}
-          className="absolute inset-0 m-auto flex items-center justify-center rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            width: config.button,
-            height: config.button,
-            background: `linear-gradient(135deg, ${primaryColor}, ${adjustColor(primaryColor, -30)})`,
-          }}
-          whileHover={!disabled ? { scale: 1.05 } : {}}
-          whileTap={!disabled ? { scale: 0.95 } : {}}
-          aria-label={state === "playing" ? "Pausar" : "Reproduzir"}
-        >
-          {/* Efeito de brilho interno */}
+      {/* Container principal com anel externo */}
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: config.outer, height: config.outer }}
+      >
+        {/* Anel externo escuro (efeito de profundidade) */}
+        {showOuterRing && (
           <div
-            className="absolute inset-0 rounded-full opacity-30"
+            className="absolute inset-0 rounded-full"
             style={{
-              background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 60%)",
+              background: "linear-gradient(145deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%)",
+              boxShadow: `
+                inset 0 2px 10px rgba(0, 0, 0, 0.8),
+                inset 0 -2px 10px rgba(255, 255, 255, 0.05),
+                0 0 30px rgba(0, 212, 255, 0.15),
+                0 0 60px rgba(0, 212, 255, 0.1)
+              `,
             }}
           />
-          
-          {/* Ícone */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={state}
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              {renderIcon()}
-            </motion.div>
-          </AnimatePresence>
+        )}
 
-          {/* Ondas de pulsação quando playing */}
-          {state === "playing" && (
-            <>
-              <motion.span
-                className="absolute inset-0 rounded-full"
-                style={{ border: `2px solid ${primaryColor}` }}
-                initial={{ scale: 1, opacity: 0.6 }}
-                animate={{ scale: 1.5, opacity: 0 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
-              />
-              <motion.span
-                className="absolute inset-0 rounded-full"
-                style={{ border: `2px solid ${primaryColor}` }}
-                initial={{ scale: 1, opacity: 0.6 }}
-                animate={{ scale: 1.5, opacity: 0 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
-              />
-            </>
-          )}
-        </motion.button>
+        {/* Container interno com anel de progresso */}
+        <div
+          className="relative"
+          style={{ width: config.ring, height: config.ring }}
+        >
+          {/* Anel de progresso (SVG) */}
+          <svg
+            className="absolute inset-0 -rotate-90"
+            width={config.ring}
+            height={config.ring}
+          >
+            {/* Anel de fundo */}
+            <circle
+              cx={config.ring / 2}
+              cy={config.ring / 2}
+              r={(config.ring - 8) / 2}
+              fill="none"
+              stroke="rgba(0, 212, 255, 0.15)"
+              strokeWidth={4}
+            />
+
+            {/* Anel de progresso */}
+            <motion.circle
+              cx={config.ring / 2}
+              cy={config.ring / 2}
+              r={(config.ring - 8) / 2}
+              fill="none"
+              stroke={primaryColor}
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              animate={{ strokeDashoffset }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              style={{
+                filter: `drop-shadow(0 0 6px ${primaryColor})`,
+              }}
+            />
+          </svg>
+
+          {/* Botão principal */}
+          <motion.button
+            onClick={onClick}
+            disabled={disabled || state === "loading"}
+            className="absolute inset-0 m-auto flex items-center justify-center rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              width: config.button,
+              height: config.button,
+              background: `linear-gradient(135deg, ${primaryColor}, ${adjustColor(primaryColor, -40)})`,
+              boxShadow: `
+                0 4px 20px rgba(0, 212, 255, 0.4),
+                0 0 40px rgba(0, 212, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2)
+              `,
+            }}
+            whileHover={!disabled ? { scale: 1.05 } : {}}
+            whileTap={!disabled ? { scale: 0.95 } : {}}
+            aria-label={state === "playing" ? "Pausar" : "Reproduzir"}
+          >
+            {/* Efeito de brilho interno */}
+            <div
+              className="absolute inset-0 rounded-full opacity-40"
+              style={{
+                background:
+                  "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5), transparent 50%)",
+              }}
+            />
+
+            {/* Ícone */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={state}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.5, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {renderIcon()}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Ondas de pulsação quando playing */}
+            {state === "playing" && (
+              <>
+                <motion.span
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: `2px solid ${primaryColor}` }}
+                  initial={{ scale: 1, opacity: 0.6 }}
+                  animate={{ scale: 1.5, opacity: 0 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                />
+                <motion.span
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: `2px solid ${primaryColor}` }}
+                  initial={{ scale: 1, opacity: 0.6 }}
+                  animate={{ scale: 1.5, opacity: 0 }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "easeOut",
+                    delay: 0.5,
+                  }}
+                />
+              </>
+            )}
+          </motion.button>
+        </div>
       </div>
 
       {/* Label abaixo do botão */}
       {label && (
-        <span className={`text-slate-400 ${config.label}`}>
-          {label}
-        </span>
+        <span className={`text-slate-400 ${config.label}`}>{label}</span>
       )}
     </div>
   );
