@@ -2,13 +2,16 @@
  * ============================================================
  * HomeContainer.tsx - Container PAI para HOME
  * ============================================================
- * Versão: 7.0.0 - 2026-01-15
+ * Versão: 7.1.0 - 2026-01-16
  *
  * FIX PROBLEMAS 1 E 2:
  * - Usa SEMPRE config.welcomeText do useConfigPWA (não chama generate-contextual-greeting)
  * - Autoplay simplificado: toca assim que config estiver pronto
  * - Sem chamadas externas desnecessárias
  * ============================================================
+ * CHANGELOG v7.1.0:
+ * - FIX: Autoplay usando useRef para evitar re-execução
+ * - FIX: Removido speak do array de dependências do useEffect
  * CHANGELOG v7.0.0:
  * - Removida chamada a generate-contextual-greeting
  * - Texto de boas-vindas vem DIRETO do useConfigPWA
@@ -49,11 +52,17 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   const { userName } = usePWAVoiceStore();
 
   // Estados locais
-  const [hasPlayedAutoplay, setHasPlayedAutoplay] = useState(false);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
 
   // Refs
   const animationRef = useRef<number | null>(null);
+  const hasPlayedAutoplayRef = useRef(false); // v7.1.0: Ref para evitar re-execução
+  const speakRef = useRef(speak); // Ref para speak para usar no useEffect
+
+  // Manter speakRef atualizado
+  useEffect(() => {
+    speakRef.current = speak;
+  }, [speak]);
 
   // ============================================================
   // ETAPA 1: TEXTO DE BOAS-VINDAS DIRETO DO CONFIG
@@ -79,33 +88,36 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   const isGreetingReady = !isConfigLoading;
 
   // ============================================================
-  // ETAPA 2: AUTOPLAY (v7.0.0 - simplificado)
+  // ETAPA 2: AUTOPLAY (v7.1.0 - usando ref para evitar re-execução)
   // ============================================================
   useEffect(() => {
-    if (!isGreetingReady || hasPlayedAutoplay) return;
+    // v7.1.0: Usar ref para garantir execução única
+    if (!isGreetingReady || hasPlayedAutoplayRef.current) return;
 
     const welcomeText = getWelcomeText();
     if (!welcomeText) return;
 
-    console.log("[HOME v7] 🚀 Executando autoplay com texto do config...");
-    setHasPlayedAutoplay(true);
+    // Marcar como executado ANTES de iniciar (previne race conditions)
+    hasPlayedAutoplayRef.current = true;
+    console.log("[HOME v7.1] 🚀 Executando autoplay com texto do config...");
 
     // Classificar e enriquecer para TTS contextual
     const executeAutoplay = async () => {
       try {
         const enrichment = await classifyAndEnrich(welcomeText, "home");
-        await speak(enrichment.enrichedText || welcomeText, "home", {
+        // v7.1.0: Usar speakRef.current em vez de speak direto
+        await speakRef.current(enrichment.enrichedText || welcomeText, "home", {
           phoneticMapOverride: enrichment.phoneticMap,
         });
       } catch (err) {
-        console.warn("[HOME v7] ⚠️ Autoplay bloqueado ou erro:", err);
+        console.warn("[HOME v7.1] ⚠️ Autoplay bloqueado ou erro:", err);
         // O useTextToSpeech já salva em pendingPlay se for NotAllowedError
         // SafariAudioUnlock vai fazer retry quando usuário interagir
       }
     };
 
     executeAutoplay();
-  }, [isGreetingReady, hasPlayedAutoplay, getWelcomeText, speak]);
+  }, [isGreetingReady, getWelcomeText]); // v7.1.0: Removido speak das dependências
 
   // ============================================================
   // CAPTURA DE FREQUÊNCIAS DO AUDIO MANAGER
