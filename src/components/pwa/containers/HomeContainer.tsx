@@ -239,8 +239,8 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
           frequencyData={frequencyData}
           primaryColor={HOME_CONFIG.color}
           secondaryColor={HOME_CONFIG.secondaryColor}
-          height={100}
-          width={260}
+          height={60}
+          width={180}
         />
 
         {/* PLAY BUTTON - Microserviço reutilizável */}
