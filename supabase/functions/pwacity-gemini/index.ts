@@ -1,15 +1,15 @@
 // ============================================
 // PWA CITY - GEMINI INTEGRATION
-// VERSAO: 2.0.0-PRODUCTION | DEPLOY: 2026-01-17
+// VERSAO: 2.1.0-PRODUCTION | DEPLOY: 2026-01-17
 // STATUS: ✅ PRODUÇÃO - Conectado à API Google Gemini
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const FUNCTION_VERSION = "2.0.0-PRODUCTION";
+const FUNCTION_VERSION = "2.1.0-PRODUCTION";
 const GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-const GEMINI_MODEL = "gemini-pro";
+const GEMINI_MODEL = "gemini-2.5-flash"; // Atualizado: gemini-pro descontinuado
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 interface RequestBody {
