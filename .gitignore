@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Credentials and sensitive files
+credenciais.md
+.env
+.env.local
+.env.production
+*.pem
+*.key
+*-key.json
