@@ -1,4 +1,4 @@
-project_id = "gmflpmcepempcygdrayv"
+project_id = "uhazjwqfsvxqozepyjjj"
 
 # ============================================
 # CHAT FUNCTIONS - Unified Router (Public)
@@ -358,4 +358,13 @@ verify_jwt = false
 # CONTENT ORCHESTRATOR - AI content generation
 # ============================================
 [functions.content-orchestrator]
+verify_jwt = false
+
+# ============================================
+# PWA CITY - AI Integration (OpenAI + Gemini)
+# ============================================
+[functions.pwacity-openai]
+verify_jwt = false
+
+[functions.pwacity-gemini]
 verify_jwt = false
