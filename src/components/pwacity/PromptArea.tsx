@@ -77,7 +77,7 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex-shrink-0 border-t border-cyan-500/20 bg-slate-900/80 backdrop-blur-md p-4 safe-area-inset-bottom"
+      className="flex-shrink-0 border-t border-cyan-500/20 bg-slate-900/80 backdrop-blur-md px-2 pt-1 pb-[7px]"
     >
       <div className="flex items-center gap-3">
         {/* Textarea */}

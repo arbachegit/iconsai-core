@@ -1,4 +1,4 @@
-project_id = "geaaxpctnixwsppgttsm"
+project_id = "uhazjwqfsvxqozepyjjj"
 
 # ============================================
 # CHAT FUNCTIONS - Unified Router (Public)
@@ -361,10 +361,16 @@ verify_jwt = false
 verify_jwt = false
 
 # ============================================
-# PWA CITY - AI Integration (OpenAI + Gemini)
+# PWA CITY - AI Integration (OpenAI + Gemini + Perplexity)
 # ============================================
 [functions.pwacity-openai]
 verify_jwt = false
 
 [functions.pwacity-gemini]
+verify_jwt = false
+
+[functions.pwacity-perplexity]
+verify_jwt = false
+
+[functions.pwacity-agent]
 verify_jwt = false

@@ -2,11 +2,12 @@
  * ============================================================
  * PWACityContainer.tsx - Container principal do PWA City
  * ============================================================
- * Versão: 1.2.0
- * Data: 2026-01-18
+ * Versão: 2.0.0
+ * Data: 2026-01-19
  *
  * Descrição: Container raiz do PWA City que gerencia o estado
- * do chat e integração com APIs (OpenAI/Gemini/Perplexity).
+ * do chat e integração com pwacity-agent (microserviço).
+ * Fallback chain: Perplexity → Gemini → OpenAI
  * Demo Mode Support
  * ============================================================
  */
@@ -48,6 +49,14 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Debug: Log quando componente monta/desmonta
+  useEffect(() => {
+    console.log("[PWA City] 🟢 Componente MONTADO");
+    return () => {
+      console.log("[PWA City] 🔴 Componente DESMONTADO");
+    };
+  }, []);
+
   // Carregar histórico seeded se demo=seeded
   useEffect(() => {
     if (isDemoMode && demoType === "seeded") {
@@ -65,10 +74,14 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
   }, [isDemoMode, demoType, seededConversations.pwacity]);
 
   /**
-   * Enviar mensagem para a API
+   * Enviar mensagem para o pwacity-agent (microserviço com fallback)
+   * Fallback chain: Perplexity → Gemini → OpenAI
    */
   const handleSendMessage = useCallback(
     async (content: string) => {
+      console.log("[PWA City] === INÍCIO handleSendMessage ===");
+      console.log("[PWA City] Content:", content);
+
       // Adicionar mensagem do usuário
       const userMessage: Message = {
         id: generateUUID(),
@@ -77,29 +90,21 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
+      console.log("[PWA City] Adicionando mensagem do usuário");
+      setMessages((prev) => {
+        console.log("[PWA City] Messages ANTES:", prev.length);
+        const newMessages = [...prev, userMessage];
+        console.log("[PWA City] Messages DEPOIS:", newMessages.length);
+        return newMessages;
+      });
       setIsLoading(true);
 
       try {
-        // Buscar configuração da API (openai, gemini ou perplexity)
-        const { data: configData, error: configError } = await supabase
-          .from("pwacity_config")
-          .select("config_value")
-          .eq("config_key", "default_api_provider")
-          .single();
+        console.log("[PWA City] Chamando pwacity-agent...");
 
-        if (configError) {
-          throw new Error("Erro ao buscar configuração da API");
-        }
-
-        const apiProvider = configData?.config_value || "openai";
-
-        console.log("[PWA City] Enviando mensagem para:", apiProvider);
-
-        // Chamar Edge Function correspondente
-        const functionName = `pwacity-${apiProvider}`;
+        // Chamar Edge Function pwacity-agent (com fallback automático)
         const { data: apiResponse, error: apiError } = await supabase.functions.invoke(
-          functionName,
+          "pwacity-agent",
           {
             body: {
               prompt: content,
@@ -109,12 +114,23 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
           }
         );
 
+        console.log("[PWA City] Resposta da API:", { apiResponse, apiError });
+
         if (apiError) {
+          console.error("[PWA City] API Error:", apiError);
           throw new Error(apiError.message || "Erro ao processar resposta");
         }
 
         if (!apiResponse || !apiResponse.response) {
+          console.error("[PWA City] Resposta inválida:", apiResponse);
           throw new Error("Resposta vazia da API");
+        }
+
+        const apiProvider = apiResponse.provider || "agent";
+
+        console.log("[PWA City] ✅ Resposta recebida de:", apiProvider);
+        if (apiResponse.fallbackUsed) {
+          console.log("[PWA City] Fallback utilizado:", apiResponse.fallbackReason);
         }
 
         // Adicionar resposta da IA
@@ -126,31 +142,36 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
           apiProvider,
         };
 
-        setMessages((prev) => [...prev, assistantMessage]);
+        console.log("[PWA City] Adicionando resposta do assistente");
+        setMessages((prev) => {
+          console.log("[PWA City] Messages ANTES (resposta):", prev.length);
+          const newMessages = [...prev, assistantMessage];
+          console.log("[PWA City] Messages DEPOIS (resposta):", newMessages.length);
+          return newMessages;
+        });
 
         // Salvar conversa no banco (APENAS se NÃO for demo mode)
+        // NOTA: Tabela pwacity_conversations pode não existir - ignorar erro
         if (!isDemoMode) {
-          try {
-            await supabase.from("pwacity_conversations").insert({
-              phone: userPhone || "unknown",
-              session_id: sessionId || null,
-              prompt: content,
-              response: apiResponse.response,
-              api_provider: apiProvider,
-              model_used: apiResponse.model || null,
-              tokens_used: apiResponse.tokens || null,
-              response_time_ms: apiResponse.responseTime || null,
-              status: "completed",
-            });
-          } catch (dbError) {
-            console.error("[PWA City] Erro ao salvar no banco:", dbError);
-            // Não bloquear o usuário se falhar salvar no banco
+          const { error: dbError } = await supabase.from("pwacity_conversations").insert({
+            phone: userPhone || "unknown",
+            session_id: sessionId || null,
+            prompt: content,
+            response: apiResponse.response,
+            api_provider: apiProvider,
+            model_used: apiResponse.model || null,
+            tokens_used: apiResponse.tokens || null,
+            response_time_ms: apiResponse.responseTime || null,
+            status: "completed",
+          });
+          if (dbError) {
+            console.warn("[PWA City] Erro ao salvar no banco (ignorado):", dbError.message);
           }
         } else {
           console.log("[PWA City] Demo mode: pulando salvamento no banco");
         }
       } catch (error) {
-        console.error("[PWA City] Erro ao enviar mensagem:", error);
+        console.error("[PWA City] ❌ Erro ao enviar mensagem:", error);
 
         const errorMessage: Message = {
           id: generateUUID(),
@@ -162,6 +183,7 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
         setMessages((prev) => [...prev, errorMessage]);
         toast.error("Erro ao enviar mensagem");
       } finally {
+        console.log("[PWA City] === FIM handleSendMessage ===");
         setIsLoading(false);
       }
     },
@@ -169,19 +191,19 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-950">
       {/* Header */}
       <PWACityHeader
         userName={userName}
         onLogout={onLogout}
       />
 
-      {/* Área de mensagens - flex-1 para ocupar espaço restante */}
-      <div className="flex-1 overflow-hidden">
+      {/* Área de mensagens - flex-1 com scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <ResultArea messages={messages} isLoading={isLoading} />
       </div>
 
-      {/* Área de input - altura fixa */}
+      {/* Área de input - fixa no fundo */}
       <PromptArea
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
