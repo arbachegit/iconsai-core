@@ -160,6 +160,16 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
     setState("loading");
 
     try {
+      // Verificar se a API de mídia está disponível (requer HTTPS)
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error("[Mic] ❌ API mediaDevices não disponível");
+        const isHTTPS = window.location.protocol === "https:" || window.location.hostname === "localhost";
+        if (!isHTTPS) {
+          throw new Error("Microfone requer conexão segura (HTTPS)");
+        }
+        throw new Error("Seu navegador não suporta gravação de áudio");
+      }
+
       // Configuração de áudio otimizada para mobile
       const audioConstraints: MediaTrackConstraints = {
         echoCancellation: true,
