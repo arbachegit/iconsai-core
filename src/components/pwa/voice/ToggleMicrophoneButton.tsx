@@ -173,6 +173,12 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
       }
 
       console.log("[Mic] 📱 Solicitando permissão de microfone...");
+
+      // Verificar se mediaDevices está disponível (requer HTTPS ou localhost)
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("NotSupportedError: mediaDevices não disponível. Use HTTPS.");
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: audioConstraints,
       });
@@ -291,6 +297,8 @@ export const ToggleMicrophoneButton: React.FC<ToggleMicrophoneButtonProps> = ({
         setError("Microfone não encontrado.");
       } else if (err.name === "NotReadableError") {
         setError("Microfone em uso por outro app.");
+      } else if (err.message?.includes("mediaDevices não disponível") || err.message?.includes("NotSupportedError")) {
+        setError("Microfone requer conexão segura (HTTPS).");
       } else {
         setError(`Erro ao acessar microfone: ${err.message || err.name}`);
       }

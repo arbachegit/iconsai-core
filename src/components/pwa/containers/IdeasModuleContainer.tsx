@@ -188,6 +188,13 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         transcription: userText,
       });
 
+      console.log("[IdeasContainer] 📡 Chamando chat-router com:", {
+        message: userText.substring(0, 50) + "...",
+        pwaMode: true,
+        chatType: MODULE_CONFIG.type,
+        deviceId: deviceId?.substring(0, 8) + "...",
+      });
+
       const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
         body: {
           message: userText,
@@ -198,7 +205,17 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         },
       });
 
-      if (chatError) throw new Error(`CHAT_ERROR: ${chatError.message}`);
+      if (chatError) {
+        console.error("[IdeasContainer] ❌ chat-router erro:", {
+          message: chatError.message,
+          name: chatError.name,
+          context: chatError.context,
+          details: JSON.stringify(chatError),
+        });
+        throw new Error(`CHAT_ERROR: ${chatError.message}`);
+      }
+
+      console.log("[IdeasContainer] ✅ chat-router resposta recebida");
 
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
