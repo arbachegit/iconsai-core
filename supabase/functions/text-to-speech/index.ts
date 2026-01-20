@@ -609,6 +609,7 @@ serve(async (req) => {
               similarity_boost: voiceSettings.similarity_boost,
               style: voiceSettings.style,
               use_speaker_boost: voiceSettings.use_speaker_boost,
+              speed: voiceSettings.speed, // Velocidade da fala (0.5-2.0)
             },
           }),
         }

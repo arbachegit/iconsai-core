@@ -374,3 +374,6 @@ verify_jwt = false
 
 [functions.pwacity-agent]
 verify_jwt = false
+
+[functions.pwahealth-agent]
+verify_jwt = false
