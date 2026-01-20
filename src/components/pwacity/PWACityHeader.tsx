@@ -33,22 +33,11 @@ export const PWACityHeader: React.FC<PWACityHeaderProps> = ({
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex items-center justify-between px-4 py-3 bg-slate-900/80 backdrop-blur-md border-b border-cyan-500/20"
+      className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-slate-900/80 backdrop-blur-md border-b border-cyan-500/20"
+      style={{ paddingTop: '3rem' }} // Espaço para o notch
     >
-      {/* ESQUERDA: Menu */}
-      <div className="w-12 flex justify-start">
-        {onMenuClick && (
-          <motion.button
-            onClick={onMenuClick}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center hover:bg-cyan-500/20 transition-colors"
-            aria-label="Menu"
-          >
-            <Menu className="w-5 h-5 text-cyan-400" />
-          </motion.button>
-        )}
-      </div>
+      {/* ESQUERDA: Espaço vazio para manter centralização */}
+      <div className="w-12" />
 
       {/* CENTRO: Logo + Nome */}
       <motion.div
@@ -64,7 +53,7 @@ export const PWACityHeader: React.FC<PWACityHeaderProps> = ({
 
         {/* Nome */}
         <div className="flex flex-col items-start">
-          <span className="text-lg font-semibold text-cyan-400">
+          <span className="text-base font-semibold text-cyan-400">
             PWA City
           </span>
           {userName && (

@@ -26,7 +26,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
+import { VoiceSpectrumBidirectional } from "../voice/VoiceSpectrumBidirectional";
 import { HomePlayButton } from "../microservices/HomePlayButton";
 import { ModuleSelector } from "../voice/ModuleSelector";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
@@ -212,11 +212,11 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex-1 flex flex-col overflow-hidden"
+      className="h-full flex flex-col overflow-hidden"
     >
-      {/* HEADER */}
+      {/* HEADER - Altura fixa */}
       <motion.div
-        className="pt-12 pb-2 px-4"
+        className="flex-shrink-0 pt-12 pb-2 px-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -230,23 +230,13 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         </div>
       </motion.div>
 
-      {/* PLAYER AREA - Mesma estrutura dos módulos */}
+      {/* PLAYER AREA - Área flexível mas contida */}
       <motion.div
-        className="flex-1 flex flex-col items-center justify-center px-6 gap-6"
+        className="flex-shrink-0 flex flex-col items-center justify-center px-6 gap-4 py-4"
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        {/* SPECTRUM ANALYZER - Microserviço reutilizável */}
-        <SpectrumAnalyzer
-          state={visualizerState}
-          frequencyData={frequencyData}
-          primaryColor={HOME_CONFIG.color}
-          secondaryColor={HOME_CONFIG.secondaryColor}
-          height={60}
-          width={180}
-        />
-
         {/* HOME PLAY BUTTON - Design exclusivo com anel externo */}
         <HomePlayButton
           state={visualizerState === "loading" ? "loading" : visualizerState === "playing" ? "playing" : "idle"}
@@ -255,11 +245,19 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
           audioProgress={progress}
           disabled={false}
         />
+
+        {/* VOICE SPECTRUM BIDIRECIONAL - Exclusivo da HOME */}
+        <VoiceSpectrumBidirectional
+          state={visualizerState}
+          frequencyData={frequencyData}
+          primaryColor={HOME_CONFIG.color}
+          secondaryColor={HOME_CONFIG.secondaryColor}
+        />
       </motion.div>
 
-      {/* MODULE SELECTOR */}
+      {/* MODULE SELECTOR - Altura fixa, sempre visível */}
       <motion.div
-        className="px-4 pb-4 overflow-hidden"
+        className="flex-shrink-0 px-4 pb-4 overflow-visible"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
@@ -271,9 +269,9 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         />
       </motion.div>
 
-      {/* FOOTER */}
+      {/* FOOTER - Altura fixa */}
       <motion.div
-        className="py-2 text-center"
+        className="flex-shrink-0 py-2 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.4 }}

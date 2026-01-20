@@ -144,6 +144,16 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children }) => {
         />
       </motion.div>
 
+      {/* Brand text */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="absolute bottom-6 text-center text-white/30 text-sm"
+      >
+        <p>KnowYOU Voice Assistant</p>
+        <p className="text-xs mt-1">Versão Desktop Preview</p>
+      </motion.div>
     </div>
   );
 };

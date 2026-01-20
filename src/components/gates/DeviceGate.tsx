@@ -1,12 +1,14 @@
 // =============================================
-// Device Gate v2.0 - Com toggle allow_desktop_access
-// Build: 2026-01-14
+// Device Gate v2.1 - Com toggle allow_desktop_access + Demo Mode
+// Build: 2026-01-17
 // Tabelas: pwa_config, user_roles
 // src/components/gates/DeviceGate.tsx
+// Demo Mode Bypass Support
 // =============================================
 
 import { ReactNode, useState, useEffect } from "react";
 import { useDeviceDetection } from "@/hooks/useDeviceDetection";
+import { useDemoMode } from "@/hooks/useDemoMode";
 import { supabase } from "@/integrations/supabase/client";
 import PWADesktopBlock from "./PWADesktopBlock";
 import { MobilePlatformView } from "../mobile/MobilePlatformView";
@@ -27,10 +29,19 @@ const DeviceGate = ({
   mobileShowChat = false,
 }: DeviceGateProps) => {
   const { isMobile, isDesktop, isTablet } = useDeviceDetection();
+  const { isDemoMode } = useDemoMode();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [allowDesktopFromConfig, setAllowDesktopFromConfig] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
+
+  console.log("[DeviceGate] isDemoMode:", isDemoMode, "| isDesktop:", isDesktop, "| allowDesktop:", allowDesktop);
+
+  // DEMO MODE: Bypass total - permite qualquer dispositivo
+  if (isDemoMode) {
+    console.log("[DeviceGate] ✅ DEMO MODE BYPASS - Permitindo acesso");
+    return <>{children}</>;
+  }
 
   // Carregar config allow_desktop_access do banco
   useEffect(() => {

@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * PWAVoiceAssistant.tsx - v5.4.0
+ * PWAVoiceAssistant.tsx - v5.5.0
  * ============================================================
  * ARQUITETURA DE CONTAINERS INDEPENDENTES
  * - Cada container gerencia seu próprio autoplay
@@ -10,6 +10,7 @@
  * - FIX: useEffect movido para componente separado (React hooks rules)
  * - NEW: MobileFrame para visualização desktop em formato celular
  * - NEW: Coleta de fingerprint do dispositivo
+ * - NEW: Demo Mode Support
  * ============================================================
  */
 
@@ -29,6 +30,8 @@ import SafariPWAInstallPrompt from "@/components/pwa/SafariPWAInstallPrompt";
 import { MobileFrame } from "@/components/pwa/MobileFrame";
 import { useDeviceFingerprint } from "@/hooks/useDeviceFingerprint";
 import { supabase } from "@/integrations/supabase/client";
+import { useDemoMode } from "@/hooks/useDemoMode";
+import { useDemoStore } from "@/stores/demoStore";
 
 // Containers independentes
 import {
@@ -54,6 +57,10 @@ const AuthenticatedContent: React.FC<AuthenticatedContentProps> = ({
   pwaAccess,
   embedded
 }) => {
+  // DEMO MODE
+  const { isDemoMode, demoType } = useDemoMode();
+  const { seededConversations, demoUser } = useDemoStore();
+
   const {
     appState,
     setAppState,
@@ -63,7 +70,7 @@ const AuthenticatedContent: React.FC<AuthenticatedContentProps> = ({
     setAuthenticated,
   } = usePWAVoiceStore();
 
-  const { initialize: initializeHistory } = useHistoryStore();
+  const { initialize: initializeHistory, addMessage } = useHistoryStore();
   const { config } = useConfigPWA();
 
   // Coletar fingerprint do dispositivo
@@ -81,9 +88,25 @@ const AuthenticatedContent: React.FC<AuthenticatedContentProps> = ({
       setAuthenticated(true, userPhone);
       initializeHistory(userPhone);
 
-      console.log("[PWA v5.4.0] Authenticated with fingerprint:", fpToUse.substring(0, 20) + "...");
+      console.log("[PWA v5.5.0] Authenticated with fingerprint:", fpToUse.substring(0, 20) + "...");
     }
   }, [userPhone, deviceFingerprint, setAuthenticated, initializeHistory]);
+
+  // Carregar histórico seeded se demo=seeded
+  useEffect(() => {
+    if (isDemoMode && demoType === "seeded" && userPhone) {
+      console.log("[PWA] Carregando histórico seeded para demo");
+
+      // Popular historyStore com conversas fake
+      seededConversations.pwa.forEach((msg) => {
+        addMessage("home", {
+          role: msg.role,
+          content: msg.content,
+          audioUrl: null,
+        });
+      });
+    }
+  }, [isDemoMode, demoType, seededConversations.pwa, userPhone, addMessage]);
 
   const handleSplashComplete = useCallback(() => {
     setAppState("idle");

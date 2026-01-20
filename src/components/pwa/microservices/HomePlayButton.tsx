@@ -198,24 +198,26 @@ export const HomePlayButton: React.FC<HomePlayButtonProps> = ({
 
         {/* 7. PROGRESS ARC - Arco de progresso (opcional, para mostrar progresso do áudio) */}
         {audioProgress > 0 && audioProgress < 100 && (
-          <svg className="absolute inset-0 w-full h-full -rotate-90">
+          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 160 160">
+            {/* Círculo de fundo (track) */}
             <circle
-              cx="50%"
-              cy="50%"
-              r="45%"
+              cx="80"
+              cy="80"
+              r="72"
               fill="none"
               stroke="hsl(191, 100%, 50%, 0.3)"
               strokeWidth="2"
             />
+            {/* Círculo de progresso */}
             <circle
-              cx="50%"
-              cy="50%"
-              r="45%"
+              cx="80"
+              cy="80"
+              r="72"
               fill="none"
               stroke="hsl(191, 100%, 50%)"
               strokeWidth="2"
-              strokeDasharray={`${2 * Math.PI * 45} ${2 * Math.PI * 45}`}
-              strokeDashoffset={`${2 * Math.PI * 45 * (1 - audioProgress / 100)}`}
+              strokeDasharray={`${2 * Math.PI * 72}`}
+              strokeDashoffset={`${2 * Math.PI * 72 * (1 - audioProgress / 100)}`}
               strokeLinecap="round"
               className="transition-all duration-300"
             />

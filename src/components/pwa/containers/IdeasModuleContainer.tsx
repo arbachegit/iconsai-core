@@ -188,12 +188,13 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         transcription: userText,
       });
 
-      // Chamar pwa-ideias-agent (Perplexity - Advogado do Diabo DURO)
-      const { data: chatData, error: chatError } = await supabase.functions.invoke("pwa-ideias-agent", {
+      const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
         body: {
-          prompt: userText,
+          message: userText,
+          pwaMode: true,
+          chatType: MODULE_CONFIG.type,
+          agentSlug: MODULE_CONFIG.type,
           deviceId,
-          history: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
         },
       });
 

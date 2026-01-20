@@ -192,12 +192,13 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
         transcription: userText,
       });
 
-      // Chamar pwa-mundo-agent (Perplexity com dados em tempo real)
-      const { data: chatData, error: chatError } = await supabase.functions.invoke("pwa-mundo-agent", {
+      const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
         body: {
-          prompt: userText,
+          message: userText,
+          pwaMode: true,
+          chatType: MODULE_CONFIG.type,
+          agentSlug: MODULE_CONFIG.type,
           deviceId,
-          history: messages.slice(-4).map(m => ({ role: m.role, content: m.content })),
         },
       });
 

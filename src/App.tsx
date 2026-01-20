@@ -35,6 +35,7 @@ const InvitePage = lazy(() => import("./pages/InvitePage"));
 const Contact = lazy(() => import("./pages/Contact"));
 const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
 const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
+const PWACityPage = lazy(() => import("./pages/PWACityPage"));
 const PWAHealthPage = lazy(() => import("./pages/PWAHealthPage"));
 
 // Simple loading fallback
@@ -243,6 +244,9 @@ const App = () => (
                         <PWARegisterPage />
                       </DeviceGate>
                     } />
+
+                    {/* PWA City Route - Mobile Only (com toggle para admin/superadmin) */}
+                    <Route path="/pwacity" element={<PWACityPage />} />
 
                     {/* PWA Health Route - Mobile Only (com toggle para admin/superadmin) */}
                     <Route path="/pwahealth" element={<PWAHealthPage />} />

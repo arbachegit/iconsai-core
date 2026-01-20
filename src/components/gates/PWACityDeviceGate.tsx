@@ -1,17 +1,17 @@
 // =============================================
-// PWA City Device Gate v2.0
-// Build: 2026-01-19
-// Tabelas: pwacity_config
+// PWA City Device Gate v1.1
+// Build: 2026-01-17
+// Tabelas: pwacity_config, user_roles
 // src/components/gates/PWACityDeviceGate.tsx
 // Demo Mode Support
 //
 // REGRAS:
-// - Mobile/Tablet: sempre permite
-// - iOS: sempre permite
+// - Mobile: sempre permite (via PWACityAuthGate)
 // - Desktop:
 //   - Demo Mode: sempre permite (bypass total)
-//   - Toggle allow_desktop_access = true: permite TODOS
-//   - Toggle false: bloqueia todos
+//   - Admin/SuperAdmin + toggle true = permite
+//   - Usuário comum = NUNCA permite (independente do toggle)
+//   - Sem toggle = bloqueia todos
 // =============================================
 
 import { ReactNode, useState, useEffect } from "react";
@@ -27,39 +27,38 @@ interface PWACityDeviceGateProps {
 const PWACityDeviceGate = ({ children }: PWACityDeviceGateProps) => {
   const { isMobile, isDesktop, isTablet } = useDeviceDetection();
   const { isDemoMode } = useDemoMode();
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [checkingRole, setCheckingRole] = useState(true);
   const [allowDesktopFromConfig, setAllowDesktopFromConfig] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
 
+  // DEMO MODE: Bypass total de verificações
   // Carregar config allow_desktop_access do banco (tabela pwacity_config)
   useEffect(() => {
-    // Se demo mode, permitir acesso direto
+    // Se demo mode, não carregar config do banco
     if (isDemoMode) {
-      console.log("[PWACityDeviceGate] Demo mode detectado, permitindo acesso");
-      setAllowDesktopFromConfig(true);
+      console.log("[PWACityDeviceGate] Demo mode detectado, pulando carregamento de config");
       setConfigLoaded(true);
       return;
     }
 
     const loadDesktopConfig = async () => {
       try {
-        console.log("[PWACityDeviceGate] Carregando config do banco...");
         const { data, error } = await supabase
           .from("pwacity_config")
           .select("config_value")
           .eq("config_key", "allow_desktop_access")
           .single();
 
-        console.log("[PWACityDeviceGate] Config response:", { data, error });
-
         if (!error && data?.config_value === "true") {
-          console.log("[PWACityDeviceGate] ✅ allow_desktop_access = true");
+          console.log("[PWACityDeviceGate] allow_desktop_access = true (from pwacity_config)");
           setAllowDesktopFromConfig(true);
         } else {
-          console.log("[PWACityDeviceGate] ❌ allow_desktop_access = false");
+          console.log("[PWACityDeviceGate] allow_desktop_access = false (default)");
           setAllowDesktopFromConfig(false);
         }
       } catch (err) {
-        console.error("[PWACityDeviceGate] Erro ao carregar config:", err);
+        console.log("[PWACityDeviceGate] Config not found, using default (block desktop)");
         setAllowDesktopFromConfig(false);
       } finally {
         setConfigLoaded(true);
@@ -69,6 +68,48 @@ const PWACityDeviceGate = ({ children }: PWACityDeviceGateProps) => {
     loadDesktopConfig();
   }, [isDemoMode]);
 
+  // Verificar role do usuário
+  useEffect(() => {
+    // Se demo mode, não verificar role
+    if (isDemoMode) {
+      console.log("[PWACityDeviceGate] Demo mode detectado, pulando verificação de role");
+      setCheckingRole(false);
+      return;
+    }
+
+    const checkUserRole = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          console.log("[PWACityDeviceGate] No authenticated user");
+          setUserRole(null);
+          setCheckingRole(false);
+          return;
+        }
+
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const role = roleData?.role || "user";
+        console.log("[PWACityDeviceGate] User role:", role);
+        setUserRole(role);
+      } catch (error) {
+        console.error("[PWACityDeviceGate] Error checking user role:", error);
+        setUserRole("user"); // Default to user on error
+      } finally {
+        setCheckingRole(false);
+      }
+    };
+
+    checkUserRole();
+  }, [isDemoMode]);
+
   // Loading spinner component
   const LoadingSpinner = () => (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -76,8 +117,8 @@ const PWACityDeviceGate = ({ children }: PWACityDeviceGateProps) => {
     </div>
   );
 
-  // Aguardar config carregar
-  if (!configLoaded) {
+  // Aguardar role e config carregarem
+  if (checkingRole || !configLoaded) {
     return <LoadingSpinner />;
   }
 
@@ -97,19 +138,39 @@ const PWACityDeviceGate = ({ children }: PWACityDeviceGateProps) => {
     return <>{children}</>;
   }
 
-  // DESKTOP: verificar toggle de configuração
+  // DESKTOP: aplicar regras especiais
   if (isDesktop) {
-    // Se toggle habilitado OU demo mode, permite acesso
-    if (allowDesktopFromConfig) {
-      console.log("[PWACityDeviceGate] ✅ Desktop permitido (toggle habilitado)");
+    // BYPASS: Demo mode sempre permite desktop
+    if (isDemoMode) {
+      console.log("[PWACityDeviceGate] Demo mode bypass: allowing desktop access");
       return <>{children}</>;
     }
 
-    // Toggle desabilitado - bloqueia acesso
-    console.log("[PWACityDeviceGate] ❌ Desktop bloqueado (toggle desabilitado)");
+
+    const isAdminOrSuperAdmin = userRole === "admin" || userRole === "superadmin";
+
+    // REGRA CRÍTICA: Usuários comuns NUNCA podem acessar no desktop
+    if (!isAdminOrSuperAdmin) {
+      console.log("[PWACityDeviceGate] Blocking desktop: user role is 'user' (only admin/superadmin allowed)");
+      return (
+        <PWACityDesktopBlock
+          customMessage="PWA City está disponível apenas em dispositivos móveis para usuários."
+          customTitle="Acesso Restrito"
+        />
+      );
+    }
+
+    // Admin/SuperAdmin: verificar toggle
+    if (isAdminOrSuperAdmin && allowDesktopFromConfig) {
+      console.log("[PWACityDeviceGate] Allowing desktop: admin/superadmin + toggle enabled");
+      return <>{children}</>;
+    }
+
+    // Admin/SuperAdmin mas toggle desabilitado
+    console.log("[PWACityDeviceGate] Blocking desktop: toggle disabled (even for admin)");
     return (
       <PWACityDesktopBlock
-        customMessage="O acesso desktop ao PWA City está desabilitado. Use um dispositivo móvel ou ative o toggle de desktop."
+        customMessage="O acesso desktop ao PWA City está desabilitado. Ative o toggle em Config. PWA."
         customTitle="Desktop Desabilitado"
       />
     );

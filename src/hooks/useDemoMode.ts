@@ -9,7 +9,7 @@ export interface DemoModeState {
 
 /**
  * Hook para detectar se a aplicação está em modo demonstração
- * Verifica os query params ?demo=clean, ?demo=seeded ou ?demo=true
+ * Verifica os query params ?demo=clean ou ?demo=seeded
  */
 export function useDemoMode(): DemoModeState {
   // Detectar IMEDIATAMENTE, sem esperar useEffect
@@ -17,13 +17,9 @@ export function useDemoMode(): DemoModeState {
   const demoParam = params.get("demo");
   const storedDemo = sessionStorage.getItem("pwa-demo-mode");
 
-  // Aceitar "true" como equivalente a "clean"
-  const normalizedDemo = demoParam === "true" ? "clean" : demoParam;
-  const normalizedStored = storedDemo === "true" ? "clean" : storedDemo;
-
   const initialDemoMode =
-    (normalizedDemo === "clean" || normalizedDemo === "seeded") ? normalizedDemo :
-    (normalizedStored === "clean" || normalizedStored === "seeded") ? normalizedStored :
+    (demoParam === "clean" || demoParam === "seeded") ? demoParam :
+    (storedDemo === "clean" || storedDemo === "seeded") ? storedDemo :
     null;
 
   const [demoMode, setDemoMode] = useState<DemoModeState>({
@@ -39,30 +35,26 @@ export function useDemoMode(): DemoModeState {
     console.log("[useDemoMode] URL:", window.location.href);
     console.log("[useDemoMode] Param demo:", demoParam);
 
-    // Aceitar "true" como equivalente a "clean"
-    const normalizedParam = demoParam === "true" ? "clean" : demoParam;
-
-    if (normalizedParam === "clean" || normalizedParam === "seeded") {
-      console.log(`[useDemoMode] ✅ DEMO MODE ATIVADO: ${normalizedParam}`);
+    if (demoParam === "clean" || demoParam === "seeded") {
+      console.log(`[useDemoMode] ✅ DEMO MODE ATIVADO: ${demoParam}`);
 
       setDemoMode({
         isDemoMode: true,
-        demoType: normalizedParam,
+        demoType: demoParam,
       });
 
       // Salvar em sessionStorage
-      sessionStorage.setItem("pwa-demo-mode", normalizedParam);
+      sessionStorage.setItem("pwa-demo-mode", demoParam);
     } else {
       // Verificar sessionStorage
       const storedDemo = sessionStorage.getItem("pwa-demo-mode");
-      const normalizedStored = storedDemo === "true" ? "clean" : storedDemo;
       console.log("[useDemoMode] SessionStorage:", storedDemo);
 
-      if (normalizedStored === "clean" || normalizedStored === "seeded") {
-        console.log(`[useDemoMode] ✅ DEMO MODE (from session): ${normalizedStored}`);
+      if (storedDemo === "clean" || storedDemo === "seeded") {
+        console.log(`[useDemoMode] ✅ DEMO MODE (from session): ${storedDemo}`);
         setDemoMode({
           isDemoMode: true,
-          demoType: normalizedStored,
+          demoType: storedDemo,
         });
       } else {
         console.log("[useDemoMode] ❌ Modo normal (sem demo)");
