@@ -6,9 +6,10 @@
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const FUNCTION_VERSION = "2.0.1-PRODUCTION";
+const FUNCTION_VERSION = "2.0.0-PRODUCTION";
 
 // API Keys
 const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY") || Deno.env.get("PERPLEXITY_API_KEY");
@@ -87,6 +88,7 @@ interface NearbyClinic {
   address: string;
   distanceText: string;
   isPublic: boolean;
+  isOpen?: boolean;
   openNow?: string;
 }
 
@@ -123,6 +125,8 @@ function buildSystemPrompt(
     const locationContext = LOCATION_CONTEXT_TEMPLATE
       .replace("{{CITY}}", location.city || "Não identificada")
       .replace("{{STATE}}", location.state || "")
+      .replace("{{LAT}}", location.latitude.toFixed(4))
+      .replace("{{LNG}}", location.longitude.toFixed(4))
       .replace("{{CLINICS_LIST}}", clinicsList || "Nenhuma clínica encontrada próxima.");
 
     prompt += locationContext;
@@ -137,6 +141,7 @@ interface RequestBody {
   userPhone?: string | null;
   deviceId?: string | null;
   history?: Array<{ role: string; content: string }>;
+  // Dados de localização
   location?: {
     latitude: number;
     longitude: number;
@@ -144,6 +149,7 @@ interface RequestBody {
     state?: string;
     country?: string;
   };
+  // Clínicas pré-carregadas (opcional)
   nearbyClinics?: NearbyClinic[];
 }
 
@@ -171,7 +177,7 @@ async function callPerplexity(prompt: string, history: Array<{ role: string; con
 
   const messages = [
     { role: "system", content: systemPrompt },
-    ...history.slice(-6),
+    ...history.slice(-6), // Mais histórico para contexto de sintomas
     { role: "user", content: prompt },
   ];
 
@@ -184,7 +190,7 @@ async function callPerplexity(prompt: string, history: Array<{ role: string; con
     body: JSON.stringify({
       model: "sonar",
       messages,
-      temperature: 0.5,
+      temperature: 0.5, // Menor temperatura para respostas mais consistentes em saúde
       max_tokens: 1500,
       return_citations: true,
     }),
@@ -198,13 +204,13 @@ async function callPerplexity(prompt: string, history: Array<{ role: string; con
   const data = await response.json();
   const responseTime = Date.now() - startTime;
 
-  // Limpar resposta
+  // Limpar resposta: remover citações [1], [2], etc e menções a "perplexity"
   let cleanResponse = data.choices?.[0]?.message?.content || "Sem resposta";
   cleanResponse = cleanResponse
-    .replace(/\[\d+\]/g, "")
-    .replace(/\[[\d,\s]+\]/g, "")
-    .replace(/perplexity/gi, "")
-    .replace(/\s{2,}/g, " ")
+    .replace(/\[\d+\]/g, "") // Remove [1], [2], etc
+    .replace(/\[[\d,\s]+\]/g, "") // Remove [1,2,3], etc
+    .replace(/perplexity/gi, "") // Remove "perplexity"
+    .replace(/\s{2,}/g, " ") // Remove espaços duplos
     .trim();
 
   return {
@@ -258,7 +264,11 @@ async function callGemini(prompt: string, history: Array<{ role: string; content
   const responseTime = Date.now() - startTime;
 
   let textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
-  textContent = textContent.replace(/\[\d+\]/g, "").replace(/\s{2,}/g, " ").trim();
+  // Limpar resposta
+  textContent = textContent
+    .replace(/\[\d+\]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
   return {
     success: true,
@@ -306,7 +316,11 @@ async function callOpenAI(prompt: string, history: Array<{ role: string; content
   const responseTime = Date.now() - startTime;
 
   let textContent = data.choices?.[0]?.message?.content || "Sem resposta";
-  textContent = textContent.replace(/\[\d+\]/g, "").replace(/\s{2,}/g, " ").trim();
+  // Limpar resposta
+  textContent = textContent
+    .replace(/\[\d+\]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
   return {
     success: true,
@@ -348,11 +362,11 @@ async function executeWithFallback(
         result.fallbackReason = `Primary providers failed: ${fallbackReason}`;
       }
 
-      console.log(`[pwa-saude-agent] Success with ${provider.name}`);
+      console.log(`[pwa-saude-agent] ✅ Success with ${provider.name}`);
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error(`[pwa-saude-agent] ${provider.name} failed:`, errorMsg);
+      console.error(`[pwa-saude-agent] ❌ ${provider.name} failed:`, errorMsg);
 
       lastError = error instanceof Error ? error : new Error(errorMsg);
       fallbackReason += `${provider.name}: ${errorMsg}; `;

@@ -33,13 +33,9 @@ export default function PWATab() {
   const [isLoadingDesktop, setIsLoadingDesktop] = useState(true);
   const [isSavingDesktop, setIsSavingDesktop] = useState(false);
 
-  // PWA City states
-  const [allowPWACityDesktopAccess, setAllowPWACityDesktopAccess] = useState(false);
-  const [isLoadingPWACityDesktop, setIsLoadingPWACityDesktop] = useState(true);
-  const [isSavingPWACityDesktop, setIsSavingPWACityDesktop] = useState(false);
-  const [defaultApiProvider, setDefaultApiProvider] = useState<string>("openai");
-  const [isLoadingApiProvider, setIsLoadingApiProvider] = useState(true);
-  const [isSavingApiProvider, setIsSavingApiProvider] = useState(false);
+  // PWA Health states
+  const [allowPWAHealthDesktopAccess, setAllowPWAHealthDesktopAccess] = useState(false);
+  const [isLoadingPWAHealthDesktop, setIsLoadingPWAHealthDesktop] = useState(true);
 
   const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
 
@@ -95,108 +91,34 @@ export default function PWATab() {
     }
   };
 
-  // Carregar configurações do PWA City
+  // Carregar configurações do PWA Health
   useEffect(() => {
-    const loadPWACityConfig = async () => {
+    const loadPWAHealthConfig = async () => {
       try {
-        // Carregar toggle desktop
         const { data: desktopData } = await supabase
-          .from("pwacity_config")
+          .from("pwacity_config") // PWA Health usa mesma tabela do PWA City
           .select("config_value")
           .eq("config_key", "allow_desktop_access")
           .single();
 
         if (desktopData) {
-          setAllowPWACityDesktopAccess(desktopData.config_value === "true");
-        }
-
-        // Carregar API provider
-        const { data: apiData } = await supabase
-          .from("pwacity_config")
-          .select("config_value")
-          .eq("config_key", "default_api_provider")
-          .single();
-
-        if (apiData) {
-          setDefaultApiProvider(apiData.config_value);
+          setAllowPWAHealthDesktopAccess(desktopData.config_value === "true");
         }
       } catch (err) {
-        console.log("[PWATab] PWA City config not found, using defaults");
+        console.log("[PWATab] PWA Health config not found, using defaults");
       } finally {
-        setIsLoadingPWACityDesktop(false);
-        setIsLoadingApiProvider(false);
+        setIsLoadingPWAHealthDesktop(false);
       }
     };
 
-    loadPWACityConfig();
+    loadPWAHealthConfig();
   }, []);
-
-  // Toggle acesso desktop PWA City
-  const handleTogglePWACityDesktopAccess = async () => {
-    setIsSavingPWACityDesktop(true);
-    const newValue = !allowPWACityDesktopAccess;
-
-    try {
-      const { error } = await supabase
-        .from("pwacity_config")
-        .upsert({
-          config_key: "allow_desktop_access",
-          config_value: String(newValue),
-          config_type: "boolean",
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "config_key" });
-
-      if (error) throw error;
-
-      setAllowPWACityDesktopAccess(newValue);
-      toast.success(newValue ? "Acesso desktop PWA City liberado" : "Acesso desktop PWA City bloqueado");
-    } catch (err) {
-      console.error("[PWATab] Erro ao salvar PWA City config:", err);
-      toast.error("Erro ao salvar configuração");
-    } finally {
-      setIsSavingPWACityDesktop(false);
-    }
-  };
-
-  // Alterar API provider do PWA City
-  const handleChangeApiProvider = async (newProvider: string) => {
-    setIsSavingApiProvider(true);
-
-    try {
-      const { error } = await supabase
-        .from("pwacity_config")
-        .upsert({
-          config_key: "default_api_provider",
-          config_value: newProvider,
-          config_type: "text",
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "config_key" });
-
-      if (error) throw error;
-
-      setDefaultApiProvider(newProvider);
-      toast.success(`API alterada para ${newProvider === "openai" ? "OpenAI" : "Gemini"}`);
-    } catch (err) {
-      console.error("[PWATab] Erro ao salvar API provider:", err);
-      toast.error("Erro ao salvar configuração");
-    } finally {
-      setIsSavingApiProvider(false);
-    }
-  };
 
   const copyLink = () => {
     navigator.clipboard.writeText(pwaUrl);
     setCopied(true);
     toast.success("Link copiado!");
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const openPWA = () => {
-    if (!allowDesktopAccess) {
-      toast.error("Habilite o acesso desktop primeiro");
-      return;
-    }
-    window.open(pwaUrl, '_blank');
   };
 
   const testVoice = async () => {
@@ -307,127 +229,113 @@ export default function PWATab() {
               </CardContent>
             </Card>
           )}
-
-          {/* Botões de Acesso */}
-          <div className="pt-2 space-y-3">
-            {/* Botão PWA */}
-            <Button
-              onClick={openPWA}
-              disabled={!allowDesktopAccess}
-              className="w-full"
-              variant={allowDesktopAccess ? "default" : "secondary"}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              {allowDesktopAccess ? "Acessar PWA" : "Habilite o acesso desktop para abrir"}
-            </Button>
-
-            {/* Botão PWA City */}
-            <Button
-              onClick={() => window.open("/pwacity", "_blank")}
-              className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white border-0"
-              variant="outline"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Acessar PWA City
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
-      {/* PWA City Config */}
-      <Card className="border-2 border-cyan-500/20">
+      {/* Demonstração e Vendas */}
+      <Card className="border-2 border-yellow-500/30 bg-yellow-500/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-cyan-500" />
-            PWA City (Microserviço)
+            <Play className="h-5 w-5 text-yellow-500" />
+            Demonstração e Vendas
           </CardTitle>
-          <CardDescription>Chat IA separado com OpenAI/Gemini</CardDescription>
+          <CardDescription>
+            Abra demos pré-configuradas para apresentar aos clientes (sem necessidade de login)
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Toggle Acesso Desktop PWA City */}
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-            <div className="flex items-center gap-4">
-              <div className="p-2 rounded-lg bg-cyan-500/10">
-                <Monitor className="h-6 w-6 text-cyan-500" />
-              </div>
-              <div>
-                <Label htmlFor="pwacity-allow-desktop" className="text-base font-medium">
-                  Permitir Acesso Desktop (Admin)
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Apenas admin/superadmin podem acessar no desktop (usuários comuns sempre mobile)
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {isLoadingPWACityDesktop ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Badge variant={allowPWACityDesktopAccess ? "default" : "secondary"} className={allowPWACityDesktopAccess ? "bg-cyan-500 hover:bg-cyan-600" : ""}>
-                    {allowPWACityDesktopAccess ? "Ativo" : "Inativo"}
-                  </Badge>
-                  <Switch
-                    id="pwacity-allow-desktop"
-                    checked={allowPWACityDesktopAccess}
-                    onCheckedChange={handleTogglePWACityDesktopAccess}
-                    disabled={isSavingPWACityDesktop}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Seletor de API */}
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-            <div className="flex items-center gap-4">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Sparkles className="h-6 w-6 text-purple-500" />
-              </div>
-              <div>
-                <Label htmlFor="api-provider" className="text-base font-medium">
-                  Provedor de IA
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Escolha qual API usar para o chat
-                </p>
-              </div>
-            </div>
-            <div className="w-40">
-              {isLoadingApiProvider ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Select
-                  value={defaultApiProvider}
-                  onValueChange={handleChangeApiProvider}
-                  disabled={isSavingApiProvider}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openai">OpenAI (GPT-4)</SelectItem>
-                    <SelectItem value="gemini">Google Gemini</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
-
-          {/* Aviso */}
-          <Card className="border-cyan-500/30 bg-cyan-500/5">
+        <CardContent className="space-y-6">
+          {/* Aviso Global */}
+          <Card className="border-green-500/30 bg-green-500/5">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <MessageSquare className="h-5 w-5 text-cyan-500 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
-                  <p className="font-medium text-cyan-500">Microserviço Separado</p>
+                  <p className="font-medium text-green-500">Acesso Rápido para Vendas</p>
                   <p className="text-muted-foreground">
-                    O PWA City é um chat independente com autenticação própria, separado do PWA principal.
+                    Clique nos botões abaixo para abrir demos sem necessidade de login ou configuração. Perfeito para apresentações!
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* PWA Principal (KnowYOU) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-blue-500" />
+              <h3 className="font-semibold text-sm">PWA Principal (KnowYOU)</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.open(`${window.location.origin}/pwa?demo=clean`, "_blank");
+                  toast.success("Abrindo demo limpo do PWA Principal");
+                }}
+                className="w-full"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Demo Limpo
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.open(`${window.location.origin}/pwa?demo=seeded`, "_blank");
+                  toast.success("Abrindo demo com histórico do PWA Principal");
+                }}
+                className="w-full"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Demo com Histórico
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* PWA Health (Saúde) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Heart className="h-4 w-4 text-rose-500" />
+              <h3 className="font-semibold text-sm">PWA Health (Saúde)</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.open(`${window.location.origin}/pwahealth?demo=clean`, "_blank");
+                  toast.success("Abrindo demo limpo do PWA Health");
+                }}
+                className="w-full"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Demo Limpo
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.open(`${window.location.origin}/pwahealth?demo=seeded`, "_blank");
+                  toast.success("Abrindo demo com histórico do PWA Health");
+                }}
+                className="w-full"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Demo com Histórico
+              </Button>
+            </div>
+          </div>
+
+          {/* Explicação */}
+          <div className="p-3 bg-muted/50 rounded-lg text-sm">
+            <p className="font-medium mb-2">✨ Como funciona:</p>
+            <ul className="text-muted-foreground space-y-1">
+              <li>• <strong>Demo Limpo:</strong> Sem histórico, ideal para primeira apresentação</li>
+              <li>• <strong>Demo com Histórico:</strong> Conversas de exemplo já carregadas, mostra o potencial</li>
+              <li>• <strong>Sem login:</strong> Acesso imediato sem credenciais</li>
+              <li>• <strong>Seguro:</strong> Nenhuma conversa é salva no banco de dados</li>
+              <li>• <strong>Desktop liberado:</strong> Funciona automaticamente no computador</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
 

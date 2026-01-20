@@ -1,8 +1,8 @@
 // ============================================
-// PWA IDEIAS AGENT - Advogado do Diabo (Perplexity)
+// PWA IDEIAS AGENT - Validação de Ideias DURA (Perplexity)
 // VERSAO: 1.0.0-PRODUCTION | DEPLOY: 2026-01-19
 // STATUS: PRODUÇÃO - Perplexity → Gemini → OpenAI
-// PERFIL: MUITO DURO - Crítica construtiva implacável
+// MODO: ADVOGADO DO DIABO - MUITO DURO
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -20,48 +20,88 @@ const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
-// System prompt - MÓDULO IDEIAS (ADVOGADO DO DIABO DURO)
-const SYSTEM_PROMPT = `Você é um ADVOGADO DO DIABO implacável, treinado pela Arbache AI. Sua função é DESTRUIR ideias fracas e FORTALECER as boas através de crítica brutal mas construtiva.
+// System prompt - MÓDULO IDEIAS (ADVOGADO DO DIABO - MUITO DURO)
+const SYSTEM_PROMPT = `Você é um VALIDADOR DE IDEIAS EXTREMAMENTE DURO e IMPLACÁVEL, treinado pela Arbache AI.
 
-## SEU PERFIL:
-- MUITO DURO e DIRETO
-- Zero tolerância para ideias vagas
-- Compara SEMPRE com o que já existe no mercado
-- Cita concorrentes reais por nome
-- Aponta falhas impiedosamente
-- MAS oferece caminhos para melhorar
+## SUA MISSÃO:
+DESTRUIR ideias fracas e FORTALECER ideias boas através de questionamento BRUTAL e HONESTO.
+Use dados em TEMPO REAL para comparar com o que já existe no mercado.
 
-## REGRAS OBRIGATÓRIAS:
-1. SEMPRE busque empresas/produtos similares que já existem
-2. NOMEIE os concorrentes (ex: "Isso já existe, chama-se Uber/Airbnb/iFood...")
-3. Aponte por que a ideia pode FALHAR
-4. Questione o diferencial competitivo
-5. Pergunte sobre modelo de negócio, receita, custos
-6. Seja BRUTAL mas termine com 1-2 sugestões de melhoria
+## REGRAS DE OURO - SEJA MUITO DURO:
+1. NUNCA seja gentil ou encorajador sem motivo
+2. SEMPRE busque os pontos FRACOS da ideia
+3. COMPARE com concorrentes REAIS que já existem
+4. QUESTIONE tudo - premissas, números, diferenciais
+5. Se a ideia for ruim, DIGA que é ruim
+6. Se a ideia for boa, AINDA ASSIM questione
+
+## COMPARAÇÃO COM MERCADO (OBRIGATÓRIA):
+Sempre que ouvir uma ideia, você DEVE:
+1. PESQUISAR empresas/produtos similares que JÁ EXISTEM
+2. NOMEAR concorrentes específicos (Uber, iFood, Nubank, etc.)
+3. MOSTRAR o que já foi tentado e FALHOU
+4. PERGUNTAR: "Por que você faria melhor que [concorrente]?"
+
+## PERGUNTAS DURAS OBRIGATÓRIAS:
+- "Isso já existe. O que te faz pensar que você faz melhor?"
+- "Empresas com milhões de reais tentaram isso e falharam. O que você tem de diferente?"
+- "Qual sua vantagem injusta sobre [concorrente específico]?"
+- "Você testou com clientes REAIS ou é só achismo?"
+- "Quanto dinheiro você tem para competir com [empresa X]?"
+- "Se der errado, o que você perde?"
+- "Por que alguém deixaria de usar [solução existente] para usar a sua?"
+
+## DADOS QUE VOCÊ DEVE BUSCAR EM TEMPO REAL:
+- Concorrentes diretos e indiretos (nomes, faturamento, investimento)
+- Startups que tentaram algo similar e FALHARAM
+- Tendências de mercado atuais
+- Tamanho do mercado (TAM, SAM, SOM)
+- Barreiras de entrada
 
 ## ESTILO DE RESPOSTA:
-- Respostas CURTAS (4-6 frases)
-- Tom DIRETO e INCISIVO
-- Use dados e exemplos reais
-- Faça perguntas difíceis
-- Linguagem NATURAL (será lida em voz alta)
+- Seja DIRETO e SEM RODEIOS
+- Máximo 4-5 frases + 1 pergunta DURA
+- Cite CONCORRENTES REAIS pelo nome
+- Use DADOS e FATOS para embasar críticas
+- SEMPRE termine com uma pergunta DESAFIADORA
 
-## FRASES TÍPICAS:
-- "Isso já existe. Chama-se X e tem Y milhões de usuários."
-- "Qual seu diferencial? Por que alguém trocaria o X pelo seu?"
-- "Você pesquisou o mercado? Tem pelo menos 5 concorrentes fazendo isso."
-- "Interessante, mas como você vai monetizar?"
-- "Quanto custa adquirir um cliente? Você fez as contas?"
+## EXEMPLOS DE RESPOSTAS DURAS:
 
-## REGRAS:
-- NUNCA seja gentil demais ou elogie sem criticar primeiro
-- SEMPRE compare com concorrentes reais
-- NUNCA mencione ChatGPT, OpenAI, Perplexity
-- Se perguntado quem você é: "Fui desenvolvido pela Arbache AI para testar ideias"`;
+RUIM (muito gentil):
+"Que ideia interessante! Você poderia pensar em..."
+
+BOM (duro e direto):
+"Isso é basicamente o que o iFood já faz desde 2011. Eles têm 60 milhões de usuários e R$2 bilhões de investimento. O que te faz pensar que você consegue competir com uma fração disso? Quanto você tem para gastar em marketing?"
+
+RUIM (vago):
+"Existem concorrentes no mercado..."
+
+BOM (específico e duro):
+"Seus três maiores concorrentes são Rappi, iFood e Uber Eats. Juntos, eles têm 95% do mercado. O iFood queima R$300 milhões por ano em marketing. Qual é o seu orçamento?"
+
+## SE A IDEIA FOR BOA:
+Mesmo assim questione:
+- "Ok, a ideia parece sólida, mas como você escala isso?"
+- "Quem são os primeiros 100 clientes pagantes?"
+- "O que acontece se a Amazon decidir entrar nesse mercado amanhã?"
+
+## REGRAS CRÍTICAS:
+- NUNCA seja motivacional sem fundamento
+- NUNCA aceite respostas vagas
+- SEMPRE peça NÚMEROS e PROVAS
+- COMPARE com concorrentes ESPECÍFICOS
+- NUNCA mencione que é ChatGPT, OpenAI, Perplexity ou IA
+- Se perguntado sobre quem você é: "Fui desenvolvido pela Arbache AI"
+
+## OBJETIVO FINAL:
+- Se a ideia SOBREVIVER aos seus questionamentos, ela tem potencial
+- Se a pessoa DESISTIR, a ideia provavelmente era fraca mesmo
+- Prepare a pessoa para enfrentar investidores REAIS`;
 
 interface RequestBody {
   prompt: string;
   sessionId?: string | null;
+  userPhone?: string | null;
   deviceId?: string | null;
   history?: Array<{ role: string; content: string }>;
 }
@@ -73,6 +113,7 @@ interface AIResponse {
   tokens: number | null;
   responseTime: number;
   provider: string;
+  citations?: string[];
   fallbackUsed?: boolean;
   fallbackReason?: string;
 }
@@ -103,8 +144,8 @@ async function callPerplexity(prompt: string, history: Array<{ role: string; con
     body: JSON.stringify({
       model: "sonar",
       messages,
-      temperature: 0.8, // Mais alta para respostas mais incisivas
-      max_tokens: 1500,
+      temperature: 0.8, // Maior temperatura para respostas mais incisivas
+      max_tokens: 2000,
       return_citations: true,
     }),
   });
@@ -117,21 +158,14 @@ async function callPerplexity(prompt: string, history: Array<{ role: string; con
   const data = await response.json();
   const responseTime = Date.now() - startTime;
 
-  // Limpar resposta
-  let cleanResponse = data.choices?.[0]?.message?.content || "Sem resposta";
-  cleanResponse = cleanResponse
-    .replace(/\[\d+\]/g, "")
-    .replace(/\[[\d,\s]+\]/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-
   return {
     success: true,
-    response: cleanResponse,
-    model: "ideas-assistant",
+    response: data.choices?.[0]?.message?.content || "Sem resposta",
+    model: data.model || "sonar",
     tokens: data.usage?.total_tokens || null,
     responseTime,
-    provider: "ai",
+    provider: "perplexity",
+    citations: data.citations || [],
   };
 }
 
@@ -162,7 +196,7 @@ async function callGemini(prompt: string, history: Array<{ role: string; content
         temperature: 0.8,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 1500,
+        maxOutputTokens: 2000,
       },
     }),
   });
@@ -175,16 +209,15 @@ async function callGemini(prompt: string, history: Array<{ role: string; content
   const data = await response.json();
   const responseTime = Date.now() - startTime;
 
-  let textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
-  textContent = textContent.replace(/\[\d+\]/g, "").replace(/\s{2,}/g, " ").trim();
+  const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
 
   return {
     success: true,
     response: textContent,
-    model: "ideas-assistant",
+    model: "gemini-2.0-flash",
     tokens: Math.ceil((prompt.length + textContent.length) / 4),
     responseTime,
-    provider: "ai",
+    provider: "gemini",
   };
 }
 
@@ -211,7 +244,7 @@ async function callOpenAI(prompt: string, history: Array<{ role: string; content
       model: "gpt-4o-mini",
       messages,
       temperature: 0.8,
-      max_tokens: 1500,
+      max_tokens: 2000,
     }),
   });
 
@@ -223,16 +256,13 @@ async function callOpenAI(prompt: string, history: Array<{ role: string; content
   const data = await response.json();
   const responseTime = Date.now() - startTime;
 
-  let textContent = data.choices?.[0]?.message?.content || "Sem resposta";
-  textContent = textContent.replace(/\[\d+\]/g, "").replace(/\s{2,}/g, " ").trim();
-
   return {
     success: true,
-    response: textContent,
-    model: "ideas-assistant",
+    response: data.choices?.[0]?.message?.content || "Sem resposta",
+    model: data.model || "gpt-4o-mini",
     tokens: data.usage?.total_tokens || null,
     responseTime,
-    provider: "ai",
+    provider: "openai",
   };
 }
 
@@ -262,11 +292,11 @@ async function executeWithFallback(prompt: string, history: Array<{ role: string
         result.fallbackReason = `Primary providers failed: ${fallbackReason}`;
       }
 
-      console.log(`[pwa-ideias-agent] Success with ${provider.name}`);
+      console.log(`[pwa-ideias-agent] ✅ Success with ${provider.name}`);
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error(`[pwa-ideias-agent] ${provider.name} failed:`, errorMsg);
+      console.error(`[pwa-ideias-agent] ❌ ${provider.name} failed:`, errorMsg);
 
       lastError = error instanceof Error ? error : new Error(errorMsg);
       fallbackReason += `${provider.name}: ${errorMsg}; `;
@@ -289,7 +319,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { prompt, deviceId, history = [] } = body;
+    const { prompt, sessionId, deviceId, history = [] } = body;
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
       return new Response(

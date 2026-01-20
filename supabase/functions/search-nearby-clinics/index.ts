@@ -9,13 +9,14 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 const GOOGLE_PLACES_API_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
 const PLACES_NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
+const PLACES_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json";
 
 interface NearbyRequest {
   latitude: number;
   longitude: number;
   radius?: number; // metros, default 5000 (5km)
   type?: "hospital" | "clinic" | "doctor" | "pharmacy" | "all";
-  keyword?: string;
+  keyword?: string; // ex: "UBS", "pronto socorro", "cardiologista"
   maxResults?: number;
 }
 
@@ -23,16 +24,16 @@ interface Clinic {
   id: string;
   name: string;
   address: string;
-  distance: number;
-  distanceText: string;
+  distance: number; // em metros
+  distanceText: string; // "1.2 km"
   rating?: number;
   totalRatings?: number;
   isOpen?: boolean;
-  openNow?: string;
+  openNow?: string; // "Aberto agora" ou "Fechado"
   phone?: string;
   website?: string;
   types: string[];
-  isPublic: boolean;
+  isPublic: boolean; // UBS, hospital público
   location: {
     lat: number;
     lng: number;
@@ -42,7 +43,7 @@ interface Clinic {
 
 // Calcular distância entre dois pontos (Haversine)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
+  const R = 6371000; // Raio da Terra em metros
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =

@@ -1,19 +1,22 @@
 // =============================================
-// PWA Health Device Gate v1.0
-// Build: 2026-01-17
-// Tabelas: pwahealth_config, user_roles
+// PWA Health Device Gate v2.0
+// Build: 2026-01-19
+// Tabelas: pwahealth_config
 // src/components/gates/PWAHealthDeviceGate.tsx
+// Demo Mode Support
 //
 // REGRAS:
-// - Mobile: sempre permite (via PWAHealthAuthGate)
+// - Mobile/Tablet: sempre permite
+// - iOS: sempre permite
 // - Desktop:
-//   - Admin/SuperAdmin + toggle true = permite
-//   - Usuário comum = NUNCA permite (independente do toggle)
-//   - Sem toggle = bloqueia todos
+//   - Demo Mode: sempre permite (bypass total)
+//   - Toggle allow_desktop_access = true: permite TODOS
+//   - Toggle false: bloqueia todos
 // =============================================
 
 import { ReactNode, useState, useEffect } from "react";
 import { useDeviceDetection } from "@/hooks/useDeviceDetection";
+import { useDemoMode } from "@/hooks/useDemoMode";
 import { supabase } from "@/integrations/supabase/client";
 import PWAHealthDesktopBlock from "./PWAHealthDesktopBlock";
 
@@ -23,83 +26,63 @@ interface PWAHealthDeviceGateProps {
 
 const PWAHealthDeviceGate = ({ children }: PWAHealthDeviceGateProps) => {
   const { isMobile, isDesktop, isTablet } = useDeviceDetection();
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [checkingRole, setCheckingRole] = useState(true);
+  const { isDemoMode } = useDemoMode();
   const [allowDesktopFromConfig, setAllowDesktopFromConfig] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
 
   // Carregar config allow_desktop_access do banco (tabela pwahealth_config)
   useEffect(() => {
+    // Se demo mode, permitir acesso direto
+    if (isDemoMode) {
+      console.log("[PWAHealthDeviceGate] Demo mode detectado, permitindo acesso");
+      setAllowDesktopFromConfig(true);
+      setConfigLoaded(true);
+      return;
+    }
+
     const loadDesktopConfig = async () => {
       try {
+        console.log("[PWAHealthDeviceGate] Carregando config do banco...");
         const { data, error } = await supabase
           .from("pwahealth_config")
           .select("config_value")
           .eq("config_key", "allow_desktop_access")
           .single();
 
-        if (!error && data?.config_value === "true") {
-          console.log("[PWAHealthDeviceGate] allow_desktop_access = true (from pwahealth_config)");
+        console.log("[PWAHealthDeviceGate] Config response:", { data, error });
+
+        if (error) {
+          // Se tabela não existe, permitir por padrão
+          console.log("[PWAHealthDeviceGate] Config não encontrada, permitindo por padrão");
+          setAllowDesktopFromConfig(true);
+        } else if (data?.config_value === "true") {
+          console.log("[PWAHealthDeviceGate] ✅ allow_desktop_access = true");
           setAllowDesktopFromConfig(true);
         } else {
-          console.log("[PWAHealthDeviceGate] allow_desktop_access = false (default)");
+          console.log("[PWAHealthDeviceGate] ❌ allow_desktop_access = false");
           setAllowDesktopFromConfig(false);
         }
       } catch (err) {
-        console.log("[PWAHealthDeviceGate] Config not found, using default (block desktop)");
-        setAllowDesktopFromConfig(false);
+        console.error("[PWAHealthDeviceGate] Erro ao carregar config:", err);
+        // Se tabela não existe, permitir por padrão
+        setAllowDesktopFromConfig(true);
       } finally {
         setConfigLoaded(true);
       }
     };
 
     loadDesktopConfig();
-  }, []);
-
-  // Verificar role do usuário
-  useEffect(() => {
-    const checkUserRole = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          console.log("[PWAHealthDeviceGate] No authenticated user");
-          setUserRole(null);
-          setCheckingRole(false);
-          return;
-        }
-
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        const role = roleData?.role || "user";
-        console.log("[PWAHealthDeviceGate] User role:", role);
-        setUserRole(role);
-      } catch (error) {
-        console.error("[PWAHealthDeviceGate] Error checking user role:", error);
-        setUserRole("user"); // Default to user on error
-      } finally {
-        setCheckingRole(false);
-      }
-    };
-
-    checkUserRole();
-  }, []);
+  }, [isDemoMode]);
 
   // Loading spinner component
   const LoadingSpinner = () => (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  // Aguardar role e config carregarem
-  if (checkingRole || !configLoaded) {
+  // Aguardar config carregar
+  if (!configLoaded) {
     return <LoadingSpinner />;
   }
 
@@ -119,32 +102,19 @@ const PWAHealthDeviceGate = ({ children }: PWAHealthDeviceGateProps) => {
     return <>{children}</>;
   }
 
-  // DESKTOP: aplicar regras especiais
+  // DESKTOP: verificar toggle de configuração
   if (isDesktop) {
-    const isAdminOrSuperAdmin = userRole === "admin" || userRole === "superadmin";
-
-    // REGRA CRÍTICA: Usuários comuns NUNCA podem acessar no desktop
-    if (!isAdminOrSuperAdmin) {
-      console.log("[PWAHealthDeviceGate] Blocking desktop: user role is 'user' (only admin/superadmin allowed)");
-      return (
-        <PWAHealthDesktopBlock
-          customMessage="Knowyou AI Saúde está disponível apenas em dispositivos móveis para usuários."
-          customTitle="Acesso Restrito"
-        />
-      );
-    }
-
-    // Admin/SuperAdmin: verificar toggle
-    if (isAdminOrSuperAdmin && allowDesktopFromConfig) {
-      console.log("[PWAHealthDeviceGate] Allowing desktop: admin/superadmin + toggle enabled");
+    // Se toggle habilitado OU demo mode, permite acesso
+    if (allowDesktopFromConfig) {
+      console.log("[PWAHealthDeviceGate] ✅ Desktop permitido (toggle habilitado)");
       return <>{children}</>;
     }
 
-    // Admin/SuperAdmin mas toggle desabilitado
-    console.log("[PWAHealthDeviceGate] Blocking desktop: toggle disabled (even for admin)");
+    // Toggle desabilitado - bloqueia acesso
+    console.log("[PWAHealthDeviceGate] ❌ Desktop bloqueado (toggle desabilitado)");
     return (
       <PWAHealthDesktopBlock
-        customMessage="O acesso desktop ao PWA Health está desabilitado. Ative o toggle em Config. PWA."
+        customMessage="O acesso desktop ao PWA Health está desabilitado. Use um dispositivo móvel ou ative o toggle de desktop."
         customTitle="Desktop Desabilitado"
       />
     );

@@ -1,5 +1,5 @@
 // ============================================
-// PWA MUNDO AGENT - Dados em Tempo Real (Perplexity)
+// PWA MUNDO AGENT - Dados Gerais do Mundo (Perplexity)
 // VERSAO: 1.0.0-PRODUCTION | DEPLOY: 2026-01-19
 // STATUS: PRODUÇÃO - Perplexity → Gemini → OpenAI
 // ============================================
@@ -19,33 +19,55 @@ const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
-// System prompt - MÓDULO MUNDO (DADOS GERAIS)
-const SYSTEM_PROMPT = `Você é um assistente especializado em fornecer DADOS EM TEMPO REAL sobre o mundo, treinado pela Arbache AI.
+// System prompt - MÓDULO MUNDO (DADOS GERAIS DO MUNDO)
+const SYSTEM_PROMPT = `Você é um assistente especializado em DADOS GERAIS DO MUNDO, treinado pela Arbache AI.
 
 ## SUA FUNÇÃO:
-Fornecer informações atualizadas e precisas sobre qualquer assunto do mundo:
-- Notícias e eventos atuais
-- Dados estatísticos e indicadores
-- Informações sobre países, cidades, economia
-- Ciência, tecnologia, cultura
-- Qualquer pergunta geral sobre o mundo
+Você fornece informações atualizadas e em TEMPO REAL sobre:
+
+**NOTÍCIAS E ACONTECIMENTOS:**
+- Notícias do Brasil e do mundo (últimas 24-48 horas)
+- Política nacional e internacional
+- Economia global e mercados financeiros
+- Eventos importantes e tendências
+
+**DADOS ESTATÍSTICOS:**
+- População de países e cidades
+- PIB e indicadores econômicos
+- Rankings mundiais (IDH, qualidade de vida, etc.)
+- Dados demográficos atualizados
+
+**CULTURA E SOCIEDADE:**
+- Eventos culturais e esportivos
+- Tendências sociais e tecnológicas
+- Informações sobre países, cidades e regiões
+- Curiosidades e fatos interessantes
+
+**TECNOLOGIA E CIÊNCIA:**
+- Avanços tecnológicos recentes
+- Descobertas científicas
+- Inovações e startups
+- Tendências tech
 
 ## ESTILO DE RESPOSTA:
-- Seja DIRETO e INFORMATIVO
-- Respostas CURTAS (3-5 frases)
-- Use dados e números quando relevante
-- Linguagem NATURAL (será lida em voz alta)
+- Respostas CURTAS e OBJETIVAS (máximo 4-5 frases)
+- Linguagem NATURAL e conversacional (será lida em voz alta)
+- Cite FONTES e DATAS quando disponíveis
+- Use dados ATUALIZADOS em tempo real
+- Seja INFORMATIVO e EQUILIBRADO
 
 ## REGRAS:
-- Busque informações ATUALIZADAS em tempo real
-- Cite fontes quando possível
-- Se não souber, diga honestamente
-- NUNCA mencione ChatGPT, OpenAI, Perplexity
-- Se perguntado quem você é: "Fui desenvolvido pela Arbache AI"`;
+- NUNCA mencione que é ChatGPT, OpenAI, Perplexity ou qualquer outra IA
+- Se perguntado sobre quem você é: "Fui desenvolvido pela Arbache AI"
+- Responda em português brasileiro
+- Priorize informações verificáveis e fontes confiáveis
+
+REGRA IMPORTANTE: Se o usuário perguntar sobre assuntos muito específicos de outros módulos (sintomas de doenças, validação de ideias de negócio), sugira gentilmente usar os módulos especializados.`;
 
 interface RequestBody {
   prompt: string;
   sessionId?: string | null;
+  userPhone?: string | null;
   deviceId?: string | null;
   history?: Array<{ role: string; content: string }>;
 }
@@ -57,6 +79,7 @@ interface AIResponse {
   tokens: number | null;
   responseTime: number;
   provider: string;
+  citations?: string[];
   fallbackUsed?: boolean;
   fallbackReason?: string;
 }
@@ -101,21 +124,14 @@ async function callPerplexity(prompt: string, history: Array<{ role: string; con
   const data = await response.json();
   const responseTime = Date.now() - startTime;
 
-  // Limpar resposta
-  let cleanResponse = data.choices?.[0]?.message?.content || "Sem resposta";
-  cleanResponse = cleanResponse
-    .replace(/\[\d+\]/g, "")
-    .replace(/\[[\d,\s]+\]/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-
   return {
     success: true,
-    response: cleanResponse,
-    model: "world-assistant",
+    response: data.choices?.[0]?.message?.content || "Sem resposta",
+    model: data.model || "sonar",
     tokens: data.usage?.total_tokens || null,
     responseTime,
-    provider: "ai",
+    provider: "perplexity",
+    citations: data.citations || [],
   };
 }
 
@@ -159,16 +175,15 @@ async function callGemini(prompt: string, history: Array<{ role: string; content
   const data = await response.json();
   const responseTime = Date.now() - startTime;
 
-  let textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
-  textContent = textContent.replace(/\[\d+\]/g, "").replace(/\s{2,}/g, " ").trim();
+  const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
 
   return {
     success: true,
     response: textContent,
-    model: "world-assistant",
+    model: "gemini-2.0-flash",
     tokens: Math.ceil((prompt.length + textContent.length) / 4),
     responseTime,
-    provider: "ai",
+    provider: "gemini",
   };
 }
 
@@ -207,16 +222,13 @@ async function callOpenAI(prompt: string, history: Array<{ role: string; content
   const data = await response.json();
   const responseTime = Date.now() - startTime;
 
-  let textContent = data.choices?.[0]?.message?.content || "Sem resposta";
-  textContent = textContent.replace(/\[\d+\]/g, "").replace(/\s{2,}/g, " ").trim();
-
   return {
     success: true,
-    response: textContent,
-    model: "world-assistant",
+    response: data.choices?.[0]?.message?.content || "Sem resposta",
+    model: data.model || "gpt-4o-mini",
     tokens: data.usage?.total_tokens || null,
     responseTime,
-    provider: "ai",
+    provider: "openai",
   };
 }
 
@@ -246,11 +258,11 @@ async function executeWithFallback(prompt: string, history: Array<{ role: string
         result.fallbackReason = `Primary providers failed: ${fallbackReason}`;
       }
 
-      console.log(`[pwa-mundo-agent] Success with ${provider.name}`);
+      console.log(`[pwa-mundo-agent] ✅ Success with ${provider.name}`);
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error(`[pwa-mundo-agent] ${provider.name} failed:`, errorMsg);
+      console.error(`[pwa-mundo-agent] ❌ ${provider.name} failed:`, errorMsg);
 
       lastError = error instanceof Error ? error : new Error(errorMsg);
       fallbackReason += `${provider.name}: ${errorMsg}; `;
@@ -273,7 +285,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { prompt, deviceId, history = [] } = body;
+    const { prompt, sessionId, deviceId, history = [] } = body;
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
       return new Response(

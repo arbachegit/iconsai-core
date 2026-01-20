@@ -1,8 +1,9 @@
-// Build: 2026-01-11-NUCLEAR - Force complete rebuild
+// Build: 2026-01-17-DEMO-MODE - Sistema de Demonstração
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
@@ -16,6 +17,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { BannedScreen } from "./components/BannedScreen";
 import { DeviceGate } from "./components/gates";
 import { initSecurityShield, checkBanStatus, getDeviceFingerprint } from "./lib/security-shield";
+import { useDemoMode } from "./hooks/useDemoMode";
+import { useDemoCleanup } from "./hooks/useDemoCleanup";
 
 // Lazy load non-critical pages
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -32,7 +35,6 @@ const InvitePage = lazy(() => import("./pages/InvitePage"));
 const Contact = lazy(() => import("./pages/Contact"));
 const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
 const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
-const PWACityPage = lazy(() => import("./pages/PWACityPage"));
 const PWAHealthPage = lazy(() => import("./pages/PWAHealthPage"));
 
 // Simple loading fallback
@@ -134,16 +136,44 @@ const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Demo Mode Indicator Component
+const DemoModeIndicator = () => {
+  const { isDemoMode, demoType } = useDemoMode();
+
+  if (!isDemoMode) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-50">
+      <Badge
+        variant="outline"
+        className="bg-yellow-500/20 border-yellow-500 text-yellow-700 dark:text-yellow-300 font-semibold px-3 py-1.5 text-sm shadow-lg"
+      >
+        🎭 MODO DEMONSTRAÇÃO
+        {demoType === "clean" && " (Limpo)"}
+        {demoType === "seeded" && " (Com Histórico)"}
+      </Badge>
+    </div>
+  );
+};
+
+// Demo Cleanup Wrapper
+const DemoCleanupWrapper = ({ children }: { children: React.ReactNode }) => {
+  useDemoCleanup(); // Cleanup automático ao fechar aba
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AudioPlayerProvider>
         <TooltipProvider>
           <SecurityWrapper>
-            <ApiRegistrySyncProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
+            <DemoCleanupWrapper>
+              <ApiRegistrySyncProvider>
+                <Toaster />
+                <Sonner />
+                <DemoModeIndicator />
+                <BrowserRouter>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<Index />} />
@@ -214,9 +244,6 @@ const App = () => (
                       </DeviceGate>
                     } />
 
-                    {/* PWA City Route - Mobile Only (com toggle para admin/superadmin) */}
-                    <Route path="/pwacity" element={<PWACityPage />} />
-
                     {/* PWA Health Route - Mobile Only (com toggle para admin/superadmin) */}
                     <Route path="/pwahealth" element={<PWAHealthPage />} />
 
@@ -231,7 +258,8 @@ const App = () => (
               {/* Global Floating Audio Player */}
               <FloatingAudioPlayer />
             </ApiRegistrySyncProvider>
-          </SecurityWrapper>
+          </DemoCleanupWrapper>
+        </SecurityWrapper>
         </TooltipProvider>
       </AudioPlayerProvider>
     </ThemeProvider>
