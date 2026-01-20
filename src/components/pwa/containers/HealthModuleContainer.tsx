@@ -308,6 +308,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       });
 
       // Chamar pwa-saude-agent (Perplexity com orientação de saúde + localização)
+      console.log("[HealthContainer] 📡 Chamando pwa-saude-agent...");
       const { data: chatData, error: chatError } = await supabase.functions.invoke("pwa-saude-agent", {
         body: {
           prompt: userText,
@@ -326,10 +327,24 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
         },
       });
 
-      if (chatError) throw new Error(`CHAT_ERROR: ${chatError.message}`);
+      console.log("[HealthContainer] Chat Response:", { data: chatData, error: chatError });
+
+      if (chatError) {
+        console.error("[HealthContainer] ❌ CHAT_ERROR:", chatError);
+        throw new Error(`CHAT_ERROR: ${chatError.message}`);
+      }
+
+      // Verificar success: false da API
+      if (chatData?.success === false) {
+        console.error("[HealthContainer] ❌ API retornou success: false:", chatData?.error);
+        throw new Error(`CHAT_ERROR: ${chatData?.error || "Erro desconhecido da API"}`);
+      }
 
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
-      if (!aiResponse) throw new Error("CHAT_EMPTY");
+      if (!aiResponse) {
+        console.error("[HealthContainer] ❌ CHAT_EMPTY - chatData:", chatData);
+        throw new Error("CHAT_EMPTY");
+      }
 
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
 
@@ -354,22 +369,39 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       });
     } catch (error: any) {
       console.error("[HealthContainer] ❌ ERRO COMPLETO:", error);
+      console.error("[HealthContainer] ❌ Error type:", typeof error);
+      console.error("[HealthContainer] ❌ Error name:", error?.name);
       console.error("[HealthContainer] ❌ Error message:", error?.message);
       console.error("[HealthContainer] ❌ Error stack:", error?.stack);
+      console.error("[HealthContainer] ❌ Error JSON:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
 
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
-      if (error.message?.includes("AUDIO_TOO_SHORT")) {
+      const errMsg = error?.message || String(error) || "";
+
+      if (errMsg.includes("AUDIO_TOO_SHORT") || errMsg.includes("muito curto")) {
         errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
-      } else if (error.message?.includes("STT_EMPTY")) {
+      } else if (errMsg.includes("STT_EMPTY") || errMsg.includes("não entend")) {
         errorMessage = "Não entendi o que você disse. Pode repetir?";
-      } else if (error.message?.includes("STT_ERROR")) {
+      } else if (errMsg.includes("STT_ERROR") || errMsg.includes("transcrição")) {
         errorMessage = "Erro na transcrição. Tente novamente.";
-      } else if (error.message?.includes("CHAT_ERROR")) {
-        errorMessage = "Erro ao processar. Tente novamente.";
+      } else if (errMsg.includes("CHAT_ERROR") || errMsg.includes("provider")) {
+        errorMessage = "Serviço temporariamente indisponível. Tente em alguns segundos.";
+      } else if (errMsg.includes("CHAT_EMPTY")) {
+        errorMessage = "Não recebi uma resposta. Tente novamente.";
+      } else if (errMsg.includes("NetworkError") || errMsg.includes("fetch")) {
+        errorMessage = "Erro de conexão. Verifique sua internet.";
+      } else if (errMsg.includes("All providers failed")) {
+        errorMessage = "Serviço temporariamente indisponível. Tente novamente em alguns segundos.";
       }
 
-      console.log("[HealthContainer] Mensagem de erro para usuário:", errorMessage);
-      await speak(errorMessage, MODULE_CONFIG.moduleType);
+      console.log("[HealthContainer] 📣 Mensagem de erro para usuário:", errorMessage);
+      console.log("[HealthContainer] 📣 Erro original:", errMsg);
+
+      try {
+        await speak(errorMessage, MODULE_CONFIG.moduleType);
+      } catch (speakError) {
+        console.error("[HealthContainer] ❌ Erro ao falar mensagem de erro:", speakError);
+      }
     } finally {
       setIsProcessing(false);
     }
