@@ -267,23 +267,30 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   // Handler de áudio
   const handleAudioCapture = async (audioBlob: Blob) => {
     setIsProcessing(true);
+    console.log("[HealthContainer] 🎤 Processando áudio...");
+    console.log("[HealthContainer] Blob size:", audioBlob?.size, "type:", audioBlob?.type);
 
     try {
       if (!audioBlob || audioBlob.size < 1000) {
+        console.error("[HealthContainer] ❌ Áudio muito curto:", audioBlob?.size);
         throw new Error("AUDIO_TOO_SHORT");
       }
 
       const arrayBuffer = await audioBlob.arrayBuffer();
       const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+      console.log("[HealthContainer] Base64 length:", base64.length);
 
       let mimeType = audioBlob.type || "audio/webm";
       if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
         mimeType = "audio/mp4";
       }
+      console.log("[HealthContainer] MimeType:", mimeType);
 
+      console.log("[HealthContainer] 📡 Chamando voice-to-text...");
       const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
         body: { audio: base64, mimeType },
       });
+      console.log("[HealthContainer] STT Response:", { data: sttData, error: sttError });
 
       if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
 
@@ -346,15 +353,22 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
         console.log("[HealthContainer] 💾 Mensagens salvas:", result);
       });
     } catch (error: any) {
-      console.error("[HealthContainer] ERRO:", error);
+      console.error("[HealthContainer] ❌ ERRO COMPLETO:", error);
+      console.error("[HealthContainer] ❌ Error message:", error?.message);
+      console.error("[HealthContainer] ❌ Error stack:", error?.stack);
 
       let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
       if (error.message?.includes("AUDIO_TOO_SHORT")) {
         errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
       } else if (error.message?.includes("STT_EMPTY")) {
         errorMessage = "Não entendi o que você disse. Pode repetir?";
+      } else if (error.message?.includes("STT_ERROR")) {
+        errorMessage = "Erro na transcrição. Tente novamente.";
+      } else if (error.message?.includes("CHAT_ERROR")) {
+        errorMessage = "Erro ao processar. Tente novamente.";
       }
 
+      console.log("[HealthContainer] Mensagem de erro para usuário:", errorMessage);
       await speak(errorMessage, MODULE_CONFIG.moduleType);
     } finally {
       setIsProcessing(false);
