@@ -77,14 +77,9 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="border-t border-cyan-500/20 bg-slate-900/80 backdrop-blur-md p-4"
+      className="flex-shrink-0 border-t border-cyan-500/20 bg-slate-900/80 backdrop-blur-md px-2 pt-1 pb-[7px]"
     >
-      <div className="flex items-end gap-3">
-        {/* Ícone decorativo */}
-        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-cyan-400" />
-        </div>
-
+      <div className="flex items-center gap-3">
         {/* Textarea */}
         <div className="flex-1 relative">
           <textarea
@@ -101,13 +96,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
               minHeight: "48px",
             }}
           />
-
-          {/* Contador de caracteres (opcional) */}
-          {message.length > 0 && (
-            <span className="absolute bottom-2 right-2 text-xs text-slate-500">
-              {message.length}
-            </span>
-          )}
         </div>
 
         {/* Botão Enviar */}
@@ -131,11 +119,6 @@ export const PromptArea: React.FC<PromptAreaProps> = ({
             />
           )}
         </motion.button>
-      </div>
-
-      {/* Dica de atalho */}
-      <div className="mt-2 text-xs text-slate-500 text-center">
-        Pressione <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700">Enter</kbd> para enviar, <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700">Shift + Enter</kbd> para quebra de linha
       </div>
     </motion.div>
   );

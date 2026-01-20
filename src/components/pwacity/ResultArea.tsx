@@ -45,7 +45,7 @@ export const ResultArea: React.FC<ResultAreaProps> = ({
   return (
     <div
       ref={scrollRef}
-      className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scroll-smooth"
+      className="h-full overflow-y-auto px-4 py-4 space-y-4 scroll-smooth"
       style={{
         backgroundImage: `
           radial-gradient(circle at 20% 50%, rgba(6, 182, 212, 0.03) 0%, transparent 50%),

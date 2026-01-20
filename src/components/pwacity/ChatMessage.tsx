@@ -102,26 +102,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           {isLoading ? (
             <span className="italic">Gerando resposta...</span>
           ) : role === "assistant" ? (
-            <ReactMarkdown
-              className="prose prose-sm prose-invert max-w-none"
-              components={{
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
-                code: ({ children }) => (
-                  <code className="bg-slate-900/50 px-1 py-0.5 rounded text-cyan-400">
-                    {children}
-                  </code>
-                ),
-                pre: ({ children }) => (
-                  <pre className="bg-slate-900/50 p-2 rounded-lg overflow-x-auto mb-2">
-                    {children}
-                  </pre>
-                ),
-              }}
-            >
-              {content}
-            </ReactMarkdown>
+            <div className="prose prose-sm prose-invert max-w-none">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
+                  code: ({ children }) => (
+                    <code className="bg-slate-900/50 px-1 py-0.5 rounded text-cyan-400">
+                      {children}
+                    </code>
+                  ),
+                  pre: ({ children }) => (
+                    <pre className="bg-slate-900/50 p-2 rounded-lg overflow-x-auto mb-2">
+                      {children}
+                    </pre>
+                  ),
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            </div>
           ) : (
             content
           )}
