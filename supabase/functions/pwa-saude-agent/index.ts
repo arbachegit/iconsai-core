@@ -8,7 +8,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const FUNCTION_VERSION = "2.0.0-PRODUCTION";
+const FUNCTION_VERSION = "2.0.1-PRODUCTION";
 
 // API Keys
 const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY") || Deno.env.get("PERPLEXITY_API_KEY");
