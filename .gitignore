@@ -31,3 +31,6 @@ credenciais.md
 *.pem
 *.key
 *-key.json
+
+*storybook.log
+storybook-static
