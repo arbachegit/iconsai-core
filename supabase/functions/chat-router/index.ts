@@ -529,18 +529,15 @@ Ajudar o usuário com qualquer dúvida de forma clara e objetiva.
 - Sempre seja útil e objetivo`,
 };
 
-// ===================== CHATGPT WITH WEB SEARCH (REAL-TIME DATA) =====================
+// ===================== CHATGPT PRIMARY (OpenAI) + GEMINI FALLBACK =====================
+// v2.7.0: OpenAI como primário, Gemini como fallback (SEM Lovable)
 async function callChatGPTForModule(
   query: string,
   moduleSlug: string,
   conversationHistory: Array<{ role: string; content: string }> = [],
 ): Promise<{ response: string; success: boolean }> {
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-
-  if (!OPENAI_API_KEY) {
-    console.warn(`[ChatGPT-${moduleSlug}] OPENAI_API_KEY não configurada`);
-    return { response: "", success: false };
-  }
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
   // CORRECAO v2.5.0: Obter prompt específico do módulo, fallback para "general" (não "economia")
   const modulePrompt = CHATGPT_MODULE_PROMPTS[moduleSlug] || CHATGPT_MODULE_PROMPTS["general"];
@@ -557,75 +554,88 @@ async function callChatGPTForModule(
   // Adicionar mensagem atual
   messages.push({ role: "user", content: query });
 
-  // Tentar Gemini com Google Search primeiro (dados em tempo real)
-  const geminiResult = await callGeminiWithGrounding(moduleSlug, messages);
-  if (geminiResult.success) {
-    return geminiResult;
+  // v2.7.0: OpenAI PRIMEIRO (mais confiável)
+  if (OPENAI_API_KEY) {
+    console.log(`[ChatGPT-${moduleSlug}] Tentando OpenAI (primário)...`);
+    const openaiResult = await callChatCompletionsFallback(OPENAI_API_KEY, moduleSlug, messages);
+    if (openaiResult.success) {
+      return openaiResult;
+    }
+    console.warn(`[ChatGPT-${moduleSlug}] OpenAI falhou, tentando Gemini fallback...`);
   }
 
-  // Fallback: OpenAI Chat Completions
-  console.log(`[ChatGPT-${moduleSlug}] Gemini falhou, tentando OpenAI fallback...`);
-  return await callChatCompletionsFallback(OPENAI_API_KEY, moduleSlug, messages);
+  // Fallback: Gemini direto (se GEMINI_API_KEY configurada)
+  if (GEMINI_API_KEY) {
+    console.log(`[ChatGPT-${moduleSlug}] Tentando Gemini (fallback)...`);
+    const geminiResult = await callGeminiWithGrounding(moduleSlug, messages);
+    if (geminiResult.success) {
+      return geminiResult;
+    }
+  }
+
+  // Nenhuma API funcionou
+  console.error(`[ChatGPT-${moduleSlug}] Todas as APIs falharam`);
+  return { response: "", success: false };
 }
 
-// Gemini com Google Search grounding (DADOS EM TEMPO REAL)
+// Gemini direto via Google AI API (SEM Lovable)
+// v2.7.0: Usa API do Google diretamente
 async function callGeminiWithGrounding(
   moduleSlug: string,
   messages: Array<{ role: string; content: string }>,
 ): Promise<{ response: string; success: boolean }> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
-  if (!LOVABLE_API_KEY) {
-    console.warn(`[Gemini-Grounding-${moduleSlug}] LOVABLE_API_KEY não configurada`);
+  if (!GEMINI_API_KEY) {
+    console.warn(`[Gemini-${moduleSlug}] GEMINI_API_KEY não configurada`);
     return { response: "", success: false };
   }
 
   try {
-    console.log(`[Gemini-Grounding-${moduleSlug}] Buscando dados em tempo real via Google Search...`);
+    console.log(`[Gemini-${moduleSlug}] Chamando Google AI API diretamente...`);
 
-    // Adicionar instrução de busca atual no prompt com VERIFICAÇÃO TEMPORAL OBRIGATÓRIA
-    const enhancedMessages = messages.map((m, idx) => {
-      if (m.role === "system") {
-        return {
-          ...m,
-          content:
-            m.content +
-            `\n\n## INSTRUÇÃO CRÍTICA - VERIFICAÇÃO TEMPORAL OBRIGATÓRIA:
+    // Converter formato OpenAI para formato Gemini
+    const systemPrompt = messages.find(m => m.role === "system")?.content || "";
+    const userMessages = messages.filter(m => m.role !== "system");
+
+    // Construir contents para Gemini
+    const contents = userMessages.map(m => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }]
+    }));
+
+    // Adicionar system instruction
+    const systemInstruction = systemPrompt + `\n\n## CONTEXTO TEMPORAL:
 - A data de HOJE é ${new Date().toLocaleDateString("pt-BR")} (${new Date().toISOString().split("T")[0]})
-- Você TEM ACESSO a dados em tempo real via Google Search
-- OBRIGATÓRIO: Cite a DATA DE REFERÊNCIA de cada dado mencionado (ex: "segundo dados de janeiro/2026")
-- OBRIGATÓRIO: Cite a FONTE dos dados (IBGE, BCB, IPEA, portal de notícias)
-- Se não conseguir verificar a atualidade de uma informação, DECLARE EXPLICITAMENTE:
-  "Esta informação pode não estar atualizada. Recomendo verificar fontes oficiais para dados mais recentes."
-- PROIBIDO: Usar dados sem indicar período/fonte
-- PROIBIDO: Inferir valores atuais a partir de tendências históricas sem declarar`,
-        };
-      }
-      return m;
-    });
+- Responda de forma concisa e direta
+- NUNCA mencione que é uma IA, ChatGPT, Gemini ou qualquer modelo`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: enhancedMessages,
-        max_tokens: 800,
-        // Gemini 2.5 tem acesso a informações mais recentes por padrão
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          generationConfig: {
+            maxOutputTokens: 800,
+            temperature: 0.7,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Gemini-Grounding-${moduleSlug}] API error:`, response.status, errorText);
+      console.error(`[Gemini-${moduleSlug}] API error:`, response.status, errorText);
       return { response: "", success: false };
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!content) {
       console.warn(`[Gemini-Grounding-${moduleSlug}] Resposta vazia`);
@@ -1060,6 +1070,7 @@ async function updatePreviousMetricWithFeedback(
 
 // ===================== USER CONTEXT UPDATE =====================
 // Atualiza memória persistente do usuário para saudações contextuais
+// v2.7.0: Usa Gemini direto (sem Lovable)
 async function updateUserContextAfterInteraction(
   supabase: any,
   deviceId: string,
@@ -1069,45 +1080,49 @@ async function updateUserContextAfterInteraction(
   assistantResponse: string,
 ): Promise<void> {
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return;
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
     // Gerar resumo do tópico via IA (máximo 15 palavras)
     let topicSummary = userMessage.substring(0, 100);
 
-    try {
-      const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Resuma em NO MÁXIMO 15 palavras o tema principal da interação. Responda APENAS com o resumo, sem prefixos ou explicações.",
+    // Só tenta gerar resumo se tiver API key
+    if (GEMINI_API_KEY) {
+      try {
+        const summaryResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-            {
-              role: "user",
-              content: `Usuário: "${userMessage.substring(0, 300)}"\nResposta: "${assistantResponse.substring(0, 200)}"`,
-            },
-          ],
-          max_tokens: 50,
-        }),
-      });
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: `Resuma em NO MÁXIMO 15 palavras o tema principal:\nUsuário: "${userMessage.substring(0, 300)}"\nResposta: "${assistantResponse.substring(0, 200)}"` }],
+                },
+              ],
+              systemInstruction: {
+                parts: [{ text: "Resuma em NO MÁXIMO 15 palavras o tema principal da interação. Responda APENAS com o resumo, sem prefixos ou explicações." }],
+              },
+              generationConfig: {
+                maxOutputTokens: 50,
+                temperature: 0.3,
+              },
+            }),
+          }
+        );
 
-      if (summaryResponse.ok) {
-        const summaryData = await summaryResponse.json();
-        const generatedSummary = summaryData.choices?.[0]?.message?.content?.trim();
-        if (generatedSummary && generatedSummary.length > 5) {
-          topicSummary = generatedSummary.substring(0, 200);
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          const generatedSummary = summaryData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (generatedSummary && generatedSummary.length > 5) {
+            topicSummary = generatedSummary.substring(0, 200);
+          }
         }
+      } catch (summaryError) {
+        console.warn("[Context] Failed to generate topic summary:", summaryError);
       }
-    } catch (summaryError) {
-      console.warn("[Context] Failed to generate topic summary:", summaryError);
     }
 
     // Verificar se existe registro para este device
@@ -1596,8 +1611,18 @@ serve(async (req: Request) => {
     logger.info("Request", { chatType, pwaMode, messageCount: messages?.length });
 
     const supabase = getSupabaseAdmin();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+    // Permitir funcionamento se pelo menos uma API key estiver configurada
+    if (!OPENAI_API_KEY && !GEMINI_API_KEY) {
+      throw new Error("Nenhuma API key configurada (OPENAI_API_KEY ou GEMINI_API_KEY)");
+    }
+
+    console.log("[chat-router] APIs disponíveis:", {
+      openai: !!OPENAI_API_KEY,
+      gemini: !!GEMINI_API_KEY,
+    });
 
     // ============ PWA MODE ============
     if (pwaMode) {
@@ -1773,24 +1798,30 @@ serve(async (req: Request) => {
         antiprompt,
       });
 
-      const chatMessages = [
-        { role: "system", content: systemPrompt },
-        ...history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: pwaMessage },
-      ];
+      // v2.7.0: Usar Gemini direto (sem Lovable)
+      const userMessages = history.slice(-6).map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+      userMessages.push({ role: "user", parts: [{ text: pwaMessage }] });
 
-      const chatResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: chatMessages,
-          max_tokens: 400,
-        }),
-      });
+      const chatResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: userMessages,
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: {
+              maxOutputTokens: 400,
+              temperature: 0.7,
+            },
+          }),
+        }
+      );
 
       if (!chatResponse.ok) {
         const status = chatResponse.status;
@@ -1803,17 +1834,11 @@ serve(async (req: Request) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        if (status === 402) {
-          return new Response(JSON.stringify({ error: "Créditos", response: "Serviço indisponível." }), {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        throw new Error(`AI Gateway error: ${status} - ${errorBody}`);
+        throw new Error(`Gemini API error: ${status} - ${errorBody}`);
       }
 
       const chatData = await chatResponse.json();
-      const rawResponse = chatData.choices?.[0]?.message?.content || "Erro ao processar.";
+      const rawResponse = chatData.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao processar.";
       const response = sanitizeBrandingResponse(rawResponse);
 
       // Salvar mensagem e obter ID
@@ -1961,16 +1986,17 @@ serve(async (req: Request) => {
       antiprompt,
     });
 
+    // v2.7.0: Usar OpenAI direto para streaming (sem Lovable)
     const apiMessages = messages.map((m) => ({ role: m.role, content: m.content }));
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-mini",
+        model: "gpt-4o-mini",
         messages: [{ role: "system", content: systemPrompt }, ...apiMessages],
         stream: true,
       }),
@@ -1978,7 +2004,7 @@ serve(async (req: Request) => {
 
     if (!response.ok) {
       if (response.status === 429) return errorResponse("Rate limit", 429);
-      if (response.status === 402) return errorResponse("Créditos insuficientes", 402);
+      if (response.status === 401) return errorResponse("API key inválida", 401);
       return errorResponse("Erro ao processar", 500);
     }
 

@@ -206,13 +206,23 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
       });
 
       if (chatError) {
+        // Tentar extrair corpo da resposta de erro
+        let errorBody = "";
+        try {
+          if (chatError.context && typeof chatError.context.text === "function") {
+            errorBody = await chatError.context.text();
+          }
+        } catch (e) {
+          errorBody = "Não foi possível ler corpo do erro";
+        }
+
         console.error("[IdeasContainer] ❌ chat-router erro:", {
           message: chatError.message,
           name: chatError.name,
-          context: chatError.context,
-          details: JSON.stringify(chatError),
+          status: chatError.context?.status,
+          errorBody: errorBody,
         });
-        throw new Error(`CHAT_ERROR: ${chatError.message}`);
+        throw new Error(`CHAT_ERROR: ${chatError.message} | Body: ${errorBody}`);
       }
 
       console.log("[IdeasContainer] ✅ chat-router resposta recebida");

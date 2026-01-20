@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // HTTPS habilitado via variável de ambiente VITE_HTTPS=true
+    https: process.env.VITE_HTTPS === "true" ? {} : undefined,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
