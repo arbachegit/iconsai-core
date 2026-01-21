@@ -1,8 +1,11 @@
 // =============================================
-// PWA Register Page v7.0 - SIMPLIFICADO
-// Build: 2026-01-14
+// PWA Register Page v8.0 - MULTI-SOURCE
+// Build: 2026-01-21
 // Funções: login_pwa, verify_pwa_code
-// Tabelas: pwa_invites, pwa_sessions
+// Tabelas: user_invitations (create-invitation), pwa_invites (PWAInvitesManager)
+// Fluxos:
+//   - /pwa/:token → busca em user_invitations.token (SMS via create-invitation)
+//   - /pwa?code=XXX → busca em pwa_invites.access_code (PWAInvitesManager)
 // src/pages/PWARegisterPage.tsx
 // =============================================
 
@@ -60,19 +63,34 @@ export default function PWARegisterPage() {
   // Validate token/code on load
   useEffect(() => {
     const validateInvite = async () => {
-      // Se tem código de convite (novo fluxo via pwa_invites)
+      // Se tem código de convite (fluxo PWAInvitesManager via pwa_invites)
       if (code_param) {
         try {
-          const { data, error: queryError } = await supabase
+          // Tentar buscar pelo access_code (nova estrutura) ou invite_code (antiga estrutura)
+          // Using any due to outdated Supabase types
+          const { data, error: queryError } = await (supabase as any)
             .from("pwa_invites")
-            .select("id, name, phone, email, invited_by, status, expires_at")
-            .eq("invite_code", code_param)
-            .eq("status", "pending")
-            .gt("expires_at", new Date().toISOString())
+            .select("id, name, phone, email, invited_by, is_used, access_code, invite_code, status, expires_at")
+            .or(`access_code.eq.${code_param},invite_code.eq.${code_param}`)
             .single();
 
           if (queryError || !data) {
             console.error("Invalid invite code:", queryError);
+            setPageState("invalid");
+            return;
+          }
+
+          // Verificar se já foi usado (nova estrutura usa is_used, antiga usa status)
+          const isUsed = data.is_used === true || data.status === "accepted" || data.status === "completed";
+          if (isUsed) {
+            console.error("Invite already used");
+            setPageState("invalid");
+            return;
+          }
+
+          // Verificar expiração se houver
+          if (data.expires_at && new Date(data.expires_at) < new Date()) {
+            console.error("Invite code expired");
             setPageState("invalid");
             return;
           }
@@ -93,31 +111,79 @@ export default function PWARegisterPage() {
         }
       }
 
-      // Se tem token (fluxo antigo via user_invitations - manter compatibilidade)
+      // Se tem token (fluxo create-invitation via user_invitations)
       if (token) {
         try {
+          // Buscar em user_invitations (tokens longos de 64 chars gerados por create-invitation)
           const { data, error: queryError } = await supabase
-            .from("pwa_invites")
-            .select("id, name, phone, email")
-            .eq("invite_code", token)
+            .from("user_invitations")
+            .select("id, name, phone, email, status, expires_at, has_app_access")
+            .eq("token", token)
             .eq("status", "pending")
-            .gt("expires_at", new Date().toISOString())
             .single();
 
-          if (queryError || !data) {
-            console.error("Invalid token:", queryError);
-            setPageState("invalid");
+          if (!queryError && data) {
+            // Verificar expiração
+            if (data.expires_at && new Date(data.expires_at) < new Date()) {
+              console.error("Invitation expired");
+              setPageState("invalid");
+              return;
+            }
+
+            // Verificar se tem acesso ao app
+            if (!data.has_app_access) {
+              console.error("User does not have app access");
+              setPageState("invalid");
+              return;
+            }
+
+            setInvitation({
+              id: data.id,
+              name: data.name || "",
+              phone: data.phone || "",
+              email: data.email || undefined,
+            });
+            setPhone(data.phone || "");
+            setPageState("confirm");
             return;
           }
 
-          setInvitation({
-            id: data.id,
-            name: data.name || "",
-            phone: data.phone || "",
-            email: data.email || undefined,
-          });
-          setPhone(data.phone || "");
-          setPageState("confirm");
+          // Fallback: tentar em pwa_invites (compatibilidade com ambas estruturas)
+          // Using any due to outdated Supabase types
+          const { data: pwaData, error: pwaError } = await (supabase as any)
+            .from("pwa_invites")
+            .select("id, name, phone, email, is_used, access_code, invite_code, status, expires_at")
+            .or(`access_code.eq.${token},invite_code.eq.${token}`)
+            .single();
+
+          if (!pwaError && pwaData) {
+            // Verificar se já foi usado
+            const isUsed = pwaData.is_used === true || pwaData.status === "accepted" || pwaData.status === "completed";
+            if (isUsed) {
+              console.error("PWA invite already used");
+              setPageState("invalid");
+              return;
+            }
+
+            if (pwaData.expires_at && new Date(pwaData.expires_at) < new Date()) {
+              console.error("PWA invite expired");
+              setPageState("invalid");
+              return;
+            }
+
+            setInvitation({
+              id: pwaData.id,
+              name: pwaData.name || "",
+              phone: pwaData.phone || "",
+              email: pwaData.email || undefined,
+            });
+            setPhone(pwaData.phone || "");
+            setPageState("confirm");
+            return;
+          }
+
+          console.error("Invalid token - not found in user_invitations or pwa_invites:", queryError);
+          setPageState("invalid");
           return;
         } catch (err) {
           console.error("Error validating token:", err);
