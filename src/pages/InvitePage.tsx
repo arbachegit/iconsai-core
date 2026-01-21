@@ -158,7 +158,7 @@ export default function InvitePage() {
 
         // Redirect to PWA register if has APP access ONLY (no platform access)
         if (data.has_app_access && !data.has_platform_access) {
-          navigate(`/pwa-register/${token}`);
+          navigate(`/pwa/${token}`);
           return;
         }
 

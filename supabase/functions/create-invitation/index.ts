@@ -205,7 +205,7 @@ serve(async (req) => {
 
     // URLs
     const platformUrl = `${SITE_URL}/invite/${token}`;
-    const appUrlLong = `${SITE_URL}/pwa-register/${token}`;
+    const appUrlLong = `${SITE_URL}/pwa/${token}`;
 
     // ENCURTAR URL DO APP VIA IS.GD
     const appUrlShort = await shortenUrl(appUrlLong);

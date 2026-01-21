@@ -120,7 +120,7 @@ async function sendSms(
 
     case "invitation": {
       // Convite - URL pode vir já encurtada ou não
-      let inviteUrl = variables["3"] || `${SITE_URL}/pwa-register`;
+      let inviteUrl = variables["3"] || `${SITE_URL}/pwa`;
 
       // Se URL é longa (não começa com https://is.gd/), encurtar
       if (!inviteUrl.startsWith("https://is.gd/") && inviteUrl.length > 30) {

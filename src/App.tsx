@@ -233,13 +233,8 @@ const App = () => (
                     
                     <Route path="/invite/:token" element={<InvitePage />} />
                     
-                    {/* PWA Register - Mobile Only - Accepts invitation tokens */}
-                    <Route path="/pwa-register" element={
-                      <DeviceGate allowDesktop={false}>
-                        <PWARegisterPage />
-                      </DeviceGate>
-                    } />
-                    <Route path="/pwa-register/:token" element={
+                    {/* PWA Token Route - Mobile Only - Accepts invitation tokens */}
+                    <Route path="/pwa/:token" element={
                       <DeviceGate allowDesktop={false}>
                         <PWARegisterPage />
                       </DeviceGate>

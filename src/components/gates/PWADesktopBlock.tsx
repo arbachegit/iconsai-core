@@ -12,7 +12,7 @@ const PWADesktopBlock = () => {
   // URL completa com token do convite (para o QR code)
   const fullUrl = (() => {
     const path = window.location.pathname;
-    const match = path.match(/\/pwa-register\/([^/]+)/);
+    const match = path.match(/\/pwa\/([^/]+)/);
     const token = match ? match[1] : null;
     return token ? `${pwaUrl}/${token}` : pwaUrl;
   })();

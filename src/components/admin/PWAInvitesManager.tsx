@@ -245,7 +245,7 @@ export default function PWAInvitesManager() {
       const effectiveChannel = invite.channel === "email" ? "sms" : invite.channel;
 
       // URL COMPLETA para o convite (usando code do pwa_invites)
-      const inviteUrl = `https://pwa.iconsai.ai/pwa-register?code=${invite.access_code}`;
+      const inviteUrl = `https://pwa.iconsai.ai/pwa?code=${invite.access_code}`;
 
       console.log(`[PWA Invites] Enviando via ${effectiveChannel} para ${user.phone?.slice(0, 5)}***`);
       console.log(`[PWA Invites] URL completa: ${inviteUrl}`);
