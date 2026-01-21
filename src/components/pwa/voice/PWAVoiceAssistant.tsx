@@ -21,7 +21,7 @@ import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { SplashScreen } from "./SplashScreen";
-import { FooterModules } from "./_legacy/FooterModules";
+import { FooterModules } from "./FooterModules";
 import { HistoryScreen } from "./HistoryScreen";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";

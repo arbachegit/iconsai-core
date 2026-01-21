@@ -1,11 +1,15 @@
+/**
+ * FooterModules.tsx - Navegação de módulos PWA
+ * v2.0.0 - 2026-01-21
+ */
 import React from "react";
 import { motion } from "framer-motion";
 import { HelpCircle, Globe, Heart, Lightbulb } from "lucide-react";
-// StatusIndicator também está na pasta _legacy
+import { ModuleId } from "@/stores/pwaVoiceStore";
+
 const StatusIndicator: React.FC<{ isActive: boolean; size?: string }> = ({ isActive }) => (
   <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
 );
-import { ModuleId } from "@/stores/pwaVoiceStore";
 
 interface FooterModulesProps {
   activeModule: ModuleId;

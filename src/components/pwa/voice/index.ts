@@ -2,8 +2,8 @@
  * ============================================================
  * index.ts - Exports dos Componentes PWA Voice
  * ============================================================
- * Versão: 3.0.0 - 2026-01-15
- * LIMPEZA: Componentes legados movidos para _legacy/
+ * Versão: 4.0.0 - 2026-01-21
+ * CLEANUP: Componentes legados REMOVIDOS
  * ============================================================
  */
 
@@ -14,6 +14,7 @@
 // Layout Unificado
 export { UnifiedHeader } from "./UnifiedHeader";
 export { UnifiedFooter } from "./UnifiedFooter";
+export { FooterModules } from "./FooterModules";
 
 // Visualização de Áudio (Microserviços)
 export { SpectrumAnalyzer } from "./SpectrumAnalyzer";
@@ -42,26 +43,3 @@ export { VoicePlayerBox } from "./VoicePlayerBox";
 export type { VisualizerState } from "./SpectrumAnalyzer";
 export type { PlayButtonState } from "./PlayButton";
 export type { MicrophoneState } from "./SlidingMicrophone";
-
-// ============================================================
-// COMPONENTES LEGADOS - MOVIDOS PARA _legacy/
-// ============================================================
-// Os seguintes componentes foram movidos para ./voice/_legacy/
-// Se precisar usar temporariamente, importe diretamente:
-// import { FooterModules } from "./_legacy/FooterModules";
-//
-// Lista de componentes movidos:
-// - FooterModules → Use UnifiedFooter
-// - HeaderActions → Use UnifiedHeader
-// - PushToTalkButton → Use ToggleMicrophoneButton
-// - MicrophoneButton → Use ToggleMicrophoneButton
-// - MicrophoneOrb → Use ToggleMicrophoneButton
-// - MicrophoneOverlay → Removido
-// - ModuleHeader → Use UnifiedHeader
-// - TranscriptArea → Não usado (interface 100% voz)
-// - WaveformVisualizer → Use SpectrumAnalyzer
-// - StatusIndicator → Use SpectrumAnalyzer
-// - ConversationModal → Use HistoryScreen
-// - CometBorder → Efeito visual removido
-// - ReproduceLabel → Não usado
-// ============================================================
