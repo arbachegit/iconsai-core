@@ -1,11 +1,12 @@
 // =============================================
-// PWA Register Page v8.0 - MULTI-SOURCE
+// PWA Register Page v9.0 - MULTI-SOURCE FIXED
 // Build: 2026-01-21
-// Funções: login_pwa, verify_pwa_code
+// Funções: login_pwa_by_phone_simple, verify_pwa_code_simple
 // Tabelas: user_invitations (create-invitation), pwa_invites (PWAInvitesManager)
 // Fluxos:
 //   - /pwa/:token → busca em user_invitations.token (SMS via create-invitation)
 //   - /pwa?code=XXX → busca em pwa_invites.access_code (PWAInvitesManager)
+// FIX: Usar funções _simple que verificam user_invitations corretamente
 // src/pages/PWARegisterPage.tsx
 // =============================================
 
@@ -210,8 +211,8 @@ export default function PWARegisterPage() {
     setError(null);
 
     try {
-      // Usar a nova função login_pwa
-      const { data, error: rpcError } = await supabase.rpc("login_pwa", {
+      // Usar a função login_pwa_by_phone_simple que verifica user_invitations
+      const { data, error: rpcError } = await supabase.rpc("login_pwa_by_phone_simple", {
         p_phone: phone,
       });
 
@@ -225,14 +226,17 @@ export default function PWARegisterPage() {
         success: boolean;
         verification_code?: string;
         phone?: string;
+        normalized_phone?: string;  // login_pwa_by_phone_simple returns this
         user_name?: string;
         error?: string;
+        message?: string;  // _simple functions return message instead of error
         already_verified?: boolean;
+        pwa_access?: string[];
       };
 
       // Se já está verificado, salvar e redirecionar
       if (result.already_verified) {
-        const phoneToSave = result.phone || phone;
+        const phoneToSave = result.normalized_phone || result.phone || phone;
         localStorage.setItem(STORAGE_KEY, phoneToSave);
         setPageState("success");
         setTimeout(() => navigate("/pwa"), 2000);
@@ -242,8 +246,10 @@ export default function PWARegisterPage() {
       if (!result.success) {
         if (result.error === "no_invitation") {
           setError("Você precisa de um convite para acessar o PWA.");
+        } else if (result.error === "invalid_phone") {
+          setError("Telefone inválido. Use o formato (DDD) 9XXXX-XXXX");
         } else {
-          setError(result.error || "Erro ao processar");
+          setError(result.message || result.error || "Erro ao processar");
         }
         setIsSubmitting(false);
         return;
@@ -251,7 +257,7 @@ export default function PWARegisterPage() {
 
       // Enviar SMS com código diretamente
       if (result.verification_code) {
-        const normalizedPhone = result.phone || phone;
+        const normalizedPhone = result.normalized_phone || result.phone || phone;
         const smsMessage = `KnowYOU: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
 
         await supabase.functions.invoke("send-sms", {
@@ -280,8 +286,8 @@ export default function PWARegisterPage() {
     setError(null);
 
     try {
-      // Usar a nova função verify_pwa_code
-      const { data, error: rpcError } = await supabase.rpc("verify_pwa_code", {
+      // Usar a função verify_pwa_code_simple que atualiza pwa_user_devices
+      const { data, error: rpcError } = await supabase.rpc("verify_pwa_code_simple", {
         p_phone: phone,
         p_code: code,
       });
@@ -295,7 +301,11 @@ export default function PWARegisterPage() {
       const result = data as {
         success: boolean;
         error?: string;
+        message?: string;  // _simple functions return message
+        verified?: boolean;
         user_name?: string;
+        phone?: string;
+        pwa_access?: string[];
         expires_at?: string;
       };
 
@@ -307,14 +317,15 @@ export default function PWARegisterPage() {
         } else if (result.error === "session_not_found") {
           setError("Sessão não encontrada. Faça login novamente.");
         } else {
-          setError(result.error || "Código inválido");
+          setError(result.message || result.error || "Código inválido");
         }
         setIsSubmitting(false);
         return;
       }
 
       // Success! Salvar telefone no localStorage
-      localStorage.setItem(STORAGE_KEY, phone);
+      const phoneToSave = result.phone || phone;
+      localStorage.setItem(STORAGE_KEY, phoneToSave);
       setPageState("success");
 
       // Redirect to /pwa after 2 seconds
