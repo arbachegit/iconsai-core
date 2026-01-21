@@ -252,6 +252,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       >
         <HandwritingTitle active={writingActive} />
       </div>
+
+      {/* Indicador de versão para verificar deploy */}
+      <div
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/30 text-xs font-mono"
+        style={{
+          opacity: writingActive ? textOpacity * 0.5 : 0,
+          transition: "opacity 0.15s ease-out",
+        }}
+      >
+        v5.6.0 • 2026-01-21
+      </div>
     </div>
   );
 };
