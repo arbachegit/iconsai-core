@@ -2,10 +2,11 @@
  * ============================================================
  * useTextToSpeech.ts - Hook de Text-to-Speech
  * ============================================================
- * Versão: 3.0.0
- * Data: 2026-01-09
- * 
+ * Versão: 4.0.0
+ * Data: 2026-01-21
+ *
  * Changelog:
+ * - v4.0.0: FIX memory leak - revoga URL.createObjectURL no cleanup
  * - v3.0.0: Suporte a phoneticMapOverride e userRegion
  *           para integração com classify-and-enrich
  * - v2.0.0: Integração com AudioManager global para evitar
@@ -13,7 +14,7 @@
  * ============================================================
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useAudioManager } from "@/stores/audioManagerStore";
 
 interface UseTextToSpeechOptions {
@@ -41,12 +42,23 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
   const [isPaused, setIsPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
-  
+
   const idRef = useRef<string>("");
+  const audioUrlRef = useRef<string | null>(null); // v4.0: Track blob URL for cleanup
   const voice = options?.voice || "fernando";
-  
+
   // Usar o AudioManager global
   const audioManager = useAudioManager();
+
+  // v4.0: Cleanup URL on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // v3.0.0: Aceita overrideOptions com phoneticMapOverride
   const speak = useCallback(async (
@@ -96,10 +108,17 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
 
       // Get audio blob directly from streaming response
       const audioBlob = await response.blob();
+
+      // v4.0: Revoke previous URL before creating new one
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+
       const audioUrl = URL.createObjectURL(audioBlob);
-      
+      audioUrlRef.current = audioUrl;
+
       setLocalLoading(false);
-      
+
       // v5.1.0: Usar getState() para evitar loop infinito
       await useAudioManager.getState().playAudio(idRef.current, audioUrl, source);
 

@@ -2,7 +2,7 @@
  * ============================================================
  * audioManagerStore.ts - Gerenciador Global de Áudio
  * ============================================================
- * Versão: 4.0.0 - 2026-01-21
+ * Versão: 5.0.0 - 2026-01-21
  * Safari/iOS: Usa getAudioContext() para webkit prefix
  * FIX: Chama unlockAudio() antes de play para mobile
  * FIX: Armazena pendingPlay para retry após interação
@@ -59,8 +59,8 @@ interface AudioManagerState {
   // Obter dados de frequência para visualização
   getFrequencyData: () => number[];
 
-  // Cleanup ao mudar de módulo
-  stopAllAndCleanup: () => void;
+  // Cleanup ao mudar de módulo (async para evitar race condition)
+  stopAllAndCleanup: () => Promise<void>;
 }
 
 export const useAudioManager = create<AudioManagerState>((set, get) => ({
@@ -253,10 +253,10 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
     return Array.from(dataArray);
   },
 
-  // CRÍTICO: Chamado ao trocar de módulo
-  stopAllAndCleanup: () => {
+  // CRÍTICO: Chamado ao trocar de módulo (v5.0: agora async)
+  stopAllAndCleanup: async () => {
     const state = get();
-    console.log("[AudioManager v4.0] 🧹 stopAllAndCleanup");
+    console.log("[AudioManager v5.0] 🧹 stopAllAndCleanup");
 
     if (state.currentAudio?.audio) {
       state.currentAudio.audio.pause();
@@ -269,16 +269,18 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       try {
         state.sourceNode.disconnect();
       } catch (e) {
-        console.warn("[AudioManager v4.0] Erro ao desconectar sourceNode:", e);
+        console.warn("[AudioManager v5.0] Erro ao desconectar sourceNode:", e);
       }
     }
 
-    // Fechar AudioContext
+    // FIX v5.0: Fechar AudioContext COM AWAIT (evita race condition)
     if (state.audioContext && state.audioContext.state !== "closed") {
       try {
-        state.audioContext.close();
+        await state.audioContext.close();
+        // Pequeno delay para garantir que fechou
+        await new Promise(resolve => setTimeout(resolve, 50));
       } catch (e) {
-        console.warn("[AudioManager v4.0] Erro ao fechar AudioContext:", e);
+        console.warn("[AudioManager v5.0] Erro ao fechar AudioContext:", e);
       }
     }
 
@@ -286,7 +288,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       currentAudio: null,
       audioContext: null,
       analyserNode: null,
-      sourceNode: null, // FIX: Limpar sourceNode
+      sourceNode: null,
       isPlaying: false,
       isLoading: false,
       progress: 0,
