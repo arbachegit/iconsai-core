@@ -1,4 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+// =============================================
+// useVoiceNarration.ts v2.0 - FIXED
+// Build: 2026-01-21
+// FIX: Adiciona cleanup de URL.revokeObjectURL no unmount
+// FIX: Adiciona useEffect de cleanup para evitar memory leak
+// =============================================
+import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseVoiceNarrationReturn {
@@ -20,6 +26,7 @@ export function useVoiceNarration(topic: string): UseVoiceNarrationReturn {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current.src = ""; // FIX: Limpar src para liberar recurso
       audioRef.current = null;
     }
     if (audioUrlRef.current) {
@@ -27,6 +34,20 @@ export function useVoiceNarration(topic: string): UseVoiceNarrationReturn {
       audioUrlRef.current = null;
     }
     setIsPlaying(false);
+  }, []);
+
+  // FIX: Cleanup ao desmontar componente (evita memory leak)
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+    };
   }, []);
 
   const play = useCallback(async () => {

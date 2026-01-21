@@ -2,10 +2,12 @@
  * ============================================================
  * audioManagerStore.ts - Gerenciador Global de Áudio
  * ============================================================
- * Versão: 3.0.0 - 2026-01-15
+ * Versão: 4.0.0 - 2026-01-21
  * Safari/iOS: Usa getAudioContext() para webkit prefix
  * FIX: Chama unlockAudio() antes de play para mobile
  * FIX: Armazena pendingPlay para retry após interação
+ * FIX: AudioContext.close() com await (evita race condition)
+ * FIX: MediaElementSourceNode com disconnect (evita erro em reproduções consecutivas)
  *
  * Descrição: Store Zustand que gerencia o áudio globalmente,
  * garantindo que apenas UM áudio toque por vez.
@@ -36,6 +38,7 @@ interface AudioManagerState {
   // Web Audio API para análise de frequência
   audioContext: AudioContext | null;
   analyserNode: AnalyserNode | null;
+  sourceNode: MediaElementAudioSourceNode | null; // FIX: Guardar referência para disconnect
 
   // Estado
   isPlaying: boolean;
@@ -64,6 +67,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
   currentAudio: null,
   audioContext: null,
   analyserNode: null,
+  sourceNode: null, // FIX: Estado inicial
   isPlaying: false,
   isLoading: false,
   progress: 0,
@@ -73,6 +77,8 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
     const state = get();
     const { isSafari, isIOS } = getBrowserInfo();
 
+    console.log("[AudioManager v4.0] 🎵 playAudio:", { id, source });
+
     // IMPORTANTE: Parar qualquer áudio existente primeiro
     if (state.currentAudio?.audio) {
       state.currentAudio.audio.pause();
@@ -80,16 +86,27 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       state.currentAudio.audio.src = "";
     }
 
-    // Fechar AudioContext anterior se existir
-    if (state.audioContext && state.audioContext.state !== "closed") {
+    // FIX: Desconectar sourceNode anterior (evita erro InvalidStateError)
+    if (state.sourceNode) {
       try {
-        state.audioContext.close();
+        state.sourceNode.disconnect();
       } catch (e) {
-        console.warn("[AudioManager] Erro ao fechar AudioContext:", e);
+        console.warn("[AudioManager v4.0] Erro ao desconectar sourceNode:", e);
       }
     }
 
-    set({ isLoading: true, progress: 0, audioContext: null, analyserNode: null, pendingPlay: null });
+    // FIX: Fechar AudioContext anterior COM AWAIT (evita race condition)
+    if (state.audioContext && state.audioContext.state !== "closed") {
+      try {
+        await state.audioContext.close();
+        // Pequeno delay para garantir que fechou
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (e) {
+        console.warn("[AudioManager v4.0] Erro ao fechar AudioContext:", e);
+      }
+    }
+
+    set({ isLoading: true, progress: 0, audioContext: null, analyserNode: null, sourceNode: null, pendingPlay: null });
 
     // v3.0.0: Tentar desbloquear áudio no Safari/iOS antes de tocar
     if (isSafari || isIOS) {
@@ -145,13 +162,14 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
         analyser.fftSize = 64; // 32 barras de frequência
         analyser.smoothingTimeConstant = 0.8;
 
-        const sourceNode = audioContext.createMediaElementSource(audio);
-        sourceNode.connect(analyser);
+        const newSourceNode = audioContext.createMediaElementSource(audio);
+        newSourceNode.connect(analyser);
         analyser.connect(audioContext.destination);
 
-        set({ audioContext, analyserNode: analyser });
+        // FIX: Salvar referência do sourceNode para disconnect futuro
+        set({ audioContext, analyserNode: analyser, sourceNode: newSourceNode });
       } catch (audioApiError) {
-        console.warn("[AudioManager] Web Audio API não disponível:", audioApiError);
+        console.warn("[AudioManager v4.0] Web Audio API não disponível:", audioApiError);
       }
 
       // v3.0.0: Carregar antes de tocar (importante para Safari)
@@ -238,10 +256,21 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
   // CRÍTICO: Chamado ao trocar de módulo
   stopAllAndCleanup: () => {
     const state = get();
+    console.log("[AudioManager v4.0] 🧹 stopAllAndCleanup");
+
     if (state.currentAudio?.audio) {
       state.currentAudio.audio.pause();
       state.currentAudio.audio.currentTime = 0;
       state.currentAudio.audio.src = "";
+    }
+
+    // FIX: Desconectar sourceNode antes de fechar AudioContext
+    if (state.sourceNode) {
+      try {
+        state.sourceNode.disconnect();
+      } catch (e) {
+        console.warn("[AudioManager v4.0] Erro ao desconectar sourceNode:", e);
+      }
     }
 
     // Fechar AudioContext
@@ -249,7 +278,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       try {
         state.audioContext.close();
       } catch (e) {
-        console.warn("[AudioManager] Erro ao fechar AudioContext:", e);
+        console.warn("[AudioManager v4.0] Erro ao fechar AudioContext:", e);
       }
     }
 
@@ -257,10 +286,11 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       currentAudio: null,
       audioContext: null,
       analyserNode: null,
+      sourceNode: null, // FIX: Limpar sourceNode
       isPlaying: false,
       isLoading: false,
       progress: 0,
-      pendingPlay: null, // v3.0.0: Limpar pendente também
+      pendingPlay: null,
     });
   },
 }));
