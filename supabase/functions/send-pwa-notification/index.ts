@@ -4,7 +4,7 @@
 // ============================================
 
 const FUNCTION_VERSION = "5.8.0";
-const SITE_URL = "https://pwa.iconsai.ai";
+const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
