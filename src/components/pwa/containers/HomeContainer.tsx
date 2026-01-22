@@ -94,36 +94,9 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   const isGreetingReady = !isConfigLoading;
 
   // ============================================================
-  // ETAPA 2: AUTOPLAY (v7.1.0 - usando ref para evitar re-execução)
+  // ETAPA 2: AUTOPLAY REMOVIDO (v9.0.0)
+  // Usuário deve clicar no botão para ouvir o áudio
   // ============================================================
-  useEffect(() => {
-    // v7.1.0: Usar ref para garantir execução única
-    if (!isGreetingReady || hasPlayedAutoplayRef.current) return;
-
-    const welcomeText = getWelcomeText();
-    if (!welcomeText) return;
-
-    // Marcar como executado ANTES de iniciar (previne race conditions)
-    hasPlayedAutoplayRef.current = true;
-    console.log("[HOME v7.1] 🚀 Executando autoplay com texto do config...");
-
-    // Classificar e enriquecer para TTS contextual
-    const executeAutoplay = async () => {
-      try {
-        const enrichment = await classifyAndEnrich(welcomeText, "home");
-        // v7.1.0: Usar speakRef.current em vez de speak direto
-        await speakRef.current(enrichment.enrichedText || welcomeText, "home", {
-          phoneticMapOverride: enrichment.phoneticMap,
-        });
-      } catch (err) {
-        console.warn("[HOME v7.1] ⚠️ Autoplay bloqueado ou erro:", err);
-        // O useTextToSpeech já salva em pendingPlay se for NotAllowedError
-        // SafariAudioUnlock vai fazer retry quando usuário interagir
-      }
-    };
-
-    executeAutoplay();
-  }, [isGreetingReady, getWelcomeText]); // v7.1.0: Removido speak das dependências
 
   // ============================================================
   // CAPTURA DE FREQUÊNCIAS DO AUDIO MANAGER

@@ -189,30 +189,9 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   const isGreetingReady = !isConfigLoading;
 
   // ============================================================
-  // ETAPA 2: Autoplay (v7.0.0 - simplificado)
+  // ETAPA 2: AUTOPLAY REMOVIDO (v9.0.0)
+  // Usuário deve clicar no botão para ouvir o áudio
   // ============================================================
-  useEffect(() => {
-    if (!isGreetingReady || hasPlayedAutoplay) return;
-
-    const welcomeText = getWelcomeText();
-    if (!welcomeText) return;
-
-    console.log("[HealthContainer v7] 🚀 Executando autoplay com texto do config...");
-    setHasPlayedAutoplay(true);
-
-    const executeAutoplay = async () => {
-      try {
-        const enrichment = await classifyAndEnrich(welcomeText, MODULE_CONFIG.moduleType);
-        await speak(enrichment.enrichedText || welcomeText, MODULE_CONFIG.moduleType, {
-          phoneticMapOverride: enrichment.phoneticMap,
-        });
-      } catch (err) {
-        console.warn("[HealthContainer v7] ⚠️ Autoplay bloqueado:", err);
-      }
-    };
-
-    executeAutoplay();
-  }, [isGreetingReady, hasPlayedAutoplay, getWelcomeText, speak]);
 
   // Captura de frequência
   useEffect(() => {

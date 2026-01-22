@@ -80,31 +80,9 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
   const isGreetingReady = !isConfigLoading;
 
   // ============================================================
-  // ETAPA 2: Autoplay (v7.0.0 - simplificado)
+  // ETAPA 2: AUTOPLAY REMOVIDO (v9.0.0)
+  // Usuário deve clicar no botão para ouvir o áudio
   // ============================================================
-  useEffect(() => {
-    if (!isGreetingReady || hasPlayedAutoplay) return;
-
-    const welcomeText = getWelcomeText();
-    if (!welcomeText) return;
-
-    console.log("[WorldContainer v7] 🚀 Executando autoplay com texto do config...");
-    setHasPlayedAutoplay(true);
-
-    // Usar classifyAndEnrich para TTS contextual
-    const executeAutoplay = async () => {
-      try {
-        const enrichment = await classifyAndEnrich(welcomeText, MODULE_CONFIG.type);
-        await speak(enrichment.enrichedText || welcomeText, MODULE_CONFIG.type, {
-          phoneticMapOverride: enrichment.phoneticMap,
-        });
-      } catch (err) {
-        console.warn("[WorldContainer v7] ⚠️ Autoplay bloqueado:", err);
-      }
-    };
-
-    executeAutoplay();
-  }, [isGreetingReady, hasPlayedAutoplay, getWelcomeText, speak]);
 
   // Captura de frequência
   useEffect(() => {
