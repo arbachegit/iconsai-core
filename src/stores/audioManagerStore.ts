@@ -15,9 +15,26 @@
  */
 
 import { create } from "zustand";
-import { getAudioContext } from '@/utils/safari-audio';
 import { getBrowserInfo } from '@/utils/safari-detect';
-import { getWarmedAudio, playWarmedAudio, stopWarmedAudio, pauseWarmedAudio, resumeWarmedAudio, isAudioWarmed } from '@/utils/audio-warmup';
+import {
+  unlockAudioContext,
+  playAudioFromUrl,
+  stopAudio as stopIOSAudio,
+  isAudioPlaying as isIOSPlaying,
+  setCallbacks as setIOSCallbacks,
+  isAudioContextUnlocked
+} from '@/utils/ios-audio-player';
+import {
+  getWarmedAudio,
+  isAudioWarmed,
+  warmupAudioSync
+} from '@/utils/audio-warmup';
+
+// Helper para criar AudioContext (com webkit prefix para Safari)
+function getAudioContext(): AudioContext {
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  return new AudioContextClass();
+}
 
 interface AudioInstance {
   id: string;
@@ -79,16 +96,20 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
     const { isSafari, isIOS } = getBrowserInfo();
     const isMobile = isSafari || isIOS;
 
-    console.log("[AudioManager v6.0] 🎵 playAudio:", { id, source, isMobile, isWarmed: isAudioWarmed() });
+    console.log("[AudioManager v7.0] 🎵 playAudio:", { id, source, isMobile, isWarmed: isAudioWarmed() });
 
     // IMPORTANTE: Parar qualquer áudio existente primeiro
     if (state.currentAudio?.audio) {
       state.currentAudio.audio.pause();
       state.currentAudio.audio.currentTime = 0;
-      // Não limpar src se for o mesmo elemento aquecido
       if (!isMobile) {
         state.currentAudio.audio.src = "";
       }
+    }
+
+    // Parar áudio iOS se estiver tocando
+    if (isIOSPlaying()) {
+      stopIOSAudio();
     }
 
     // FIX: Desconectar sourceNode anterior (evita erro InvalidStateError)
@@ -96,7 +117,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       try {
         state.sourceNode.disconnect();
       } catch (e) {
-        console.warn("[AudioManager v6.0] Erro ao desconectar sourceNode:", e);
+        console.warn("[AudioManager v7.0] Erro ao desconectar sourceNode:", e);
       }
     }
 
@@ -106,39 +127,55 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
         await state.audioContext.close();
         await new Promise(resolve => setTimeout(resolve, 50));
       } catch (e) {
-        console.warn("[AudioManager v6.0] Erro ao fechar AudioContext:", e);
+        console.warn("[AudioManager v7.0] Erro ao fechar AudioContext:", e);
       }
     }
 
     set({ isLoading: true, progress: 0, audioContext: null, analyserNode: null, sourceNode: null, pendingPlay: null });
 
     try {
-      // v6.0.0: No iOS/Safari, usar o elemento AQUECIDO (já desbloqueado)
-      // Em outros browsers, criar novo elemento
-      let audio: HTMLAudioElement;
-
+      // ============================================================
+      // v7.0.0: No iOS/Safari, usar Web Audio API (AudioContext + decodeAudioData)
+      // Isso funciona porque o AudioContext foi desbloqueado pelo unlockAudioContext()
+      // ============================================================
       if (isMobile) {
-        // CRÍTICO: Usar o elemento aquecido que já foi desbloqueado pelo warmupAudioSync()
-        const warmedAudio = getWarmedAudio();
-        if (warmedAudio) {
-          audio = warmedAudio;
-          console.log("[AudioManager v6.0] 📱 Usando elemento aquecido");
-        } else {
-          // Fallback: criar novo elemento (provavelmente vai falhar no iOS)
-          audio = new Audio();
-          audio.setAttribute('playsinline', 'true');
-          audio.setAttribute('webkit-playsinline', 'true');
-          console.log("[AudioManager v6.0] ⚠️ Elemento aquecido não disponível, criando novo");
-        }
-      } else {
-        audio = new Audio();
+        console.log("[AudioManager v7.0] 📱 Usando Web Audio API para iOS...");
+
+        // Configurar callbacks ANTES de reproduzir
+        setIOSCallbacks({
+          onPlay: () => {
+            console.log("[AudioManager v7.0] ▶️ iOS onPlay");
+            set({ isPlaying: true, isLoading: false, pendingPlay: null });
+          },
+          onEnded: () => {
+            console.log("[AudioManager v7.0] ⏹️ iOS onEnded");
+            set({ isPlaying: false, progress: 0 });
+          },
+          onError: (error) => {
+            console.error("[AudioManager v7.0] ❌ iOS onError:", error);
+            set({ isPlaying: false, isLoading: false });
+          }
+        });
+
+        // Criar audio element dummy para manter compatibilidade com a interface
+        const dummyAudio = new Audio();
+        set({
+          currentAudio: { id, audio: dummyAudio, source },
+        });
+
+        // REPRODUZIR usando Web Audio API
+        await playAudioFromUrl(audioUrl);
+        console.log("[AudioManager v7.0] ✅ Web Audio API reprodução iniciada!");
+        return;
       }
 
-      // Configurar fonte
+      // ============================================================
+      // Para outros browsers, usar HTMLAudioElement normal
+      // ============================================================
+      const audio = new Audio();
       audio.src = audioUrl;
       audio.currentTime = 0;
 
-      // Configurar eventos
       audio.onloadeddata = () => {
         set({ isLoading: false });
       };
@@ -163,16 +200,15 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       };
 
       audio.onerror = () => {
-        console.error("[AudioManager v6.0] Erro ao carregar áudio");
+        console.error("[AudioManager v7.0] Erro ao carregar áudio");
         set({ isLoading: false, isPlaying: false });
       };
 
-      // Salvar referência
       set({
         currentAudio: { id, audio, source },
       });
 
-      // Configurar Web Audio API para análise de frequência (opcional, pode falhar no iOS)
+      // Configurar Web Audio API para análise de frequência
       try {
         const audioContext = getAudioContext();
         const analyser = audioContext.createAnalyser();
@@ -185,24 +221,17 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
 
         set({ audioContext, analyserNode: analyser, sourceNode: newSourceNode });
       } catch (audioApiError) {
-        console.warn("[AudioManager v6.0] Web Audio API não disponível (ok para iOS):", audioApiError);
-        // Continuar mesmo sem Web Audio API - o áudio ainda vai tocar
+        console.warn("[AudioManager v7.0] Web Audio API não disponível:", audioApiError);
       }
 
-      // Carregar e tocar
-      if (isMobile) {
-        audio.load();
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      console.log("[AudioManager v6.0] ▶️ Tentando reproduzir...");
+      console.log("[AudioManager v7.0] ▶️ Tentando reproduzir...");
       await audio.play();
-      console.log("[AudioManager v6.0] ✅ Reprodução iniciada!");
+      console.log("[AudioManager v7.0] ✅ Reprodução iniciada!");
       set({ isPlaying: true, isLoading: false });
 
     } catch (error) {
       if (error instanceof DOMException && error.name === "NotAllowedError") {
-        console.warn("[AudioManager v6.0] ⚠️ Autoplay bloqueado - salvando para retry");
+        console.warn("[AudioManager v7.0] ⚠️ Autoplay bloqueado - salvando para retry");
         set({
           isLoading: false,
           isPlaying: false,
@@ -211,7 +240,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
         return;
       }
 
-      console.error("[AudioManager v6.0] Erro:", error);
+      console.error("[AudioManager v7.0] Erro:", error);
       set({ isLoading: false, isPlaying: false });
     }
   },
@@ -236,6 +265,10 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
     if (state.currentAudio?.audio) {
       state.currentAudio.audio.pause();
       state.currentAudio.audio.currentTime = 0;
+    }
+    // v7.0: Também parar áudio iOS se estiver tocando
+    if (isIOSPlaying()) {
+      stopIOSAudio();
     }
     set({ isPlaying: false, progress: 0 });
   },
@@ -271,10 +304,10 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
     return Array.from(dataArray);
   },
 
-  // CRÍTICO: Chamado ao trocar de módulo (v5.0: agora async)
+  // CRÍTICO: Chamado ao trocar de módulo (v7.0: inclui cleanup iOS)
   stopAllAndCleanup: async () => {
     const state = get();
-    console.log("[AudioManager v5.0] 🧹 stopAllAndCleanup");
+    console.log("[AudioManager v7.0] 🧹 stopAllAndCleanup");
 
     if (state.currentAudio?.audio) {
       state.currentAudio.audio.pause();
@@ -282,12 +315,17 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       state.currentAudio.audio.src = "";
     }
 
+    // v7.0: Parar áudio iOS se estiver tocando
+    if (isIOSPlaying()) {
+      stopIOSAudio();
+    }
+
     // FIX: Desconectar sourceNode antes de fechar AudioContext
     if (state.sourceNode) {
       try {
         state.sourceNode.disconnect();
       } catch (e) {
-        console.warn("[AudioManager v5.0] Erro ao desconectar sourceNode:", e);
+        console.warn("[AudioManager v7.0] Erro ao desconectar sourceNode:", e);
       }
     }
 
@@ -298,7 +336,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
         // Pequeno delay para garantir que fechou
         await new Promise(resolve => setTimeout(resolve, 50));
       } catch (e) {
-        console.warn("[AudioManager v5.0] Erro ao fechar AudioContext:", e);
+        console.warn("[AudioManager v7.0] Erro ao fechar AudioContext:", e);
       }
     }
 

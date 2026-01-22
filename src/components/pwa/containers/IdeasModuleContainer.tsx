@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 import { useSaveMessage } from "@/hooks/useSaveMessage";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
-import { warmupAudioSync } from "@/utils/audio-warmup";
+import { unlockAudioContext } from "@/utils/ios-audio-player";
 
 const MODULE_CONFIG = {
   type: "ideas" as const,
@@ -270,7 +270,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
 
   // v7.2.0: Aquecer áudio SINCRONAMENTE no click
   const handlePlayClick = useCallback(async () => {
-    warmupAudioSync(); // CRÍTICO: Antes de qualquer await
+    unlockAudioContext(); // CRÍTICO: Desbloqueia AudioContext no contexto do user gesture
 
     if (isPlaying) {
       stop();

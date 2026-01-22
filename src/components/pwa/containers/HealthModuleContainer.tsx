@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 import { useSaveMessage } from "@/hooks/useSaveMessage";
 import { useUserLocation, UserLocation } from "@/hooks/useUserLocation";
-import { warmupAudioSync } from "@/utils/audio-warmup";
+import { unlockAudioContext } from "@/utils/ios-audio-player";
 
 interface NearbyClinic {
   name: string;
@@ -410,7 +410,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
 
   // v7.2.0: Aquecer áudio SINCRONAMENTE no click
   const handlePlayClick = useCallback(async () => {
-    warmupAudioSync(); // CRÍTICO: Antes de qualquer await
+    unlockAudioContext(); // CRÍTICO: Desbloqueia AudioContext no contexto do user gesture
 
     if (isPlaying) {
       stop();

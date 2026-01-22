@@ -34,7 +34,7 @@ import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
-import { warmupAudioSync } from "@/utils/audio-warmup";
+import { unlockAudioContext } from "@/utils/ios-audio-player";
 
 // Cor padrão da Home (pode ser configurável no futuro)
 const HOME_CONFIG = {
@@ -175,7 +175,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   const handlePlayClick = useCallback(async () => {
     // CRÍTICO: Aquecer áudio PRIMEIRO e SINCRONAMENTE
     // Esta chamada toca áudio silencioso imediatamente, "desbloqueando" o sistema
-    warmupAudioSync();
+    unlockAudioContext(); // CRÍTICO: Desbloqueia AudioContext no contexto do user gesture
 
     if (isPlaying) {
       stop();
