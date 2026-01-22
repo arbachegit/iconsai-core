@@ -20,6 +20,7 @@ import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useAudioManager } from "@/stores/audioManagerStore";
+import { unlockAudioContext } from "@/utils/ios-audio-player";
 import { SplashScreen } from "./SplashScreen";
 import { FooterModules } from "./FooterModules";
 import { HistoryScreen } from "./HistoryScreen";
@@ -114,6 +115,9 @@ const AuthenticatedContent: React.FC<AuthenticatedContentProps> = ({
 
   const handleModuleSelect = useCallback((moduleId: Exclude<ModuleId, null>) => {
     console.log("[PWA] Navegando para módulo:", moduleId);
+    // CRÍTICO: Desbloquear AudioContext IMEDIATAMENTE no contexto do user gesture
+    // Isso permite que o autoplay funcione nos containers
+    unlockAudioContext();
     useAudioManager.getState().stopAllAndCleanup();
     setActiveModule(moduleId);
   }, [setActiveModule]);
