@@ -16,6 +16,7 @@ export interface BrowserInfo {
   isChrome: boolean;
   isFirefox: boolean;
   isEdge: boolean;
+  isAndroid: boolean; // v1.1.0: Detecção explícita de Android
   isMobile: boolean;
   isStandalone: boolean;
   supportsMediaRecorder: boolean;
@@ -25,6 +26,7 @@ export interface BrowserInfo {
   isPrivateMode: boolean;
   safariVersion: number | null;
   iosVersion: number | null;
+  androidVersion: number | null; // v1.1.0: Versão Android
 }
 
 let cachedInfo: BrowserInfo | null = null;
@@ -56,7 +58,15 @@ export function getBrowserInfo(): BrowserInfo {
   if (iosMatch && isIOS) {
     iosVersion = parseInt(iosMatch[1], 10);
   }
-  
+
+  // v1.1.0: Detectar Android
+  const isAndroid = /Android/.test(ua);
+  let androidVersion: number | null = null;
+  const androidMatch = ua.match(/Android (\d+)/);
+  if (androidMatch && isAndroid) {
+    androidVersion = parseInt(androidMatch[1], 10);
+  }
+
   // Detectar modo privado
   let isPrivateMode = false;
   try {
@@ -79,6 +89,7 @@ export function getBrowserInfo(): BrowserInfo {
     isChrome: /Chrome/.test(ua) && !/Edg/.test(ua),
     isFirefox: /Firefox/.test(ua),
     isEdge: /Edg/.test(ua),
+    isAndroid, // v1.1.0: Android explícito
     isMobile: /Mobile|Android/.test(ua) || isIOS,
     isStandalone,
     supportsMediaRecorder: typeof MediaRecorder !== 'undefined',
@@ -88,6 +99,7 @@ export function getBrowserInfo(): BrowserInfo {
     isPrivateMode,
     safariVersion,
     iosVersion,
+    androidVersion, // v1.1.0: Versão Android
   };
   
   return cachedInfo;
@@ -97,6 +109,7 @@ export function getBrowserInfo(): BrowserInfo {
 export const isSafari = () => getBrowserInfo().isSafari;
 export const isIOS = () => getBrowserInfo().isIOS;
 export const isIPad = () => getBrowserInfo().isIPad;
+export const isAndroid = () => getBrowserInfo().isAndroid; // v1.1.0
 export const isPrivateMode = () => getBrowserInfo().isPrivateMode;
 export const isStandalone = () => getBrowserInfo().isStandalone;
 

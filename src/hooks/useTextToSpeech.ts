@@ -2,10 +2,14 @@
  * ============================================================
  * useTextToSpeech.ts - Hook de Text-to-Speech
  * ============================================================
- * Versão: 5.3.0
+ * Versão: 5.4.0
  * Data: 2026-01-22
  *
  * Changelog:
+ * - v5.4.0: Lê voz do localStorage (VoiceSettings)
+ *           Inclui chatType para instruções por módulo
+ *           Suporte Android na detecção de mobile
+ *           Voz padrão "marin" (mais natural em PT-BR)
  * - v5.3.0: Voz padrão mudada para "nova" (OpenAI TTS)
  * - v5.2.0: FIX loop infinito - resetar isLoading ANTES de tentar fallback
  * - v5.0.0: Fallback para Web Speech API quando áudio falha (iOS silent mode)
@@ -48,6 +52,25 @@ interface UseTextToSpeechReturn {
   error: string | null;
 }
 
+// v5.4.0: Chave para config de voz no localStorage
+const VOICE_CONFIG_KEY = 'knowyou_voice_config';
+
+// v5.4.0: Função para obter voz do localStorage
+function getSavedVoice(): string {
+  try {
+    const saved = localStorage.getItem(VOICE_CONFIG_KEY);
+    if (saved) {
+      const config = JSON.parse(saved);
+      if (config.voice) {
+        return config.voice;
+      }
+    }
+  } catch (e) {
+    console.warn('[TTS] Erro ao ler config de voz:', e);
+  }
+  return 'marin'; // v5.4.0: Marin como padrão (mais natural em PT-BR)
+}
+
 export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpeechReturn => {
   const [isPaused, setIsPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +78,9 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
 
   const idRef = useRef<string>("");
   const audioUrlRef = useRef<string | null>(null); // v4.0: Track blob URL for cleanup
-  const voice = options?.voice || "nova"; // v5.3.0: OpenAI "nova" como padrão
+
+  // v5.4.0: Usar voz do localStorage, com fallback para options ou padrão
+  const voice = options?.voice || getSavedVoice();
 
   // Usar o AudioManager global
   const audioManager = useAudioManager();
@@ -86,15 +111,20 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
     setError(null);
     setIsPaused(false);
 
-    const { isIOS, isSafari } = getBrowserInfo();
-    const isMobile = isIOS || isSafari;
+    // v5.4.0: Incluir Android na detecção de mobile
+    const { isIOS, isSafari, isAndroid } = getBrowserInfo();
+    const isMobile = isIOS || isSafari || isAndroid;
 
     // Guardar texto original para fallback
     const originalText = text;
 
     try {
-      // v3.0.0: Incluir phoneticMapOverride se fornecido
-      const bodyPayload: Record<string, unknown> = { text, voice };
+      // v5.4.0: Incluir voice, module (chatType) e phoneticMapOverride
+      const bodyPayload: Record<string, unknown> = {
+        text,
+        voice,
+        chatType: source // source é usado como chatType para instruções por módulo
+      };
 
       if (options?.userRegion) {
         bodyPayload.userRegion = options.userRegion;

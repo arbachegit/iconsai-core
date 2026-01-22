@@ -1,9 +1,9 @@
 // =============================================
-// PWA Auth Hook v8.0 - FIXED
-// Build: 2026-01-21
+// PWA Auth Hook v9.0 - Com Cookie Backup
+// Build: 2026-01-22
 // Funções: login_pwa_by_phone_simple, verify_pwa_code_simple, check_pwa_access
 // Tabelas: user_invitations, pwa_user_devices
-// FIX: Usar funções _simple que verificam user_invitations corretamente
+// v9.0: Adicionado cookie de backup para persistência cross-browser
 // src/hooks/usePWAAuth.ts
 // =============================================
 
@@ -11,6 +11,25 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "pwa-verified-phone";
+const COOKIE_KEY = "pwa_phone";
+const SESSION_DURATION_DAYS = 30;
+
+// ============================================
+// HELPERS PARA COOKIES
+// ============================================
+function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
+}
+
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function deleteCookie(name: string) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+}
 
 export type PWAAuthStatus =
   | "loading"
@@ -63,19 +82,31 @@ export function usePWAAuth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
-   * Verificar status de acesso usando telefone do localStorage
+   * Verificar status de acesso usando telefone do localStorage + cookie backup
    */
   const checkAccess = useCallback(async () => {
     try {
       setState((prev) => ({ ...prev, status: "loading", errorMessage: null }));
 
-      const verifiedPhone = localStorage.getItem(STORAGE_KEY);
+      // v9.0: Verificar localStorage primeiro, depois cookie como fallback
+      let verifiedPhone = localStorage.getItem(STORAGE_KEY);
 
-      console.log("[PWA Auth v8.0] Checking access...");
-      console.log("[PWA Auth v8.0] Verified phone:", verifiedPhone ? verifiedPhone.substring(0, 8) + "..." : "none");
+      // Se não encontrou no localStorage, tentar cookie
+      if (!verifiedPhone) {
+        const cookiePhone = getCookie(COOKIE_KEY);
+        if (cookiePhone) {
+          console.log("[PWA Auth v9.0] Restaurando sessão do cookie");
+          verifiedPhone = cookiePhone;
+          // Restaurar para localStorage também
+          localStorage.setItem(STORAGE_KEY, cookiePhone);
+        }
+      }
+
+      console.log("[PWA Auth v9.0] Checking access...");
+      console.log("[PWA Auth v9.0] Verified phone:", verifiedPhone ? verifiedPhone.substring(0, 8) + "..." : "none");
 
       if (!verifiedPhone) {
-        console.log("[PWA Auth v8.0] No verified phone -> needs_login");
+        console.log("[PWA Auth v9.0] No verified phone -> needs_login");
         setState((prev) => ({ ...prev, status: "needs_login" }));
         return;
       }
@@ -88,8 +119,10 @@ export function usePWAAuth() {
       console.log("[PWA Auth v8.0] check_pwa_access response:", { data, error });
 
       if (error) {
-        console.error("[PWA Auth v8.0] RPC Error:", error);
+        console.error("[PWA Auth v9.0] RPC Error:", error);
+        // v9.0: Limpar tanto localStorage quanto cookie
         localStorage.removeItem(STORAGE_KEY);
+        deleteCookie(COOKIE_KEY);
         setState((prev) => ({
           ...prev,
           status: "needs_login",
@@ -316,10 +349,12 @@ export function usePWAAuth() {
           return { success: false, error: result.message || result.error || "Código inválido" };
         }
 
-        // SUCESSO! Salvar telefone no localStorage
-        console.log("[PWA Auth v8.0] ✅ Verification SUCCESS!");
+        // SUCESSO! Salvar telefone no localStorage E cookie
+        console.log("[PWA Auth v9.0] ✅ Verification SUCCESS!");
         const phoneToSave = result.phone || phone;
         localStorage.setItem(STORAGE_KEY, phoneToSave);
+        // v9.0: Cookie backup para persistência cross-browser
+        setCookie(COOKIE_KEY, phoneToSave, SESSION_DURATION_DAYS);
 
         // Enviar mensagem de boas-vindas
         try {
@@ -461,10 +496,12 @@ export function usePWAAuth() {
   }, []);
 
   /**
-   * Logout - limpar localStorage e voltar para login
+   * Logout - limpar localStorage, cookie e voltar para login
    */
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    // v9.0: Limpar cookie também
+    deleteCookie(COOKIE_KEY);
     setState((prev) => ({
       ...prev,
       status: "needs_login",

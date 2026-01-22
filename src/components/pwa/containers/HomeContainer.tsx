@@ -2,13 +2,18 @@
  * ============================================================
  * HomeContainer.tsx - Container PAI para HOME
  * ============================================================
- * Versão: 8.0.0 - 2026-01-16
+ * Versão: 9.0.0 - 2026-01-22
+ *
+ * v9.0.0: Botão de configurações de voz adicionado
  *
  * FIX PROBLEMAS 1 E 2:
  * - Usa SEMPRE config.welcomeText do useConfigPWA (não chama generate-contextual-greeting)
  * - Autoplay simplificado: toca assim que config estiver pronto
  * - Sem chamadas externas desnecessárias
  * ============================================================
+ * CHANGELOG v9.0.0:
+ * - NEW: Botão de configurações de voz (Settings)
+ * - NEW: Modal de VoiceSettings para escolher voz
  * CHANGELOG v8.0.0:
  * - NEW: HomePlayButton exclusivo com design do knowyou-nexus
  * - NEW: Efeito de luminosidade girando (conic-gradient)
@@ -25,10 +30,12 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Settings } from "lucide-react";
 import { VoiceSpectrumBidirectional } from "../voice/VoiceSpectrumBidirectional";
 import { HomePlayButton } from "../microservices/HomePlayButton";
 import { ModuleSelector } from "../voice/ModuleSelector";
+import { VoiceSettings } from "../settings/VoiceSettings";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
@@ -59,6 +66,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
 
   // Estados locais
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false); // v9.0.0: Modal de config de voz
 
   // Refs
   const animationRef = useRef<number | null>(null);
@@ -200,12 +208,25 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <div className="text-center overflow-hidden">
+        <div className="flex items-center justify-between">
+          {/* Spacer para centralizar título */}
+          <div className="w-10" />
+
+          {/* Título centralizado */}
           <h1 className="text-2xl font-bold whitespace-nowrap">
             <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               KnowYOU
             </span>
           </h1>
+
+          {/* Botão de Configurações v9.0.0 */}
+          <button
+            onClick={() => setShowVoiceSettings(true)}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
+            aria-label="Configurações de voz"
+          >
+            <Settings className="h-5 w-5 text-muted-foreground" />
+          </button>
         </div>
       </motion.div>
 
@@ -268,6 +289,19 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
           />
         </div>
       )}
+
+      {/* MODAL DE CONFIGURAÇÕES DE VOZ v9.0.0 */}
+      <AnimatePresence>
+        {showVoiceSettings && (
+          <VoiceSettings
+            onBack={() => setShowVoiceSettings(false)}
+            onSave={() => {
+              // Força recarregar a voz na próxima reprodução
+              console.log('[HOME v9.0] Configurações de voz atualizadas');
+            }}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
