@@ -19,6 +19,7 @@ import { getBrowserInfo } from '@/utils/safari-detect';
 import {
   unlockAudioContext,
   playAudioFromUrl,
+  playAudioFromArrayBuffer,
   stopAudio as stopIOSAudio,
   isAudioPlaying as isIOSPlaying,
   setCallbacks as setIOSCallbacks,
@@ -135,24 +136,25 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
 
     try {
       // ============================================================
-      // v7.0.0: No iOS/Safari, usar Web Audio API (AudioContext + decodeAudioData)
+      // v7.1.0: No iOS/Safari, usar Web Audio API (AudioContext + decodeAudioData)
       // Isso funciona porque o AudioContext foi desbloqueado pelo unlockAudioContext()
+      // Para blob URLs, convertemos para ArrayBuffer diretamente
       // ============================================================
       if (isMobile) {
-        console.log("[AudioManager v7.0] 📱 Usando Web Audio API para iOS...");
+        console.log("[AudioManager v7.1] 📱 Usando Web Audio API para iOS...");
 
         // Configurar callbacks ANTES de reproduzir
         setIOSCallbacks({
           onPlay: () => {
-            console.log("[AudioManager v7.0] ▶️ iOS onPlay");
+            console.log("[AudioManager v7.1] ▶️ iOS onPlay");
             set({ isPlaying: true, isLoading: false, pendingPlay: null });
           },
           onEnded: () => {
-            console.log("[AudioManager v7.0] ⏹️ iOS onEnded");
+            console.log("[AudioManager v7.1] ⏹️ iOS onEnded");
             set({ isPlaying: false, progress: 0 });
           },
           onError: (error) => {
-            console.error("[AudioManager v7.0] ❌ iOS onError:", error);
+            console.error("[AudioManager v7.1] ❌ iOS onError:", error);
             set({ isPlaying: false, isLoading: false });
           }
         });
@@ -163,9 +165,18 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
           currentAudio: { id, audio: dummyAudio, source },
         });
 
-        // REPRODUZIR usando Web Audio API
-        await playAudioFromUrl(audioUrl);
-        console.log("[AudioManager v7.0] ✅ Web Audio API reprodução iniciada!");
+        // v7.1: Para blob URLs, buscar e converter para ArrayBuffer
+        // Blob URLs têm formato "blob:https://..."
+        if (audioUrl.startsWith('blob:')) {
+          console.log("[AudioManager v7.1] 🔄 Convertendo blob URL para ArrayBuffer...");
+          const response = await fetch(audioUrl);
+          const arrayBuffer = await response.arrayBuffer();
+          await playAudioFromArrayBuffer(arrayBuffer);
+        } else {
+          await playAudioFromUrl(audioUrl);
+        }
+
+        console.log("[AudioManager v7.1] ✅ Web Audio API reprodução iniciada!");
         return;
       }
 

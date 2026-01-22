@@ -67,10 +67,11 @@ export async function unlockAudioContext(): Promise<boolean> {
 }
 
 /**
- * Reproduz áudio a partir de uma URL usando Web Audio API
+ * Reproduz áudio a partir de um ArrayBuffer usando Web Audio API
+ * Esta é a função principal - aceita ArrayBuffer diretamente
  */
-export async function playAudioFromUrl(audioUrl: string): Promise<void> {
-  console.log('[iOSAudioPlayer] 🎵 Iniciando reprodução:', audioUrl.substring(0, 50) + '...');
+export async function playAudioFromArrayBuffer(arrayBuffer: ArrayBuffer): Promise<void> {
+  console.log('[iOSAudioPlayer] 🎵 Iniciando reprodução de ArrayBuffer, tamanho:', arrayBuffer.byteLength, 'bytes');
 
   // Parar áudio atual se houver
   stopAudio();
@@ -84,17 +85,6 @@ export async function playAudioFromUrl(audioUrl: string): Promise<void> {
   }
 
   try {
-    // Buscar o áudio como ArrayBuffer
-    console.log('[iOSAudioPlayer] Buscando áudio...');
-    const response = await fetch(audioUrl);
-
-    if (!response.ok) {
-      throw new Error(`Falha ao buscar áudio: ${response.status}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    console.log('[iOSAudioPlayer] Áudio baixado, tamanho:', arrayBuffer.byteLength, 'bytes');
-
     // Decodificar o áudio
     console.log('[iOSAudioPlayer] Decodificando áudio...');
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
@@ -122,6 +112,33 @@ export async function playAudioFromUrl(audioUrl: string): Promise<void> {
 
   } catch (err) {
     console.error('[iOSAudioPlayer] ❌ Erro ao reproduzir:', err);
+    isPlaying = false;
+    if (onErrorCallback) onErrorCallback(err as Error);
+    throw err;
+  }
+}
+
+/**
+ * Reproduz áudio a partir de uma URL usando Web Audio API
+ * Para URLs normais (não blob URLs)
+ */
+export async function playAudioFromUrl(audioUrl: string): Promise<void> {
+  console.log('[iOSAudioPlayer] 🎵 Iniciando reprodução de URL:', audioUrl.substring(0, 50) + '...');
+
+  try {
+    // Buscar o áudio como ArrayBuffer
+    console.log('[iOSAudioPlayer] Buscando áudio...');
+    const response = await fetch(audioUrl);
+
+    if (!response.ok) {
+      throw new Error(`Falha ao buscar áudio: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    await playAudioFromArrayBuffer(arrayBuffer);
+
+  } catch (err) {
+    console.error('[iOSAudioPlayer] ❌ Erro ao reproduzir URL:', err);
     isPlaying = false;
     if (onErrorCallback) onErrorCallback(err as Error);
     throw err;
