@@ -17,13 +17,22 @@
  * ============================================================
  */
 
-// Áudio silencioso em base64 (1 segundo de silêncio MP3)
-const SILENT_AUDIO = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAgAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAbD/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//M4xAANCAJQIUAAABBDf/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=';
-
 // Estado global
 let warmedAudio: HTMLAudioElement | null = null;
+let audioContext: AudioContext | null = null;
 let isWarmed = false;
 let warmupPromise: Promise<boolean> | null = null;
+
+/**
+ * Obtém ou cria AudioContext (com webkit prefix para Safari)
+ */
+function getAudioContext(): AudioContext {
+  if (!audioContext || audioContext.state === 'closed') {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    audioContext = new AudioContextClass();
+  }
+  return audioContext;
+}
 
 /**
  * Cria o elemento de áudio aquecido
@@ -38,12 +47,13 @@ function createWarmedAudio(): HTMLAudioElement {
 }
 
 /**
- * Aquece o áudio - DEVE ser chamado em resposta a user gesture
+ * Aquece o áudio usando AudioContext - DEVE ser chamado em resposta a user gesture
+ * Usa oscilador silencioso que funciona em todos os browsers
  * Retorna true se conseguiu aquecer, false caso contrário
  */
 export async function warmupAudio(): Promise<boolean> {
   // Se já está aquecido, retornar true
-  if (isWarmed && warmedAudio) {
+  if (isWarmed) {
     console.log('[AudioWarmup] Já aquecido');
     return true;
   }
@@ -55,25 +65,31 @@ export async function warmupAudio(): Promise<boolean> {
 
   warmupPromise = (async () => {
     try {
-      console.log('[AudioWarmup] Iniciando warmup...');
+      console.log('[AudioWarmup] Iniciando warmup com AudioContext...');
 
-      // Criar elemento se não existir
+      const ctx = getAudioContext();
+
+      // Resumir se suspenso
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
+      // Tocar oscilador silencioso para "desbloquear"
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0.001; // Praticamente silencioso
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.01); // Muito curto
+
+      // Também criar elemento de áudio para uso posterior
       if (!warmedAudio) {
         warmedAudio = createWarmedAudio();
       }
 
-      // Configurar áudio silencioso
-      warmedAudio.src = SILENT_AUDIO;
-
-      // Tentar reproduzir
-      await warmedAudio.play();
-
-      // Parar imediatamente (não queremos ouvir nada)
-      warmedAudio.pause();
-      warmedAudio.currentTime = 0;
-
       isWarmed = true;
-      console.log('[AudioWarmup] ✅ Áudio aquecido com sucesso!');
+      console.log('[AudioWarmup] ✅ Áudio aquecido com sucesso! State:', ctx.state);
       return true;
     } catch (err) {
       console.warn('[AudioWarmup] ⚠️ Falha no warmup:', err);
@@ -87,33 +103,40 @@ export async function warmupAudio(): Promise<boolean> {
 }
 
 /**
- * Aquece o áudio de forma SÍNCRONA - chama play() imediatamente
- * O play() retorna Promise mas é chamado sincronamente no contexto do gesture
+ * Aquece o áudio de forma SÍNCRONA usando AudioContext
+ * Usa oscilador silencioso que funciona em iOS Safari
  * Esta é a versão que DEVE ser usada no início do click handler
  */
 export function warmupAudioSync(): void {
   console.log('[AudioWarmup] 🔥 Warmup síncrono iniciado');
 
-  // Criar elemento se não existir
-  if (!warmedAudio) {
-    warmedAudio = createWarmedAudio();
+  try {
+    const ctx = getAudioContext();
+
+    // Resumir se suspenso (retorna Promise mas chamamos sync)
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    // Tocar oscilador silencioso SINCRONAMENTE
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 0.001; // Praticamente silencioso
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.01);
+
+    // Também criar elemento de áudio para uso posterior
+    if (!warmedAudio) {
+      warmedAudio = createWarmedAudio();
+    }
+
+    isWarmed = true;
+    console.log('[AudioWarmup] ✅ Warmup síncrono completou! State:', ctx.state);
+  } catch (err) {
+    console.warn('[AudioWarmup] ⚠️ Warmup síncrono falhou:', err);
   }
-
-  // Configurar áudio silencioso
-  warmedAudio.src = SILENT_AUDIO;
-
-  // CRÍTICO: Chamar play() SINCRONAMENTE - o retorno é Promise mas
-  // o navegador registra a chamada como parte do user gesture
-  warmedAudio.play()
-    .then(() => {
-      warmedAudio?.pause();
-      if (warmedAudio) warmedAudio.currentTime = 0;
-      isWarmed = true;
-      console.log('[AudioWarmup] ✅ Warmup síncrono completou');
-    })
-    .catch((err) => {
-      console.warn('[AudioWarmup] ⚠️ Warmup síncrono falhou:', err);
-    });
 }
 
 /**
@@ -196,6 +219,13 @@ export function getWarmedAudio(): HTMLAudioElement | null {
  */
 export function isAudioWarmed(): boolean {
   return isWarmed;
+}
+
+/**
+ * Obtém o AudioContext aquecido para uso externo
+ */
+export function getWarmedAudioContext(): AudioContext | null {
+  return audioContext;
 }
 
 /**
