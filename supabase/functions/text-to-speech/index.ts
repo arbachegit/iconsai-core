@@ -1,7 +1,7 @@
 // ============================================
-// VERSAO: 2.2.0 | DEPLOY: 2026-01-09
-// INTEGRACAO: lexicon_terms + regional_tone_rules
-// NOVO: phoneticMapOverride do classify-and-enrich
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-22
+// MUDANÇA: OpenAI TTS como principal, Google TTS fallback
+// ElevenLabs removido (401 errors)
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -340,17 +340,24 @@ function normalizeTextForTTS(text: string, phoneticMap: Record<string, string>):
 // OpenAI TTS voices
 const OPENAI_VOICES = ["alloy", "onyx", "nova", "shimmer", "echo", "fable"];
 
+// Google Cloud TTS - vozes em português brasileiro
+const GOOGLE_TTS_VOICES = {
+  "male": "pt-BR-Wavenet-B",
+  "female": "pt-BR-Wavenet-A",
+  "default": "pt-BR-Wavenet-B"
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { 
-      text, 
-      chatType, 
-      agentSlug, 
-      voice = "fernando", 
+    const {
+      text,
+      chatType,
+      agentSlug,
+      voice = "nova",  // v3.0.0: OpenAI "nova" como padrão (boa para PT-BR)
       userRegion,
       phoneticMapOverride  // v2.2.0: Mapa pré-carregado do classify-and-enrich
     } = await req.json();
@@ -495,140 +502,123 @@ serve(async (req) => {
     console.log("Texto normalizado:", normalizedText.substring(0, 150));
     console.log("Voice selecionada:", voice);
 
-    // Check if using OpenAI voice or ElevenLabs (fernando)
-    const isOpenAIVoice = OPENAI_VOICES.includes(voice);
-    
-    if (isOpenAIVoice) {
-      // Use OpenAI TTS
-      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-      if (!OPENAI_API_KEY) {
-        throw new Error("OpenAI API Key não configurada");
-      }
+    // ============================================
+    // v3.0.0: ESTRATÉGIA DE TTS
+    // 1. OpenAI TTS (principal) - rápido e confiável
+    // 2. Google Cloud TTS (fallback) - alta qualidade PT-BR
+    // ============================================
 
-      console.log("Usando OpenAI TTS com voz:", voice);
-      
-      const response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: normalizedText,
-          voice: voice,
-          response_format: "mp3",
-        }),
-      });
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY"); // Mesma key funciona para TTS
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Erro OpenAI TTS:", response.status, errorText);
-        throw new Error(`Falha ao gerar áudio OpenAI: ${response.status}`);
-      }
+    // Determinar voz OpenAI (padrão: nova)
+    const openaiVoice = OPENAI_VOICES.includes(voice) ? voice : "nova";
 
-      return new Response(response.body, {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "audio/mpeg",
-          "Transfer-Encoding": "chunked",
-        },
-      });
-    } else {
-      // Use ElevenLabs (default - fernando)
-      const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-      const VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID_FERNANDO");
-
-      if (!ELEVENLABS_API_KEY || !VOICE_ID) {
-        throw new Error("Credenciais ElevenLabs não configuradas");
-      }
-
-      console.log("Usando ElevenLabs TTS com voice_id:", VOICE_ID);
-
-      // Carregar configurações de voz do banco de dados
-      let voiceSettings = {
-        stability: 0.50,
-        similarity_boost: 1.00,
-        style: 0.00,
-        speed: 1.15,
-        use_speaker_boost: true,
-      };
-
+    // ============================================
+    // TENTATIVA 1: OpenAI TTS
+    // ============================================
+    if (OPENAI_API_KEY) {
       try {
-        const { data: voiceConfig } = await supabase
-          .from("pwa_config")
-          .select("config_key, config_value")
-          .in("config_key", [
-            "voice_stability",
-            "voice_similarity",
-            "voice_style",
-            "voice_speed",
-            "voice_speaker_boost"
-          ]);
+        console.log("[TTS v3.0] 🎯 Tentando OpenAI TTS com voz:", openaiVoice);
 
-        if (voiceConfig && voiceConfig.length > 0) {
-          for (const row of voiceConfig) {
-            switch (row.config_key) {
-              case "voice_stability":
-                voiceSettings.stability = parseFloat(row.config_value);
-                break;
-              case "voice_similarity":
-                voiceSettings.similarity_boost = parseFloat(row.config_value);
-                break;
-              case "voice_style":
-                voiceSettings.style = parseFloat(row.config_value);
-                break;
-              case "voice_speed":
-                voiceSettings.speed = parseFloat(row.config_value);
-                break;
-              case "voice_speaker_boost":
-                voiceSettings.use_speaker_boost = row.config_value === "true";
-                break;
-            }
-          }
-          console.log("Voice settings carregadas do banco:", voiceSettings);
-        }
-      } catch (err) {
-        console.log("Usando voice settings padrão:", voiceSettings);
-      }
-
-      // Gerar áudio com ElevenLabs usando modelo Multilingual v2 (melhor para PT-BR)
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
-        {
+        const openaiResponse = await fetch("https://api.openai.com/v1/audio/speech", {
           method: "POST",
           headers: {
-            "xi-api-key": ELEVENLABS_API_KEY,
+            "Authorization": `Bearer ${OPENAI_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            text: normalizedText,
-            model_id: "eleven_multilingual_v2", // Melhor qualidade para PT-BR
-            voice_settings: {
-              stability: voiceSettings.stability,
-              similarity_boost: voiceSettings.similarity_boost,
-              style: voiceSettings.style,
-              use_speaker_boost: voiceSettings.use_speaker_boost,
-              speed: voiceSettings.speed, // Velocidade da fala (0.5-2.0)
-            },
+            model: "tts-1",
+            input: normalizedText,
+            voice: openaiVoice,
+            response_format: "mp3",
           }),
+        });
+
+        if (openaiResponse.ok) {
+          console.log("[TTS v3.0] ✅ OpenAI TTS sucesso!");
+          return new Response(openaiResponse.body, {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "audio/mpeg",
+              "Transfer-Encoding": "chunked",
+            },
+          });
         }
-      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Erro ElevenLabs:", response.status, errorText);
-        throw new Error(`Falha ao gerar áudio: ${response.status}`);
+        const errorText = await openaiResponse.text();
+        console.warn("[TTS v3.0] ⚠️ OpenAI TTS falhou:", openaiResponse.status, errorText);
+        // Continua para fallback
+
+      } catch (openaiError) {
+        console.warn("[TTS v3.0] ⚠️ OpenAI TTS erro:", openaiError);
+        // Continua para fallback
       }
-
-      return new Response(response.body, {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "audio/mpeg",
-          "Transfer-Encoding": "chunked",
-        },
-      });
+    } else {
+      console.warn("[TTS v3.0] ⚠️ OPENAI_API_KEY não configurada");
     }
+
+    // ============================================
+    // TENTATIVA 2: Google Cloud TTS (fallback)
+    // ============================================
+    if (GOOGLE_API_KEY) {
+      try {
+        console.log("[TTS v3.0] 🔄 Fallback para Google Cloud TTS...");
+
+        const googleResponse = await fetch(
+          `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              input: { text: normalizedText },
+              voice: {
+                languageCode: "pt-BR",
+                name: GOOGLE_TTS_VOICES.default,
+                ssmlGender: "MALE"
+              },
+              audioConfig: {
+                audioEncoding: "MP3",
+                speakingRate: 1.1,  // Levemente mais rápido
+                pitch: 0,
+                volumeGainDb: 0
+              }
+            }),
+          }
+        );
+
+        if (googleResponse.ok) {
+          const googleData = await googleResponse.json();
+
+          if (googleData.audioContent) {
+            console.log("[TTS v3.0] ✅ Google Cloud TTS sucesso!");
+
+            // Decodificar base64 para bytes
+            const audioBytes = Uint8Array.from(atob(googleData.audioContent), c => c.charCodeAt(0));
+
+            return new Response(audioBytes, {
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "audio/mpeg",
+              },
+            });
+          }
+        }
+
+        const errorText = await googleResponse.text();
+        console.error("[TTS v3.0] ❌ Google Cloud TTS falhou:", googleResponse.status, errorText);
+        throw new Error(`Google TTS falhou: ${googleResponse.status}`);
+
+      } catch (googleError) {
+        console.error("[TTS v3.0] ❌ Google Cloud TTS erro:", googleError);
+        throw googleError;
+      }
+    }
+
+    // Se nenhum TTS funcionou
+    throw new Error("Nenhum serviço TTS disponível (OpenAI e Google falharam)");
   } catch (error) {
     console.error("Erro no text-to-speech:", error);
     return new Response(

@@ -2,10 +2,11 @@
  * ============================================================
  * useTextToSpeech.ts - Hook de Text-to-Speech
  * ============================================================
- * Versão: 5.2.0
+ * Versão: 5.3.0
  * Data: 2026-01-22
  *
  * Changelog:
+ * - v5.3.0: Voz padrão mudada para "nova" (OpenAI TTS)
  * - v5.2.0: FIX loop infinito - resetar isLoading ANTES de tentar fallback
  * - v5.0.0: Fallback para Web Speech API quando áudio falha (iOS silent mode)
  * - v4.0.0: FIX memory leak - revoga URL.createObjectURL no cleanup
@@ -54,7 +55,7 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
 
   const idRef = useRef<string>("");
   const audioUrlRef = useRef<string | null>(null); // v4.0: Track blob URL for cleanup
-  const voice = options?.voice || "fernando";
+  const voice = options?.voice || "nova"; // v5.3.0: OpenAI "nova" como padrão
 
   // Usar o AudioManager global
   const audioManager = useAudioManager();
