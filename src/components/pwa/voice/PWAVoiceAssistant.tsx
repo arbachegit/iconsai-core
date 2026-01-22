@@ -20,7 +20,8 @@ import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useAudioManager } from "@/stores/audioManagerStore";
-import { warmupAudioSync } from "@/utils/audio-warmup";
+import { warmupAudioSync, initGlobalAudioUnlock } from "@/utils/audio-warmup";
+import { loadVoices } from "@/utils/web-speech-fallback";
 import { SplashScreen } from "./SplashScreen";
 import { FooterModules } from "./FooterModules";
 import { HistoryScreen } from "./HistoryScreen";
@@ -236,6 +237,16 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
       document.body.classList.remove("pwa-scroll-lock");
     };
   }, [embedded]);
+
+  // v9.0.0: Inicializar áudio global e carregar vozes para fallback
+  useEffect(() => {
+    // Inicializar listeners globais para unlock de áudio (iOS)
+    initGlobalAudioUnlock();
+    // Pré-carregar vozes para Web Speech API (fallback)
+    loadVoices().then(voices => {
+      console.log(`[PWA] ${voices.length} vozes carregadas para fallback`);
+    });
+  }, []);
 
   // Load desktop access config from database
   useEffect(() => {

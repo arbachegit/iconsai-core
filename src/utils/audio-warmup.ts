@@ -2,7 +2,7 @@
  * ============================================================
  * audio-warmup.ts - Sistema de áudio pré-aquecido para mobile
  * ============================================================
- * Versão: 1.0.0 - 2026-01-22
+ * Versão: 2.0.0 - 2026-01-22
  *
  * O problema: Mobile browsers bloqueiam audio.play() se não for
  * chamado DIRETAMENTE em resposta a um user gesture (touch/click).
@@ -11,6 +11,9 @@
  * A solução: Manter um Audio element "quente" que já teve play()
  * chamado no contexto de um user gesture. Reutilizar esse elemento
  * para todas as reproduções.
+ *
+ * v2.0.0: Adiciona listeners globais para touchstart/touchend
+ * conforme recomendação para iOS
  * ============================================================
  */
 
@@ -221,4 +224,30 @@ export function resumeWarmedAudio(): void {
   if (warmedAudio) {
     warmedAudio.play().catch(console.warn);
   }
+}
+
+/**
+ * v2.0.0: Inicializa listeners globais para touchstart/touchend
+ * Isso garante que o áudio seja aquecido na primeira interação do usuário
+ * Deve ser chamado uma vez quando a app inicia
+ */
+let globalListenersAdded = false;
+
+export function initGlobalAudioUnlock(): void {
+  if (globalListenersAdded) return;
+
+  const unlockHandler = () => {
+    if (!isWarmed) {
+      console.log('[AudioWarmup] 🔓 Global unlock triggered');
+      warmupAudioSync();
+    }
+  };
+
+  // Adicionar listeners para diferentes tipos de interação
+  document.addEventListener('touchstart', unlockHandler, { once: true, passive: true });
+  document.addEventListener('touchend', unlockHandler, { once: true, passive: true });
+  document.addEventListener('click', unlockHandler, { once: true });
+
+  globalListenersAdded = true;
+  console.log('[AudioWarmup] 🎧 Global listeners adicionados');
 }

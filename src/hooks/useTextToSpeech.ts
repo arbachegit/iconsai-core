@@ -2,10 +2,11 @@
  * ============================================================
  * useTextToSpeech.ts - Hook de Text-to-Speech
  * ============================================================
- * Versão: 4.0.0
- * Data: 2026-01-21
+ * Versão: 5.0.0
+ * Data: 2026-01-22
  *
  * Changelog:
+ * - v5.0.0: Fallback para Web Speech API quando áudio falha (iOS silent mode)
  * - v4.0.0: FIX memory leak - revoga URL.createObjectURL no cleanup
  * - v3.0.0: Suporte a phoneticMapOverride e userRegion
  *           para integração com classify-and-enrich
@@ -16,6 +17,13 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAudioManager } from "@/stores/audioManagerStore";
+import { getBrowserInfo } from "@/utils/safari-detect";
+import {
+  isWebSpeechAvailable,
+  speakWithWebSpeech,
+  stopWebSpeech,
+  setWebSpeechCallbacks
+} from "@/utils/web-speech-fallback";
 
 interface UseTextToSpeechOptions {
   voice?: string;
@@ -60,29 +68,35 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
     };
   }, []);
 
-  // v3.0.0: Aceita overrideOptions com phoneticMapOverride
+  // v5.0.0: Aceita overrideOptions com phoneticMapOverride + fallback Web Speech
   const speak = useCallback(async (
-    text: string, 
+    text: string,
     source: string = "default",
     overrideOptions?: SpeakOverrideOptions
   ) => {
     if (!text.trim()) return;
-    
+
     // Gerar ID único para este áudio
     idRef.current = `tts-${Date.now()}`;
-    
+
     setLocalLoading(true);
     setError(null);
     setIsPaused(false);
 
+    const { isIOS, isSafari } = getBrowserInfo();
+    const isMobile = isIOS || isSafari;
+
+    // Guardar texto original para fallback
+    const originalText = text;
+
     try {
       // v3.0.0: Incluir phoneticMapOverride se fornecido
       const bodyPayload: Record<string, unknown> = { text, voice };
-      
+
       if (options?.userRegion) {
         bodyPayload.userRegion = options.userRegion;
       }
-      
+
       if (overrideOptions?.phoneticMapOverride) {
         bodyPayload.phoneticMapOverride = overrideOptions.phoneticMapOverride;
       }
@@ -120,10 +134,47 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
       setLocalLoading(false);
 
       // v5.1.0: Usar getState() para evitar loop infinito
-      await useAudioManager.getState().playAudio(idRef.current, audioUrl, source);
+      try {
+        await useAudioManager.getState().playAudio(idRef.current, audioUrl, source);
+      } catch (playError) {
+        // v5.0.0: Se falhar no iOS (ex: modo silencioso), tentar Web Speech API
+        if (isMobile && isWebSpeechAvailable()) {
+          console.warn("[TTS v5.0] ⚠️ Áudio falhou, tentando Web Speech API...");
+
+          // Configurar callbacks para Web Speech
+          setWebSpeechCallbacks({
+            onStart: () => {
+              console.log("[TTS v5.0] 🗣️ Web Speech iniciado");
+            },
+            onEnd: () => {
+              console.log("[TTS v5.0] ✅ Web Speech concluído");
+            }
+          });
+
+          await speakWithWebSpeech(originalText, 'pt-BR');
+        } else {
+          throw playError;
+        }
+      }
 
     } catch (err) {
       console.error("TTS Error:", err);
+
+      // v5.0.0: Última tentativa com Web Speech se disponível
+      if (isMobile && isWebSpeechAvailable()) {
+        console.warn("[TTS v5.0] ⚠️ Fallback final para Web Speech API...");
+        try {
+          setWebSpeechCallbacks({
+            onStart: () => setLocalLoading(false),
+            onEnd: () => console.log("[TTS v5.0] Web Speech fallback concluído")
+          });
+          await speakWithWebSpeech(originalText, 'pt-BR');
+          return; // Sucesso com fallback
+        } catch (webSpeechErr) {
+          console.error("[TTS v5.0] Web Speech também falhou:", webSpeechErr);
+        }
+      }
+
       setError(err instanceof Error ? err.message : "Falha ao gerar fala");
       setLocalLoading(false);
     }
@@ -132,6 +183,7 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
   // v5.1.0: Todas as funções usam getState() - deps: []
   const stop = useCallback(() => {
     useAudioManager.getState().stopAudio();
+    stopWebSpeech(); // v5.0.0: Também parar Web Speech se estiver ativo
     setIsPaused(false);
   }, []);
 
