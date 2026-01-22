@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 import { useSaveMessage } from "@/hooks/useSaveMessage";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
-import { unlockAudioContext } from "@/utils/ios-audio-player";
+import { warmupAudioSync } from "@/utils/audio-warmup";
 
 const MODULE_CONFIG = {
   type: "help" as const,
@@ -204,9 +204,9 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
     }
   };
 
-  // v7.2.0: Aquecer áudio SINCRONAMENTE no click
+  // v9.0.0: Aquecer áudio SINCRONAMENTE no click
   const handlePlayClick = useCallback(async () => {
-    unlockAudioContext(); // CRÍTICO: Desbloqueia AudioContext no contexto do user gesture
+    warmupAudioSync(); // CRÍTICO: Desbloqueia HTMLAudioElement no contexto do user gesture
 
     if (isPlaying) {
       stop();
@@ -219,7 +219,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
             phoneticMapOverride: enrichment.phoneticMap,
           });
         } catch (err) {
-          console.warn("[HelpContainer v7.2] ⚠️ Erro ao reproduzir:", err);
+          console.warn("[HelpContainer v9.0] ⚠️ Erro ao reproduzir:", err);
         }
       }
     }

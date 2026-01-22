@@ -34,7 +34,7 @@ import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
-import { unlockAudioContext } from "@/utils/ios-audio-player";
+import { warmupAudioSync } from "@/utils/audio-warmup";
 
 // Cor padrão da Home (pode ser configurável no futuro)
 const HOME_CONFIG = {
@@ -144,11 +144,11 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   // ============================================================
   // HANDLERS
   // ============================================================
-  // v8.3.0: Aquecer áudio SINCRONAMENTE no click (antes de qualquer async)
+  // v9.0.0: Aquecer áudio SINCRONAMENTE no click (antes de qualquer async)
   const handlePlayClick = useCallback(async () => {
     // CRÍTICO: Aquecer áudio PRIMEIRO e SINCRONAMENTE
-    // Esta chamada toca áudio silencioso imediatamente, "desbloqueando" o sistema
-    unlockAudioContext(); // CRÍTICO: Desbloqueia AudioContext no contexto do user gesture
+    // Esta chamada toca áudio silencioso imediatamente, "desbloqueando" o HTMLAudioElement
+    warmupAudioSync();
 
     if (isPlaying) {
       stop();
@@ -161,7 +161,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
             phoneticMapOverride: enrichment.phoneticMap,
           });
         } catch (err) {
-          console.warn("[HOME v8.3] ⚠️ Erro ao reproduzir:", err);
+          console.warn("[HOME v9.0] ⚠️ Erro ao reproduzir:", err);
         }
       }
     }

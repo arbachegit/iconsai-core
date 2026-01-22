@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 import { useSaveMessage } from "@/hooks/useSaveMessage";
 import { useUserLocation, UserLocation } from "@/hooks/useUserLocation";
-import { unlockAudioContext } from "@/utils/ios-audio-player";
+import { warmupAudioSync } from "@/utils/audio-warmup";
 
 interface NearbyClinic {
   name: string;
@@ -387,9 +387,9 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
     }
   };
 
-  // v7.2.0: Aquecer áudio SINCRONAMENTE no click
+  // v9.0.0: Aquecer áudio SINCRONAMENTE no click
   const handlePlayClick = useCallback(async () => {
-    unlockAudioContext(); // CRÍTICO: Desbloqueia AudioContext no contexto do user gesture
+    warmupAudioSync(); // CRÍTICO: Desbloqueia HTMLAudioElement no contexto do user gesture
 
     if (isPlaying) {
       stop();
@@ -402,7 +402,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
             phoneticMapOverride: enrichment.phoneticMap,
           });
         } catch (err) {
-          console.warn("[HealthContainer v7.2] ⚠️ Erro ao reproduzir:", err);
+          console.warn("[HealthContainer v9.0] ⚠️ Erro ao reproduzir:", err);
         }
       }
     }
