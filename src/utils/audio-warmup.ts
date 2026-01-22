@@ -140,6 +140,48 @@ export async function playWarmedAudio(audioUrl: string): Promise<HTMLAudioElemen
 }
 
 /**
+ * Configura callbacks no elemento de áudio aquecido
+ */
+export function setupWarmedAudioCallbacks(callbacks: {
+  onPlay?: () => void;
+  onPause?: () => void;
+  onEnded?: () => void;
+  onTimeUpdate?: (currentTime: number, duration: number) => void;
+  onLoadedData?: () => void;
+  onError?: (error: Event) => void;
+}): void {
+  if (!warmedAudio) {
+    warmedAudio = createWarmedAudio();
+  }
+
+  if (callbacks.onPlay) warmedAudio.onplay = callbacks.onPlay;
+  if (callbacks.onPause) warmedAudio.onpause = callbacks.onPause;
+  if (callbacks.onEnded) warmedAudio.onended = callbacks.onEnded;
+  if (callbacks.onLoadedData) warmedAudio.onloadeddata = callbacks.onLoadedData;
+  if (callbacks.onError) warmedAudio.onerror = callbacks.onError;
+  if (callbacks.onTimeUpdate) {
+    warmedAudio.ontimeupdate = () => {
+      if (warmedAudio) {
+        callbacks.onTimeUpdate!(warmedAudio.currentTime, warmedAudio.duration || 0);
+      }
+    };
+  }
+}
+
+/**
+ * Obtém o tempo atual e duração do áudio
+ */
+export function getWarmedAudioProgress(): { currentTime: number; duration: number; progress: number } {
+  if (!warmedAudio) {
+    return { currentTime: 0, duration: 0, progress: 0 };
+  }
+  const duration = warmedAudio.duration || 0;
+  const currentTime = warmedAudio.currentTime || 0;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  return { currentTime, duration, progress };
+}
+
+/**
  * Obtém o elemento de áudio aquecido (para configurar handlers)
  */
 export function getWarmedAudio(): HTMLAudioElement | null {

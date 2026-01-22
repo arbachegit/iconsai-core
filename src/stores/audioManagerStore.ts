@@ -15,8 +15,9 @@
  */
 
 import { create } from "zustand";
-import { getAudioContext, unlockAudio, isAudioUnlocked, createOptimizedAudioElement } from '@/utils/safari-audio';
+import { getAudioContext } from '@/utils/safari-audio';
 import { getBrowserInfo } from '@/utils/safari-detect';
+import { getWarmedAudio, playWarmedAudio, stopWarmedAudio, pauseWarmedAudio, resumeWarmedAudio, isAudioWarmed } from '@/utils/audio-warmup';
 
 interface AudioInstance {
   id: string;
@@ -76,14 +77,18 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
   playAudio: async (id: string, audioUrl: string, source: string) => {
     const state = get();
     const { isSafari, isIOS } = getBrowserInfo();
+    const isMobile = isSafari || isIOS;
 
-    console.log("[AudioManager v4.0] 🎵 playAudio:", { id, source });
+    console.log("[AudioManager v6.0] 🎵 playAudio:", { id, source, isMobile, isWarmed: isAudioWarmed() });
 
     // IMPORTANTE: Parar qualquer áudio existente primeiro
     if (state.currentAudio?.audio) {
       state.currentAudio.audio.pause();
       state.currentAudio.audio.currentTime = 0;
-      state.currentAudio.audio.src = "";
+      // Não limpar src se for o mesmo elemento aquecido
+      if (!isMobile) {
+        state.currentAudio.audio.src = "";
+      }
     }
 
     // FIX: Desconectar sourceNode anterior (evita erro InvalidStateError)
@@ -91,7 +96,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       try {
         state.sourceNode.disconnect();
       } catch (e) {
-        console.warn("[AudioManager v4.0] Erro ao desconectar sourceNode:", e);
+        console.warn("[AudioManager v6.0] Erro ao desconectar sourceNode:", e);
       }
     }
 
@@ -99,26 +104,39 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
     if (state.audioContext && state.audioContext.state !== "closed") {
       try {
         await state.audioContext.close();
-        // Pequeno delay para garantir que fechou
         await new Promise(resolve => setTimeout(resolve, 50));
       } catch (e) {
-        console.warn("[AudioManager v4.0] Erro ao fechar AudioContext:", e);
+        console.warn("[AudioManager v6.0] Erro ao fechar AudioContext:", e);
       }
     }
 
     set({ isLoading: true, progress: 0, audioContext: null, analyserNode: null, sourceNode: null, pendingPlay: null });
 
-    // v3.0.0: Tentar desbloquear áudio no Safari/iOS antes de tocar
-    if (isSafari || isIOS) {
-      console.log("[AudioManager] 📱 Dispositivo Safari/iOS detectado, tentando unlockAudio...");
-      await unlockAudio();
-    }
-
     try {
-      // v3.0.0: Usar createOptimizedAudioElement para Safari
-      const audio = (isSafari || isIOS) ? createOptimizedAudioElement() : new Audio();
+      // v6.0.0: No iOS/Safari, usar o elemento AQUECIDO (já desbloqueado)
+      // Em outros browsers, criar novo elemento
+      let audio: HTMLAudioElement;
+
+      if (isMobile) {
+        // CRÍTICO: Usar o elemento aquecido que já foi desbloqueado pelo warmupAudioSync()
+        const warmedAudio = getWarmedAudio();
+        if (warmedAudio) {
+          audio = warmedAudio;
+          console.log("[AudioManager v6.0] 📱 Usando elemento aquecido");
+        } else {
+          // Fallback: criar novo elemento (provavelmente vai falhar no iOS)
+          audio = new Audio();
+          audio.setAttribute('playsinline', 'true');
+          audio.setAttribute('webkit-playsinline', 'true');
+          console.log("[AudioManager v6.0] ⚠️ Elemento aquecido não disponível, criando novo");
+        }
+      } else {
+        audio = new Audio();
+      }
+
+      // Configurar fonte
       audio.src = audioUrl;
-      audio.crossOrigin = "anonymous"; // Necessário para Web Audio API
+      audio.currentTime = 0;
 
       // Configurar eventos
       audio.onloadeddata = () => {
@@ -145,7 +163,7 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       };
 
       audio.onerror = () => {
-        console.error("[AudioManager] Erro ao carregar áudio");
+        console.error("[AudioManager v6.0] Erro ao carregar áudio");
         set({ isLoading: false, isPlaying: false });
       };
 
@@ -154,46 +172,46 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
         currentAudio: { id, audio, source },
       });
 
-      // Configurar Web Audio API para análise de frequência
-      // Usa getAudioContext() que trata webkit prefix para Safari
+      // Configurar Web Audio API para análise de frequência (opcional, pode falhar no iOS)
       try {
         const audioContext = getAudioContext();
         const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 64; // 32 barras de frequência
+        analyser.fftSize = 64;
         analyser.smoothingTimeConstant = 0.8;
 
         const newSourceNode = audioContext.createMediaElementSource(audio);
         newSourceNode.connect(analyser);
         analyser.connect(audioContext.destination);
 
-        // FIX: Salvar referência do sourceNode para disconnect futuro
         set({ audioContext, analyserNode: analyser, sourceNode: newSourceNode });
       } catch (audioApiError) {
-        console.warn("[AudioManager v4.0] Web Audio API não disponível:", audioApiError);
+        console.warn("[AudioManager v6.0] Web Audio API não disponível (ok para iOS):", audioApiError);
+        // Continuar mesmo sem Web Audio API - o áudio ainda vai tocar
       }
 
-      // v3.0.0: Carregar antes de tocar (importante para Safari)
-      if (isSafari || isIOS) {
+      // Carregar e tocar
+      if (isMobile) {
         audio.load();
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
+      console.log("[AudioManager v6.0] ▶️ Tentando reproduzir...");
       await audio.play();
+      console.log("[AudioManager v6.0] ✅ Reprodução iniciada!");
       set({ isPlaying: true, isLoading: false });
 
     } catch (error) {
-      // v3.0.0: Detectar NotAllowedError e salvar para retry
       if (error instanceof DOMException && error.name === "NotAllowedError") {
-        console.warn("[AudioManager] ⚠️ Autoplay bloqueado - salvando para retry após interação do usuário");
+        console.warn("[AudioManager v6.0] ⚠️ Autoplay bloqueado - salvando para retry");
         set({
           isLoading: false,
           isPlaying: false,
           pendingPlay: { id, audioUrl, source }
         });
-        return; // Não mostrar erro, vai tocar após interação
+        return;
       }
 
-      console.error("[AudioManager] Erro:", error);
+      console.error("[AudioManager v6.0] Erro:", error);
       set({ isLoading: false, isPlaying: false });
     }
   },
