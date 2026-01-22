@@ -39,7 +39,7 @@ export function useMessageActions({ moduleType }: UseMessageActionsOptions): Use
   // ============================================================
   const shareText = useCallback(async (message: HistoryMessage) => {
     const shareData = {
-      title: "Conversa KnowYOU",
+      title: "Conversa IconsAI Business",
       text: message.transcription || message.content,
     };
 
@@ -78,7 +78,7 @@ export function useMessageActions({ moduleType }: UseMessageActionsOptions): Use
       if (navigator.share && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: "Audio KnowYOU",
+          title: "Audio IconsAI Business",
         });
         toast.success("Audio compartilhado!");
       } else {

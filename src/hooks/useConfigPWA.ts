@@ -26,7 +26,7 @@ export interface PWAConfig {
 
 const DEFAULT_CONFIG: PWAConfig = {
   // Texto principal - home (com branding Arbache AI)
-  welcomeText: `Olá! Eu sou o KnowYOU, seu assistente de voz desenvolvido pela Arbache AI. Pode tocar no play quantas vezes quiser para ouvir novamente. 
+  welcomeText: `Olá! Eu sou o IconsAI Business, seu assistente de voz desenvolvido pela Arbache AI. Pode tocar no play quantas vezes quiser para ouvir novamente. 
 
 Você tem quatro botões abaixo: Ajuda ensina como usar o aplicativo. Mundo responde perguntas sobre qualquer assunto. Saúde faz triagem dos seus sintomas. E Ideias ajuda a desenvolver e validar suas ideias de negócio.
 
@@ -39,16 +39,16 @@ Quando estiver dentro de um módulo, toque no ícone de histórico para ver suas
 
   // Textos de boas-vindas de cada módulo (com branding Arbache AI)
   helpWelcomeText:
-    "Bem-vindo ao módulo de Ajuda! Sou parte do KnowYOU, desenvolvido pela Arbache AI. Aqui você aprende a usar todas as funcionalidades do aplicativo. Siga os passos e toque em ouvir explicação para entender cada função.",
+    "Bem-vindo ao módulo de Ajuda! Sou parte do IconsAI Business, desenvolvido pela Arbache AI. Aqui você aprende a usar todas as funcionalidades do aplicativo. Siga os passos e toque em ouvir explicação para entender cada função.",
 
   worldWelcomeText:
-    "Olá! Eu sou seu assistente de conhecimento geral do KnowYOU, desenvolvido pela Arbache AI. Pode me perguntar sobre qualquer assunto: ciência, história, tecnologia, cultura, ou curiosidades. Toque no microfone e faça sua pergunta!",
+    "Olá! Eu sou seu assistente de conhecimento geral do IconsAI Business, desenvolvido pela Arbache AI. Pode me perguntar sobre qualquer assunto: ciência, história, tecnologia, cultura, ou curiosidades. Toque no microfone e faça sua pergunta!",
 
   healthWelcomeText:
-    "Olá! Sou sua assistente de saúde do KnowYOU, desenvolvido pela Arbache AI. Vou te ajudar a entender melhor seus sintomas usando o protocolo OLDCARTS. Lembre-se: não substituo uma consulta médica. Toque no microfone para começar.",
+    "Olá! Sou sua assistente de saúde do IconsAI Business, desenvolvido pela Arbache AI. Vou te ajudar a entender melhor seus sintomas usando o protocolo OLDCARTS. Lembre-se: não substituo uma consulta médica. Toque no microfone para começar.",
 
   ideasWelcomeText:
-    "Olá! Sou seu consultor de ideias do KnowYOU, desenvolvido pela Arbache AI. Vou usar a técnica do Advogado do Diabo para fortalecer suas ideias. Vou fazer perguntas desafiadoras para fortalecer seu projeto. Toque no microfone e me conte sua ideia!",
+    "Olá! Sou seu consultor de ideias do IconsAI Business, desenvolvido pela Arbache AI. Vou usar a técnica do Advogado do Diabo para fortalecer suas ideias. Vou fazer perguntas desafiadoras para fortalecer seu projeto. Toque no microfone e me conte sua ideia!",
 
   // Controles de voz
   voiceStability: 0.50,

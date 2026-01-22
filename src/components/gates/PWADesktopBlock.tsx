@@ -43,7 +43,7 @@ const PWADesktopBlock = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">App Exclusivo para Celular</h1>
-            <p className="text-slate-400 text-sm">KnowYOU PWA - experiência mobile otimizada</p>
+            <p className="text-slate-400 text-sm">IconsAI Business PWA - experiência mobile otimizada</p>
           </div>
         </div>
 

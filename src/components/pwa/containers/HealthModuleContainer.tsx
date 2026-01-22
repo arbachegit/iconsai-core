@@ -175,7 +175,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
   // ============================================================
   const getWelcomeText = useCallback((): string => {
     let text = pwaConfig.healthWelcomeText ||
-      "Olá! Sou sua assistente de saúde do KnowYOU. Vou te ajudar a entender melhor seus sintomas. Toque no microfone para começar.";
+      "Olá! Sou sua assistente de saúde do IconsAI Business. Vou te ajudar a entender melhor seus sintomas. Toque no microfone para começar.";
 
     if (userName) {
       text = text.replace("[name]", userName);

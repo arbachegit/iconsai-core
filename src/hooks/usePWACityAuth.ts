@@ -191,7 +191,7 @@ export function usePWACityAuth() {
           try {
             console.log("[PWA City Auth v1.0] Enviando SMS...");
 
-            const smsMessage = `KnowYOU PWA City: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+            const smsMessage = `IconsAI Business PWA City: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
 
             const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
               body: {
@@ -295,7 +295,7 @@ export function usePWACityAuth() {
         // Enviar mensagem de boas-vindas
         try {
           const userName = result.user_name || state.userName || "Usuário";
-          const welcomeMessage = `KnowYOU PWA City: Ola ${userName}! Bem-vindo ao PWA City. Acesse: https://pwa.iconsai.ai/pwacity`;
+          const welcomeMessage = `IconsAI Business PWA City: Ola ${userName}! Bem-vindo ao PWA City. Acesse: https://pwa.iconsai.ai/pwacity`;
 
           await supabase.functions.invoke("send-sms", {
             body: {
@@ -374,7 +374,7 @@ export function usePWACityAuth() {
         try {
           console.log("[PWA City Auth v1.0] Reenviando código via SMS...");
 
-          const smsMessage = `KnowYOU PWA City: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+          const smsMessage = `IconsAI Business PWA City: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
 
           const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
             body: {

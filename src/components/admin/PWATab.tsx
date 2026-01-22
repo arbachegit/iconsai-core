@@ -124,7 +124,7 @@ export default function PWATab() {
   const testVoice = async () => {
     setTestingVoice(true);
     try {
-      const testText = "Olá! Esta é uma demonstração da voz selecionada para o KnowYOU.";
+      const testText = "Olá! Esta é uma demonstração da voz selecionada para o IconsAI Business.";
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
         {
@@ -161,7 +161,7 @@ export default function PWATab() {
           <Smartphone className="w-8 h-8 text-blue-400" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Config. PWA - KnowYOU</h2>
+          <h2 className="text-2xl font-bold text-foreground">Config. PWA - IconsAI Business</h2>
           <p className="text-muted-foreground">
             Configurações do aplicativo de voz
           </p>
@@ -259,11 +259,11 @@ export default function PWATab() {
             </CardContent>
           </Card>
 
-          {/* PWA Principal (KnowYOU) */}
+          {/* PWA Principal (IconsAI Business) */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Smartphone className="h-4 w-4 text-blue-500" />
-              <h3 className="font-semibold text-sm">PWA Principal (KnowYOU)</h3>
+              <h3 className="font-semibold text-sm">PWA Principal (IconsAI Business)</h3>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Button

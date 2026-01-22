@@ -63,7 +63,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
   // ============================================================
   const getWelcomeText = useCallback((): string => {
     let text = pwaConfig.helpWelcomeText ||
-      "Bem-vindo ao módulo de Ajuda! Sou parte do KnowYOU. Aqui você aprende a usar todas as funcionalidades do aplicativo.";
+      "Bem-vindo ao módulo de Ajuda! Sou parte do IconsAI Business. Aqui você aprende a usar todas as funcionalidades do aplicativo.";
 
     if (userName) {
       text = text.replace("[name]", userName);

@@ -46,7 +46,7 @@ import { warmupAudioSync } from "@/utils/audio-warmup";
 // Cor padrão da Home (pode ser configurável no futuro)
 const HOME_CONFIG = {
   name: "Home",
-  color: "#00D4FF", // Ciano - cor primária do KnowYOU
+  color: "#00D4FF", // Ciano - cor primária do IconsAI
   secondaryColor: "#8B5CF6", // Roxo - cor secundária
 };
 
@@ -85,7 +85,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   const getWelcomeText = useCallback((): string => {
     // Pegar texto do config (definido no banco pwa_config)
     let text = config.welcomeText ||
-      "Olá! Eu sou o KnowYOU, seu assistente de voz desenvolvido pela Arbache AI. Escolha um módulo abaixo para começar.";
+      "Olá! Eu sou o IconsAI Business, seu assistente de voz desenvolvido pela Arbache AI. Escolha um módulo abaixo para começar.";
 
     // Substituir [name] pelo nome do usuário se disponível
     if (userName) {
@@ -215,7 +215,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
           {/* Título centralizado */}
           <h1 className="text-2xl font-bold whitespace-nowrap">
             <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              KnowYOU
+              IconsAI
             </span>
           </h1>
 
@@ -276,7 +276,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.4 }}
       >
-        <p className="text-[10px] text-muted-foreground/60">KnowYOU © 2025</p>
+        <p className="text-[10px] text-muted-foreground/60">IconsAI Business © 2025</p>
       </motion.div>
 
       {/* INDICADOR DE CARREGAMENTO INICIAL */}

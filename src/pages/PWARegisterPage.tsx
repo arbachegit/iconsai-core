@@ -258,7 +258,7 @@ export default function PWARegisterPage() {
       // Enviar SMS com código diretamente
       if (result.verification_code) {
         const normalizedPhone = result.normalized_phone || result.phone || phone;
-        const smsMessage = `KnowYOU: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+        const smsMessage = `IconsAI Business: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
 
         await supabase.functions.invoke("send-sms", {
           body: {
@@ -384,7 +384,7 @@ export default function PWARegisterPage() {
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
             <h1 className="text-xl font-bold text-foreground mb-2">Cadastro Concluído!</h1>
-            <p className="text-muted-foreground text-sm mb-4">Bem-vindo ao KnowYOU, {invitation?.name || "Usuário"}!</p>
+            <p className="text-muted-foreground text-sm mb-4">Bem-vindo ao IconsAI Business, {invitation?.name || "Usuário"}!</p>
             <div className="flex items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Redirecionando...</span>
@@ -408,7 +408,7 @@ export default function PWARegisterPage() {
               <h1 className="text-xl font-bold text-foreground">
                 {invitation?.name ? `Olá, ${invitation.name}!` : "Bem-vindo!"}
               </h1>
-              <p className="text-muted-foreground text-sm mt-1">Você foi convidado para o KnowYOU.</p>
+              <p className="text-muted-foreground text-sm mt-1">Você foi convidado para o IconsAI Business.</p>
             </div>
 
             {error && (

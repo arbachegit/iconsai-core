@@ -1,7 +1,7 @@
 {
-  "name": "KnowYOU Voice Assistant",
-  "short_name": "KnowYOU",
-  "description": "Seu assistente de voz inteligente",
+  "name": "IconsAI Business",
+  "short_name": "IconsAI",
+  "description": "Assistente de voz inteligente para negócios",
   "start_url": "/pwa",
   "display": "standalone",
   "background_color": "#0A0E1A",

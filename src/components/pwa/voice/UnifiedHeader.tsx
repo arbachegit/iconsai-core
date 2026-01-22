@@ -31,7 +31,7 @@ const MODULE_CONFIG: Record<ModuleType, {
   bgColor: string;
 }> = {
   home: {
-    name: "KnowYOU",
+    name: "IconsAI Business",
     icon: Home,
     color: "#FFFFFF",
     bgColor: "bg-white/10",

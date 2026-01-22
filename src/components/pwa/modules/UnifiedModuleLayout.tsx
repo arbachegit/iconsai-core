@@ -44,7 +44,7 @@ const MODULE_CONFIG: Record<
     color: "#3B82F6",
     bgColor: "bg-blue-500/20",
     welcomeKey: "helpWelcomeText",
-    defaultWelcome: "Olá! Posso te explicar como usar cada módulo do KnowYOU. O que você precisa de ajuda?",
+    defaultWelcome: "Olá! Posso te explicar como usar cada módulo do IconsAI Business. O que você precisa de ajuda?",
   },
   world: {
     name: "Mundo",

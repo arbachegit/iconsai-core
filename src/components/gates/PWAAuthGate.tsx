@@ -91,7 +91,7 @@ function LoginScreen({
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Phone className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Entrar no KnowYOU</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Entrar no IconsAI Business</h1>
           <p className="text-muted-foreground text-sm">
             Digite seu telefone para acessar
           </p>
@@ -134,7 +134,7 @@ function LoginScreen({
 
         <div className="mt-6 text-center">
           <p className="text-xs text-muted-foreground">
-            Não tem acesso? O KnowYOU funciona apenas por convite.
+            Não tem acesso? O IconsAI Business funciona apenas por convite.
           </p>
         </div>
       </div>

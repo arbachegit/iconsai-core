@@ -63,7 +63,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
   // ============================================================
   const getWelcomeText = useCallback((): string => {
     let text = pwaConfig.ideasWelcomeText ||
-      "Olá! Sou seu consultor de ideias do KnowYOU. Vou usar a técnica do Advogado do Diabo para fortalecer suas ideias. Toque no microfone e me conte sua ideia!";
+      "Olá! Sou seu consultor de ideias do IconsAI Business. Vou usar a técnica do Advogado do Diabo para fortalecer suas ideias. Toque no microfone e me conte sua ideia!";
 
     if (userName) {
       text = text.replace("[name]", userName);

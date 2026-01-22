@@ -51,7 +51,7 @@ const PlatformMobileBlock = () => {
               </div>
               <div>
                 <p className="font-medium">Usar o PWA</p>
-                <p className="text-sm text-slate-500">Converse por voz com o KnowYOU</p>
+                <p className="text-sm text-slate-500">Converse por voz com o IconsAI Business</p>
               </div>
             </div>
             

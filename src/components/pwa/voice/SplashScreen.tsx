@@ -242,7 +242,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         <CentralAIStar glow={starGlow} />
       </div>
 
-      {/* Texto "KnowYOU AI" */}
+      {/* Texto "IconsAI Business" */}
       <div
         className="absolute left-1/2 top-[65%] -translate-x-1/2 pointer-events-none"
         style={{
@@ -326,8 +326,8 @@ function HandwritingTitle({ active }: { active: boolean }) {
 
   return (
     <div className="flex flex-col items-center">
-      {/* KnowYOU - Texto único, sem separação de letras */}
-      <h1 
+      {/* IconsAI - Texto principal */}
+      <h1
         className={`
           text-5xl font-bold text-white whitespace-nowrap
           transition-all duration-1000 ease-out
@@ -339,11 +339,11 @@ function HandwritingTitle({ active }: { active: boolean }) {
           fontFamily: 'system-ui, -apple-system, sans-serif'
         }}
       >
-        KnowYOU
+        IconsAI
       </h1>
-      
-      {/* AI - Subtítulo */}
-      <p 
+
+      {/* Business - Subtítulo */}
+      <p
         className={`
           text-xl font-semibold text-white/80 text-center mt-2
           transition-all duration-700
@@ -354,7 +354,7 @@ function HandwritingTitle({ active }: { active: boolean }) {
           transitionDelay: visible ? '500ms' : '0ms'
         }}
       >
-        AI
+        Business
       </p>
     </div>
   );

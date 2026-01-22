@@ -187,7 +187,7 @@ serve(async (req) => {
                 <p style="font-size: 12px; color: #666;">Este link é válido por 24 horas.</p>
               </div>
               <div class="footer">
-                <p>Plataforma KnowYOU &copy; ${new Date().getFullYear()}</p>
+                <p>Plataforma IconsAI Business &copy; ${new Date().getFullYear()}</p>
               </div>
             </div>
           </body>
@@ -198,7 +198,7 @@ serve(async (req) => {
           await supabase.functions.invoke("send-email", {
             body: {
               to: registration.email,
-              subject: "🖥️ Bem-vindo à Plataforma KnowYOU!",
+              subject: "🖥️ Bem-vindo à Plataforma IconsAI Business!",
               body: defaultHtml,
             },
           });
@@ -210,14 +210,14 @@ serve(async (req) => {
       } else {
         // Use custom template
         let emailBody = template.email_body || "";
-        let emailSubject = template.email_subject || "Bem-vindo à Plataforma KnowYOU!";
+        let emailSubject = template.email_subject || "Bem-vindo à Plataforma IconsAI Business!";
 
         const variables: Record<string, string> = {
           user_name: userName,
           user_email: registration.email,
           recovery_link: recoveryLink,
           timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-          platform_name: "Plataforma KnowYOU",
+          platform_name: "Plataforma IconsAI Business",
         };
 
         for (const [key, value] of Object.entries(variables)) {
@@ -259,7 +259,7 @@ serve(async (req) => {
       // Apenas avisa que enviamos email - via SMS (não WhatsApp freeform)
       if (registration.phone && !hasAppAccess) {
         try {
-          const smsMsg = "KnowYOU: Reenviamos email com instrucoes para a Plataforma. Acesse pelo computador.";
+          const smsMsg = "IconsAI Business: Reenviamos email com instrucoes para a Plataforma. Acesse pelo computador.";
 
           await supabase.functions.invoke("send-sms", {
             body: {

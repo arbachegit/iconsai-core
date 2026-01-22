@@ -257,9 +257,13 @@ const DEFAULT_PHONETIC_MAP: Record<string, string> = {
   "home broker": "hôme brôker",
   
   // ============================================
-  // KNOWYOU
+  // ICONSAI
   // ============================================
-  "KnowYOU": "nôu iú",
+  "IconsAI": "aiconseiai",
+  "IconsAI Business": "aiconseiai bíznés",
+  "iconsai": "aiconseiai",
+  "ICONSAI": "aiconseiai",
+  "KnowYOU": "aiconseiai bíznés", // Legado - redireciona para novo nome
   "KnowRISK": "nôu rísk",
   
   // ============================================

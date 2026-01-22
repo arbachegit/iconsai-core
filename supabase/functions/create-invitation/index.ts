@@ -227,11 +227,11 @@ serve(async (req) => {
             <head><meta charset="utf-8"></head>
             <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; text-align: center;">
-                <h1>🖥️ Convite KnowYOU Plataforma</h1>
+                <h1>🖥️ Convite IconsAI Business Plataforma</h1>
               </div>
               <div style="padding: 30px; background: #f8fafc;">
                 <p>Olá <strong>${name}</strong>,</p>
-                <p>Você foi convidado para a KnowYOU Plataforma!</p>
+                <p>Você foi convidado para a IconsAI Business Plataforma!</p>
                 <p style="text-align: center;">
                   <a href="${platformUrl}" style="background: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block;">Acessar Plataforma</a>
                 </p>
@@ -242,7 +242,7 @@ serve(async (req) => {
           `;
 
           const { error: emailError } = await supabase.functions.invoke("send-email", {
-            body: { to: email, subject: "🖥️ Convite KnowYOU Plataforma", body: emailHtml },
+            body: { to: email, subject: "🖥️ Convite IconsAI Business Plataforma", body: emailHtml },
           });
 
           results.push({ channel: "email", product: "platform", success: !emailError, error: emailError?.message });
@@ -272,7 +272,7 @@ serve(async (req) => {
             template: "invitation",
             variables: {
               "1": firstName,
-              "2": "Equipe KnowYOU",
+              "2": "Equipe IconsAI Business",
               "3": appUrlShort, // URL JÁ ENCURTADA
             },
             channel: "sms",
@@ -295,7 +295,7 @@ serve(async (req) => {
     // SMS informativo para Plataforma (se não tem APP)
     if (hasPlatformAccess && !hasAppAccess && phone) {
       try {
-        const smsMsg = `KnowYOU: Ola ${firstName}! Enviamos email com convite. Acesse pelo computador.`;
+        const smsMsg = `IconsAI Business: Ola ${firstName}! Enviamos email com convite. Acesse pelo computador.`;
         await supabase.functions.invoke("send-sms", { body: { phoneNumber: phone, message: smsMsg } });
         results.push({ channel: "sms", product: "platform_info", success: true });
         console.log("📱 SMS info plataforma: ✅ Enviado");

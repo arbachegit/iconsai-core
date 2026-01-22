@@ -7,10 +7,10 @@ const STUDY_CONFIG: UseChatConfig = {
   defaultSuggestions: [
     "O que é a KnowRisk?",
     "Como funciona o ACC?",
-    "O que é o KnowYOU?",
+    "O que é o IconsAI Business?",
   ],
   imageEndpoint: "generate-image-study",
-  guardrailMessage: "Sou especializado em ajudar a estudar sobre a KnowRISK, KnowYOU, ACC e o conteúdo deste website. Não posso criar imagens sobre",
+  guardrailMessage: "Sou especializado em ajudar a estudar sobre a KnowRISK, IconsAI Business, ACC e o conteúdo deste website. Não posso criar imagens sobre",
 };
 
 interface UseChatStudyOptions {
