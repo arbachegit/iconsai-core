@@ -1,7 +1,8 @@
 // ============================================
-// VERSAO: 3.0.0 | DEPLOY: 2026-01-22
-// MUDANÇA: OpenAI TTS como principal, Google TTS fallback
-// ElevenLabs removido (401 errors)
+// VERSAO: 4.0.0 | DEPLOY: 2026-01-22
+// MUDANÇA: gpt-4o-mini-tts com instructions para voz humanizada
+// Vozes recomendadas: marin, cedar (nova API OpenAI)
+// Fallback: Google Cloud TTS
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -337,14 +338,98 @@ function normalizeTextForTTS(text: string, phoneticMap: Record<string, string>):
 // ============================================
 
 
-// OpenAI TTS voices
-const OPENAI_VOICES = ["alloy", "onyx", "nova", "shimmer", "echo", "fable"];
+// OpenAI TTS voices (gpt-4o-mini-tts suporta 13 vozes)
+const OPENAI_VOICES = [
+  "alloy", "ash", "ballad", "coral", "echo",
+  "fable", "onyx", "nova", "sage", "shimmer",
+  "verse", "marin", "cedar"
+];
 
 // Google Cloud TTS - vozes em português brasileiro
 const GOOGLE_TTS_VOICES = {
   "male": "pt-BR-Wavenet-B",
   "female": "pt-BR-Wavenet-A",
   "default": "pt-BR-Wavenet-B"
+};
+
+// ============================================
+// VOICE INSTRUCTIONS POR MÓDULO (gpt-4o-mini-tts)
+// ============================================
+const VOICE_INSTRUCTIONS: Record<string, string> = {
+  // Voz principal - português brasileiro natural
+  default: `
+Voice Affect: Calorosa, amigável e naturalmente conversacional.
+Tone: Acessível e prestativa, como um amigo conhecedor.
+Pacing: Ritmo natural com pausas apropriadas para compreensão.
+Emotion: Genuinamente interessada e engajada, com entusiasmo sutil.
+Pronunciation: Clara e precisa, respeitando o português brasileiro.
+Language: Speak in Brazilian Portuguese with natural intonation and accent.
+Emphasis: Destacar informações importantes de forma natural.
+Avoid: Monotonia robótica, fala apressada, pausas artificiais.
+  `.trim(),
+
+  // Saúde - calma e empática
+  health: `
+Voice Affect: Calm, reassuring, and empathetic.
+Tone: Professional yet warm, like a caring healthcare provider.
+Pacing: Slower, measured pace allowing time to process information.
+Emotion: Compassionate and understanding, never dismissive.
+Emphasis: Gentle stress on important health information.
+Language: Speak in Brazilian Portuguese with natural intonation.
+Avoid: Rushed delivery, clinical coldness, alarm-inducing tone.
+  `.trim(),
+
+  // Ideias - energética e criativa
+  ideas: `
+Voice Affect: Energetic, inspiring, and creative.
+Tone: Enthusiastic and encouraging, sparking excitement.
+Pacing: Dynamic rhythm that builds momentum with ideas.
+Emotion: Genuinely excited about possibilities and innovation.
+Emphasis: Highlight creative concepts with natural enthusiasm.
+Language: Speak in Brazilian Portuguese with natural intonation.
+Avoid: Over-the-top excitement, monotone delivery, condescension.
+  `.trim(),
+
+  // Mundo/Ajuda - informativa
+  world: `
+Voice Affect: Knowledgeable, clear, and engaging.
+Tone: Educational but never condescending, like a great teacher.
+Pacing: Steady pace with natural pauses between key points.
+Emotion: Curious and interested in sharing knowledge.
+Emphasis: Clear stress on important facts and concepts.
+Language: Speak in Brazilian Portuguese with natural intonation.
+Avoid: Lecturing tone, rushing through complex topics, monotony.
+  `.trim(),
+
+  help: `
+Voice Affect: Warm, friendly, and naturally conversational.
+Tone: Approachable and helpful, like a knowledgeable friend.
+Pacing: Natural rhythm with appropriate pauses for comprehension.
+Emotion: Genuinely interested and engaged, with subtle enthusiasm.
+Emphasis: Highlight key information naturally without being overly dramatic.
+Language: Speak in Brazilian Portuguese with natural intonation.
+Avoid: Robotic monotone, rushed speech, artificial pauses.
+  `.trim(),
+
+  home: `
+Voice Affect: Calorosa, amigável e naturalmente conversacional.
+Tone: Acessível e prestativa, como um amigo conhecedor.
+Pacing: Ritmo natural com pausas apropriadas para compreensão.
+Emotion: Genuinamente interessada e engajada, com entusiasmo sutil.
+Pronunciation: Clara e precisa, respeitando o português brasileiro.
+Language: Speak in Brazilian Portuguese with natural intonation.
+Avoid: Monotonia robótica, fala apressada, pausas artificiais.
+  `.trim(),
+};
+
+// Mapeamento de módulo para voz recomendada
+const MODULE_VOICE_MAP: Record<string, string> = {
+  health: "cedar",    // Calma e reconfortante
+  ideas: "nova",      // Energética
+  world: "sage",      // Educativa
+  help: "marin",      // Amigável
+  home: "marin",      // Amigável
+  default: "marin"    // Padrão
 };
 
 serve(async (req) => {
@@ -503,23 +588,32 @@ serve(async (req) => {
     console.log("Voice selecionada:", voice);
 
     // ============================================
-    // v3.0.0: ESTRATÉGIA DE TTS
-    // 1. OpenAI TTS (principal) - rápido e confiável
+    // v4.0.0: ESTRATÉGIA DE TTS HUMANIZADO
+    // 1. OpenAI gpt-4o-mini-tts (principal) - com instructions
     // 2. Google Cloud TTS (fallback) - alta qualidade PT-BR
     // ============================================
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY"); // Mesma key funciona para TTS
+    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
 
-    // Determinar voz OpenAI (padrão: nova)
-    const openaiVoice = OPENAI_VOICES.includes(voice) ? voice : "nova";
+    // Determinar módulo para instructions (usa chatType se disponível)
+    const moduleType = chatType || "default";
+
+    // Determinar voz baseada no módulo ou usar a especificada
+    let selectedVoice = voice;
+    if (!OPENAI_VOICES.includes(voice)) {
+      selectedVoice = MODULE_VOICE_MAP[moduleType] || MODULE_VOICE_MAP.default;
+    }
+
+    // Obter instructions para o módulo
+    const voiceInstructions = VOICE_INSTRUCTIONS[moduleType] || VOICE_INSTRUCTIONS.default;
 
     // ============================================
-    // TENTATIVA 1: OpenAI TTS
+    // TENTATIVA 1: OpenAI gpt-4o-mini-tts com instructions
     // ============================================
     if (OPENAI_API_KEY) {
       try {
-        console.log("[TTS v3.0] 🎯 Tentando OpenAI TTS com voz:", openaiVoice);
+        console.log("[TTS v4.0] 🎯 Usando gpt-4o-mini-tts com voz:", selectedVoice, "| módulo:", moduleType);
 
         const openaiResponse = await fetch("https://api.openai.com/v1/audio/speech", {
           method: "POST",
@@ -528,15 +622,16 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "tts-1",
+            model: "gpt-4o-mini-tts",  // Modelo com suporte a instructions
             input: normalizedText,
-            voice: openaiVoice,
+            voice: selectedVoice,
             response_format: "mp3",
+            instructions: voiceInstructions,  // Instructions para humanização
           }),
         });
 
         if (openaiResponse.ok) {
-          console.log("[TTS v3.0] ✅ OpenAI TTS sucesso!");
+          console.log("[TTS v4.0] ✅ OpenAI gpt-4o-mini-tts sucesso!");
           return new Response(openaiResponse.body, {
             headers: {
               ...corsHeaders,
@@ -547,15 +642,43 @@ serve(async (req) => {
         }
 
         const errorText = await openaiResponse.text();
-        console.warn("[TTS v3.0] ⚠️ OpenAI TTS falhou:", openaiResponse.status, errorText);
-        // Continua para fallback
+        console.warn("[TTS v4.0] ⚠️ OpenAI TTS falhou:", openaiResponse.status, errorText);
+
+        // Se gpt-4o-mini-tts falhar, tentar tts-1 como fallback rápido
+        console.log("[TTS v4.0] 🔄 Tentando fallback para tts-1...");
+        const fallbackResponse = await fetch("https://api.openai.com/v1/audio/speech", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "tts-1",
+            input: normalizedText,
+            voice: selectedVoice,
+            response_format: "mp3",
+          }),
+        });
+
+        if (fallbackResponse.ok) {
+          console.log("[TTS v4.0] ✅ OpenAI tts-1 fallback sucesso!");
+          return new Response(fallbackResponse.body, {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "audio/mpeg",
+              "Transfer-Encoding": "chunked",
+            },
+          });
+        }
+
+        // Continua para Google fallback
 
       } catch (openaiError) {
-        console.warn("[TTS v3.0] ⚠️ OpenAI TTS erro:", openaiError);
+        console.warn("[TTS v4.0] ⚠️ OpenAI TTS erro:", openaiError);
         // Continua para fallback
       }
     } else {
-      console.warn("[TTS v3.0] ⚠️ OPENAI_API_KEY não configurada");
+      console.warn("[TTS v4.0] ⚠️ OPENAI_API_KEY não configurada");
     }
 
     // ============================================
