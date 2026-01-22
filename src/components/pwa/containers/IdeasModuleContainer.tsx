@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 import { useSaveMessage } from "@/hooks/useSaveMessage";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
+import { unlockAudio } from "@/utils/safari-audio";
 
 const MODULE_CONFIG = {
   type: "ideas" as const,
@@ -267,7 +268,10 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
     }
   };
 
+  // v7.1.0: Desbloquear áudio IMEDIATAMENTE no click
   const handlePlayClick = useCallback(async () => {
+    unlockAudio(); // CRÍTICO: Antes de qualquer await
+
     if (isPlaying) {
       stop();
     } else {
@@ -279,7 +283,7 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
             phoneticMapOverride: enrichment.phoneticMap,
           });
         } catch (err) {
-          console.warn("[IdeasContainer v7] ⚠️ Erro ao reproduzir:", err);
+          console.warn("[IdeasContainer v7.1] ⚠️ Erro ao reproduzir:", err);
         }
       }
     }

@@ -344,3 +344,86 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN
   NULL;
 END $$;
+
+-- ============================================
+-- check_pwa_access v5.0 - VERSÃO COM TELEFONE
+-- Aceita p_phone como parâmetro principal
+-- ============================================
+CREATE OR REPLACE FUNCTION public.check_pwa_access(p_phone TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_device RECORD;
+  v_phone_digits TEXT;
+  v_now TIMESTAMPTZ := NOW();
+BEGIN
+  -- Extrair últimos 11 dígitos para matching flexível
+  v_phone_digits := phone_last_digits(p_phone, 11);
+
+  IF v_phone_digits IS NULL OR length(v_phone_digits) < 10 THEN
+    RETURN jsonb_build_object(
+      'has_access', false,
+      'reason', 'invalid_phone'
+    );
+  END IF;
+
+  -- Buscar dispositivo verificado
+  SELECT * INTO v_device
+  FROM pwa_user_devices
+  WHERE phone_last_digits(phone, 11) = v_phone_digits
+    AND is_verified = true
+  ORDER BY verified_at DESC NULLS LAST
+  LIMIT 1;
+
+  -- Se não encontrou dispositivo verificado
+  IF v_device IS NULL THEN
+    RETURN jsonb_build_object(
+      'has_access', false,
+      'reason', 'not_verified'
+    );
+  END IF;
+
+  -- Se dispositivo bloqueado
+  IF v_device.is_blocked = true THEN
+    RETURN jsonb_build_object(
+      'has_access', false,
+      'reason', 'blocked',
+      'block_reason', v_device.blocked_reason
+    );
+  END IF;
+
+  -- Se expirado
+  IF v_device.expires_at IS NOT NULL AND v_device.expires_at < v_now THEN
+    UPDATE pwa_user_devices
+    SET is_verified = false, updated_at = v_now
+    WHERE id = v_device.id;
+
+    RETURN jsonb_build_object(
+      'has_access', false,
+      'reason', 'expired'
+    );
+  END IF;
+
+  -- SUCESSO - Atualizar último acesso
+  UPDATE pwa_user_devices
+  SET last_access_at = v_now, updated_at = v_now
+  WHERE id = v_device.id;
+
+  RETURN jsonb_build_object(
+    'has_access', true,
+    'user_name', v_device.user_name,
+    'phone', v_device.phone,
+    'expires_at', v_device.expires_at
+  );
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'has_access', false,
+    'reason', 'internal_error',
+    'details', SQLERRM
+  );
+END;
+$$;

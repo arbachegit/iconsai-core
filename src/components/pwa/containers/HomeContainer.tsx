@@ -34,6 +34,7 @@ import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
+import { unlockAudio } from "@/utils/safari-audio";
 
 // Cor padrão da Home (pode ser configurável no futuro)
 const HOME_CONFIG = {
@@ -170,7 +171,12 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
   // ============================================================
   // HANDLERS
   // ============================================================
+  // v8.1.0: Desbloquear áudio IMEDIATAMENTE no click (antes de qualquer async)
   const handlePlayClick = useCallback(async () => {
+    // CRÍTICO: Desbloquear áudio PRIMEIRO, dentro do contexto do user gesture
+    // Isso deve acontecer ANTES de qualquer await
+    unlockAudio();
+
     if (isPlaying) {
       stop();
     } else {
@@ -182,7 +188,7 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect, de
             phoneticMapOverride: enrichment.phoneticMap,
           });
         } catch (err) {
-          console.warn("[HOME v7] ⚠️ Erro ao reproduzir:", err);
+          console.warn("[HOME v8.1] ⚠️ Erro ao reproduzir:", err);
         }
       }
     }

@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { classifyAndEnrich } from "@/hooks/useClassifyAndEnrich";
 import { useSaveMessage } from "@/hooks/useSaveMessage";
 import { useUserLocation, UserLocation } from "@/hooks/useUserLocation";
+import { unlockAudio } from "@/utils/safari-audio";
 
 interface NearbyClinic {
   name: string;
@@ -407,7 +408,10 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
     }
   };
 
+  // v7.1.0: Desbloquear áudio IMEDIATAMENTE no click
   const handlePlayClick = useCallback(async () => {
+    unlockAudio(); // CRÍTICO: Antes de qualquer await
+
     if (isPlaying) {
       stop();
     } else {
@@ -419,7 +423,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
             phoneticMapOverride: enrichment.phoneticMap,
           });
         } catch (err) {
-          console.warn("[HealthContainer v7] ⚠️ Erro ao reproduzir:", err);
+          console.warn("[HealthContainer v7.1] ⚠️ Erro ao reproduzir:", err);
         }
       }
     }
