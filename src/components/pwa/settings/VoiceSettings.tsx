@@ -2,14 +2,16 @@
  * ============================================================
  * VoiceSettings.tsx - Configurações de Voz PWA
  * ============================================================
- * Versão: 1.0.0
+ * Versão: 1.1.0
  * Data: 2026-01-22
  *
  * Permite ao usuário:
  * - Selecionar voz (13 vozes OpenAI)
- * - Ajustar velocidade (0.5x - 2.0x)
- * - Testar voz antes de salvar
+ * - Ajustar velocidade (0.7x - 1.3x)
+ * - Testar voz diretamente na seleção
  * - Aplicar presets por contexto
+ *
+ * v1.1.0: Botão de teste integrado na seção de detalhes da voz
  * ============================================================
  */
 
@@ -401,7 +403,7 @@ export function VoiceSettings({ onBack, onSave }: VoiceSettingsProps) {
             </div>
           </section>
 
-          {/* Detalhes da Voz Selecionada */}
+          {/* Detalhes da Voz Selecionada + Botão de Teste Integrado */}
           <AnimatePresence mode="wait">
             {selectedVoiceData && (
               <motion.section
@@ -412,11 +414,34 @@ export function VoiceSettings({ onBack, onSave }: VoiceSettingsProps) {
                 className="bg-muted/50 rounded-xl p-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Volume2 className="h-5 w-5 text-primary" />
-                  </div>
+                  {/* Botão de Teste integrado no ícone */}
+                  <button
+                    onClick={handleTestVoice}
+                    disabled={isLoading && !isPlaying}
+                    className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center transition-all",
+                      isPlaying
+                        ? "bg-red-500/20 text-red-500 animate-pulse"
+                        : isLoading
+                        ? "bg-primary/10 text-primary"
+                        : "bg-primary/20 text-primary hover:bg-primary/30 active:scale-95"
+                    )}
+                  >
+                    {isLoading && !isPlaying ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : isPlaying ? (
+                      <Square className="h-5 w-5" />
+                    ) : (
+                      <Play className="h-5 w-5 ml-0.5" />
+                    )}
+                  </button>
                   <div className="flex-1">
-                    <h3 className="font-medium">{selectedVoiceData.name}</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium">{selectedVoiceData.name}</h3>
+                      <span className="text-xs text-primary font-medium">
+                        {isPlaying ? "Tocando..." : "Toque para ouvir"}
+                      </span>
+                    </div>
                     <p className="text-sm text-muted-foreground mt-0.5">
                       {selectedVoiceData.characteristics}
                     </p>
@@ -465,33 +490,6 @@ export function VoiceSettings({ onBack, onSave }: VoiceSettingsProps) {
                 <span>Mais rápida</span>
               </div>
             </div>
-          </section>
-
-          {/* Botão de Teste */}
-          <section>
-            <Button
-              variant="outline"
-              className="w-full h-12"
-              onClick={handleTestVoice}
-              disabled={isLoading && !isPlaying}
-            >
-              {isLoading && !isPlaying ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Carregando...
-                </>
-              ) : isPlaying ? (
-                <>
-                  <Square className="h-4 w-4 mr-2" />
-                  Parar
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Testar Voz
-                </>
-              )}
-            </Button>
           </section>
 
           {/* Info sobre humanização */}

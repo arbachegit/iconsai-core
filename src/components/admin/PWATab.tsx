@@ -759,11 +759,11 @@ export default function PWATab() {
 
               <Separator />
 
-              {/* Controles de Voz ElevenLabs */}
+              {/* Controles de Voz */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2">
                   <Volume2 className="w-5 h-5 text-purple-500" />
-                  <h3 className="text-lg font-semibold">Controles de Voz ElevenLabs</h3>
+                  <h3 className="text-lg font-semibold">Controles de Voz</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Ajuste os parâmetros da voz para obter a melhor qualidade de fala.

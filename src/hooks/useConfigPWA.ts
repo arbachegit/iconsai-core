@@ -16,7 +16,7 @@ export interface PWAConfig {
   healthWelcomeText: string;
   ideasWelcomeText: string;
 
-  // Controles de voz ElevenLabs
+  // Controles de voz
   voiceStability: number;      // 0.0 - 1.0
   voiceSimilarity: number;     // 0.0 - 1.0
   voiceStyle: number;          // 0.0 - 1.0
@@ -50,7 +50,7 @@ Quando estiver dentro de um módulo, toque no ícone de histórico para ver suas
   ideasWelcomeText:
     "Olá! Sou seu consultor de ideias do KnowYOU, desenvolvido pela Arbache AI. Vou usar a técnica do Advogado do Diabo para fortalecer suas ideias. Vou fazer perguntas desafiadoras para fortalecer seu projeto. Toque no microfone e me conte sua ideia!",
 
-  // Controles de voz ElevenLabs
+  // Controles de voz
   voiceStability: 0.50,
   voiceSimilarity: 1.00,
   voiceStyle: 0.00,
@@ -69,7 +69,7 @@ const CONFIG_KEY_MAP: Record<keyof PWAConfig, string> = {
   worldWelcomeText: "world_welcome_text",
   healthWelcomeText: "health_welcome_text",
   ideasWelcomeText: "ideas_welcome_text",
-  // Voz ElevenLabs
+  // Controles de voz
   voiceStability: "voice_stability",
   voiceSimilarity: "voice_similarity",
   voiceStyle: "voice_style",
