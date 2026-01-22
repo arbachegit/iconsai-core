@@ -2,15 +2,18 @@
  * ============================================================
  * VoiceSettings.tsx - Configurações de Voz PWA
  * ============================================================
- * Versão: 1.1.0
+ * Versão: 2.0.0
  * Data: 2026-01-22
  *
  * Permite ao usuário:
- * - Selecionar voz (13 vozes OpenAI)
+ * - Selecionar voz (13 vozes OpenAI gpt-4o-mini-tts)
  * - Ajustar velocidade (0.7x - 1.3x)
  * - Testar voz diretamente na seleção
- * - Aplicar presets por contexto
+ * - Aplicar presets por contexto (com instructions humanizadas)
  *
+ * v2.0.0: Prompt Nuclear - Vozes otimizadas por módulo
+ *         - Presets alinhados com MODULE_VOICE_MAP do backend
+ *         - Info sobre humanização expandida
  * v1.1.0: Botão de teste integrado na seção de detalhes da voz
  * ============================================================
  */
@@ -160,47 +163,47 @@ const VOICE_OPTIONS: VoiceOption[] = [
   }
 ];
 
-// Presets de voz por contexto
+// Presets de voz por contexto (alinhados com MODULE_VOICE_MAP do backend)
 const VOICE_PRESETS: VoicePreset[] = [
   {
-    id: 'friendly',
-    name: 'Amigável',
+    id: 'home',
+    name: 'Acolhedora',
     icon: <Sparkles className="h-4 w-4" />,
-    voice: 'marin',
+    voice: 'nova',
     speed: 1.0,
-    description: 'Para conversas naturais'
+    description: 'Boas-vindas calorosas'
   },
   {
     id: 'health',
     name: 'Saúde',
     icon: <Heart className="h-4 w-4" />,
-    voice: 'cedar',
+    voice: 'shimmer',
     speed: 0.95,
-    description: 'Calma e empática'
+    description: 'Suave e reconfortante'
   },
   {
     id: 'ideas',
     name: 'Criativo',
     icon: <Lightbulb className="h-4 w-4" />,
-    voice: 'nova',
+    voice: 'coral',
     speed: 1.05,
-    description: 'Energética e inspiradora'
+    description: 'Expressiva e energética'
   },
   {
     id: 'world',
-    name: 'Informativo',
+    name: 'Educativo',
     icon: <Globe className="h-4 w-4" />,
     voice: 'sage',
     speed: 1.0,
-    description: 'Educativa e clara'
+    description: 'Informativa e clara'
   },
   {
     id: 'help',
     name: 'Assistente',
     icon: <HelpCircle className="h-4 w-4" />,
-    voice: 'coral',
+    voice: 'echo',
     speed: 1.0,
-    description: 'Prestativa e paciente'
+    description: 'Paciente e prestativa'
   }
 ];
 
@@ -219,7 +222,7 @@ interface VoiceConfig {
 
 export function useVoiceConfig() {
   const [config, setConfig] = useState<VoiceConfig>({
-    voice: 'marin',
+    voice: 'nova',  // v2.0.0: Nova como padrão (calorosa e acolhedora)
     speed: 1.0,
     lastUpdated: new Date().toISOString()
   });
@@ -492,13 +495,35 @@ export function VoiceSettings({ onBack, onSave }: VoiceSettingsProps) {
             </div>
           </section>
 
-          {/* Info sobre humanização */}
-          <section className="bg-blue-500/10 rounded-xl p-4 text-sm">
-            <p className="text-blue-500 font-medium mb-1">💡 Dica de Humanização</p>
+          {/* Info sobre humanização expandida */}
+          <section className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl p-4 text-sm space-y-3">
+            <p className="text-primary font-medium">🎙️ Voz Humanizada com IA</p>
             <p className="text-muted-foreground">
-              Usamos o modelo <code className="bg-muted px-1 rounded">gpt-4o-mini-tts</code> com instruções
-              especiais para criar uma voz mais natural. Cada módulo (Saúde, Ideias, etc.) usa
-              configurações específicas de tom e emoção.
+              Usamos o modelo <code className="bg-muted px-1 rounded">gpt-4o-mini-tts</code> com
+              <span className="text-primary font-medium"> instruções detalhadas</span> para criar
+              uma voz mais natural e empática.
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-muted/50 rounded-lg p-2">
+                <span className="font-medium">🌡️ Calor humano</span>
+                <p className="text-muted-foreground">Tom amigável e acolhedor</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-2">
+                <span className="font-medium">🎭 Emoção</span>
+                <p className="text-muted-foreground">Expressividade natural</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-2">
+                <span className="font-medium">⏱️ Ritmo</span>
+                <p className="text-muted-foreground">Pausas e respiração</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-2">
+                <span className="font-medium">🗣️ Entonação</span>
+                <p className="text-muted-foreground">Melodia brasileira</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground italic">
+              Cada módulo (Saúde, Ideias, Mundo) usa configurações específicas de tom e emoção
+              para a melhor experiência.
             </p>
           </section>
 

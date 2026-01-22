@@ -2,14 +2,15 @@
  * ============================================================
  * useTextToSpeech.ts - Hook de Text-to-Speech
  * ============================================================
- * Versão: 5.4.0
+ * Versão: 5.5.0
  * Data: 2026-01-22
  *
  * Changelog:
+ * - v5.5.0: Prompt Nuclear - Voz padrão "nova" (calorosa/acolhedora)
+ *           Alinhado com MODULE_VOICE_MAP do backend
  * - v5.4.0: Lê voz do localStorage (VoiceSettings)
  *           Inclui chatType para instruções por módulo
  *           Suporte Android na detecção de mobile
- *           Voz padrão "marin" (mais natural em PT-BR)
  * - v5.3.0: Voz padrão mudada para "nova" (OpenAI TTS)
  * - v5.2.0: FIX loop infinito - resetar isLoading ANTES de tentar fallback
  * - v5.0.0: Fallback para Web Speech API quando áudio falha (iOS silent mode)
@@ -68,7 +69,7 @@ function getSavedVoice(): string {
   } catch (e) {
     console.warn('[TTS] Erro ao ler config de voz:', e);
   }
-  return 'marin'; // v5.4.0: Marin como padrão (mais natural em PT-BR)
+  return 'nova'; // v5.5.0: Nova como padrão (calorosa e acolhedora)
 }
 
 export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpeechReturn => {

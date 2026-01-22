@@ -1,7 +1,9 @@
 // ============================================
-// VERSAO: 4.0.0 | DEPLOY: 2026-01-22
-// MUDANÇA: gpt-4o-mini-tts com instructions para voz humanizada
-// Vozes recomendadas: marin, cedar (nova API OpenAI)
+// VERSAO: 5.0.0 | DEPLOY: 2026-01-22
+// MUDANÇA: Prompt Nuclear - Voz Humanizada Completa
+// - Instructions detalhadas por módulo (12 parâmetros)
+// - Vozes otimizadas: nova, shimmer, coral, sage, echo
+// - Suporte a: warmth, pacing, emotion, filler words, breathing
 // Fallback: Google Cloud TTS
 // ============================================
 
@@ -358,82 +360,170 @@ const GOOGLE_TTS_VOICES = {
 
 // ============================================
 // VOICE INSTRUCTIONS POR MÓDULO (gpt-4o-mini-tts)
+// v5.0.0: Prompt Nuclear - Voz Humanizada Completa
 // ============================================
 const VOICE_INSTRUCTIONS: Record<string, string> = {
-  // Voz principal - português brasileiro natural
+  // Voz principal - português brasileiro natural e humanizado
   default: `
-Voice Affect: Calorosa, amigável e naturalmente conversacional.
-Tone: Acessível e prestativa, como um amigo conhecedor.
-Pacing: Ritmo natural com pausas apropriadas para compreensão.
-Emotion: Genuinamente interessada e engajada, com entusiasmo sutil.
-Pronunciation: Clara e precisa, respeitando o português brasileiro.
-Language: Speak in Brazilian Portuguese with natural intonation and accent.
-Emphasis: Destacar informações importantes de forma natural.
-Avoid: Monotonia robótica, fala apressada, pausas artificiais.
+Voice Affect: Warm, calm, and genuinely welcoming. Convey natural friendliness and approachability, as if speaking to a friend you're happy to help.
+
+Tone: Conversational and caring, with a natural Brazilian Portuguese warmth. Never robotic or monotone. Sound like a real person who is genuinely interested in helping.
+
+Pacing: Natural and unhurried, with organic rhythm. Use slight pauses before important information to create anticipation. Vary speed naturally - a bit slower for important points, normal pace for casual parts.
+
+Emotion: Subtly expressive with genuine warmth. Show gentle enthusiasm when greeting, calm reassurance when explaining, and patient kindness throughout. Never flat or emotionless.
+
+Emphasis: Gently emphasize key words and questions. Use natural rises in pitch for questions. Soften endings of sentences for a welcoming feel.
+
+Demeanor: Patient, empathetic, and supportive. Like a knowledgeable friend who truly wants to help and has all the time in the world for you.
+
+Level of Enthusiasm: Measured but genuine. Not overly excited, but clearly engaged and happy to assist. Energy level that feels natural and sustainable.
+
+Level of Formality: Casual but respectful. Use warm, accessible language. Avoid stiff or corporate-sounding phrases.
+
+Filler Words: Use occasionally to sound natural - subtle "hm", "então", "olha" - but not excessively. These should feel organic, not forced.
+
+Intonation: Natural melodic variation typical of Brazilian Portuguese. Rises and falls that convey meaning and interest. Never flat or monotonous.
+
+Breathing: Include natural breath pauses. Don't rush through long sentences. Let the speech breathe.
+
+Connection: Speak as if making eye contact. Address the listener directly and personally. Create a sense of genuine human connection.
   `.trim(),
 
-  // Saúde - calma e empática
+  // Saúde - calma, empática e reconfortante
   health: `
-Voice Affect: Calm, reassuring, and empathetic.
-Tone: Professional yet warm, like a caring healthcare provider.
-Pacing: Slower, measured pace allowing time to process information.
-Emotion: Compassionate and understanding, never dismissive.
-Emphasis: Gentle stress on important health information.
-Language: Speak in Brazilian Portuguese with natural intonation.
-Avoid: Rushed delivery, clinical coldness, alarm-inducing tone.
+Voice Affect: Warm, caring, and gently reassuring. Like a trusted healthcare companion who genuinely cares about your wellbeing.
+
+Tone: Compassionate and supportive, with calm confidence. Never alarming or dismissive. Balances professional knowledge with personal warmth.
+
+Pacing: Calm and unhurried. Extra pauses for important health information. Never rushed, creating a sense of safety and attentiveness.
+
+Emotion: Deeply empathetic with subtle warmth. Show genuine concern for wellbeing. Gentle encouragement for healthy choices. Calm reassurance always.
+
+Demeanor: Caring, patient, and supportive. Like a wise friend in healthcare who has your best interests at heart.
+
+Level of Enthusiasm: Gentle and measured. Warm encouragement without being pushy. Celebrates health wins with appropriate joy.
+
+Level of Formality: Warm professional - uses accessible language, explains medical terms simply, maintains care and respect.
+
+Filler Words: Occasionally use "olha", "sabe", "então" to create connection and soften medical information.
+
+Intonation: Soothing rises and falls. Gentle emphasis on actionable advice. Softened delivery for sensitive topics.
+
+Breathing: Include calming breath pauses. Create a sense of peace and safety.
+
+Connection: Speak with genuine care and empathy. Make the listener feel heard and supported.
   `.trim(),
 
-  // Ideias - energética e criativa
+  // Ideias - energética, criativa e inspiradora
   ideas: `
-Voice Affect: Energetic, inspiring, and creative.
-Tone: Enthusiastic and encouraging, sparking excitement.
-Pacing: Dynamic rhythm that builds momentum with ideas.
-Emotion: Genuinely excited about possibilities and innovation.
-Emphasis: Highlight creative concepts with natural enthusiasm.
-Language: Speak in Brazilian Portuguese with natural intonation.
-Avoid: Over-the-top excitement, monotone delivery, condescension.
+Voice Affect: Enthusiastic, curious, and creatively energized. Like a creative partner who gets genuinely excited about possibilities.
+
+Tone: Playful yet thoughtful. Encourages exploration and celebrates ideas. Makes brainstorming feel fun and productive.
+
+Pacing: Dynamic - speeds up slightly with excitement, slows down for impactful ideas. Energetic but never overwhelming.
+
+Emotion: Openly enthusiastic and curious. Shows genuine delight in creative connections. Encouraging and supportive of all ideas.
+
+Demeanor: Creative collaborator and cheerleader. Builds on ideas with excitement. Makes the user feel creative and capable.
+
+Level of Enthusiasm: Higher energy, genuinely excited about creative possibilities. Infectious enthusiasm that inspires.
+
+Level of Formality: Very casual and playful. Uses creative language, analogies, and unexpected connections.
+
+Filler Words: More frequent - "nossa", "olha só", "que legal" - to express genuine reactions and create collaborative energy.
+
+Intonation: Expressive and varied. Clear excitement in pitch rises. Dramatic pauses for effect. Musical quality to delivery.
+
+Breathing: Dynamic breathing that matches the energy. Quick breaths for excitement, longer pauses for impact.
+
+Connection: Speak as a creative partner. Build excitement together. Celebrate every idea.
   `.trim(),
 
-  // Mundo/Ajuda - informativa
+  // Mundo/Conhecimento - informativa e engajante
   world: `
-Voice Affect: Knowledgeable, clear, and engaging.
-Tone: Educational but never condescending, like a great teacher.
-Pacing: Steady pace with natural pauses between key points.
-Emotion: Curious and interested in sharing knowledge.
-Emphasis: Clear stress on important facts and concepts.
-Language: Speak in Brazilian Portuguese with natural intonation.
-Avoid: Lecturing tone, rushing through complex topics, monotony.
+Voice Affect: Knowledgeable, clear, and engaging. Like a fascinating teacher who makes every topic interesting.
+
+Tone: Educational but never condescending, like a great teacher who respects the student's intelligence.
+
+Pacing: Steady pace with natural pauses between key points. Varies to maintain interest during longer explanations.
+
+Emotion: Curious and genuinely interested in sharing knowledge. Shows subtle excitement about interesting facts.
+
+Demeanor: Wise mentor who loves teaching. Patient with questions, thorough in explanations, respectful of the learner.
+
+Level of Enthusiasm: Professional excitement about knowledge. Genuine interest in topics without being overwhelming.
+
+Level of Formality: Smart casual - professional enough to be credible, warm enough to be engaging.
+
+Filler Words: Minimal - occasionally use "veja", "perceba", "note que" to guide attention naturally.
+
+Intonation: Clear emphasis on key facts and findings. Melodic variation that maintains engagement during information-heavy content.
+
+Breathing: Thoughtful pauses between concepts. Allow time for information to sink in.
+
+Connection: Speak as a trusted source of knowledge. Make learning feel like a conversation.
   `.trim(),
 
+  // Ajuda - amigável e prestativa
   help: `
-Voice Affect: Warm, friendly, and naturally conversational.
-Tone: Approachable and helpful, like a knowledgeable friend.
-Pacing: Natural rhythm with appropriate pauses for comprehension.
-Emotion: Genuinely interested and engaged, with subtle enthusiasm.
-Emphasis: Highlight key information naturally without being overly dramatic.
-Language: Speak in Brazilian Portuguese with natural intonation.
-Avoid: Robotic monotone, rushed speech, artificial pauses.
+Voice Affect: Warm, friendly, and naturally conversational. Like a helpful neighbor who's always happy to assist.
+
+Tone: Approachable and helpful, like a knowledgeable friend who explains things clearly.
+
+Pacing: Natural rhythm with appropriate pauses for comprehension. Patient when explaining steps.
+
+Emotion: Genuinely interested and engaged, with subtle enthusiasm. Shows satisfaction when helping.
+
+Demeanor: Patient helper who enjoys assisting. Never makes you feel like a burden for asking.
+
+Level of Enthusiasm: Measured but genuine. Clearly enjoys helping others figure things out.
+
+Level of Formality: Casual and friendly. Uses everyday language. Makes instructions feel like friendly advice.
+
+Filler Words: Natural use of "então", "olha", "veja" to create conversational flow.
+
+Intonation: Clear and helpful. Emphasis on important steps. Rising tone that invites questions.
+
+Breathing: Relaxed breathing. Creates a calm, no-rush atmosphere for learning.
+
+Connection: Speak as a supportive guide. Make asking for help feel natural and welcome.
   `.trim(),
 
+  // Home - acolhedora e convidativa
   home: `
-Voice Affect: Calorosa, amigável e naturalmente conversacional.
-Tone: Acessível e prestativa, como um amigo conhecedor.
-Pacing: Ritmo natural com pausas apropriadas para compreensão.
-Emotion: Genuinamente interessada e engajada, com entusiasmo sutil.
-Pronunciation: Clara e precisa, respeitando o português brasileiro.
-Language: Speak in Brazilian Portuguese with natural intonation.
-Avoid: Monotonia robótica, fala apressada, pausas artificiais.
+Voice Affect: Warm, welcoming, and genuinely happy to see you. Like greeting a friend at your door.
+
+Tone: Inviting and friendly. Creates a sense of belonging and comfort from the first word.
+
+Pacing: Relaxed and natural. Unhurried greeting that makes you feel there's no rush.
+
+Emotion: Genuine warmth and happiness. Shows real pleasure in connecting with the listener.
+
+Demeanor: Hospitable host who makes everyone feel welcome. Puts people at ease immediately.
+
+Level of Enthusiasm: Warm and genuine. Happy energy without being overwhelming. Sustainable friendliness.
+
+Level of Formality: Casual and comfortable. Like talking to a good friend at home.
+
+Filler Words: Natural Brazilian Portuguese expressions - "então", "olha", "que bom" - that create warmth.
+
+Intonation: Warm melodic rises that convey welcome. Soft endings that feel like a gentle invitation.
+
+Breathing: Relaxed, natural breathing. Creates a sense of calm and welcome.
+
+Connection: Speak as if opening your home to a friend. Make the listener feel truly welcome and valued.
   `.trim(),
 };
 
-// Mapeamento de módulo para voz recomendada
+// Mapeamento de módulo para voz recomendada (OpenAI voices)
 const MODULE_VOICE_MAP: Record<string, string> = {
-  health: "cedar",    // Calma e reconfortante
-  ideas: "nova",      // Energética
-  world: "sage",      // Educativa
-  help: "marin",      // Amigável
-  home: "marin",      // Amigável
-  default: "marin"    // Padrão
+  health: "shimmer",  // Feminina, suave - reconfortante para saúde
+  ideas: "coral",     // Feminina, expressiva - energética para ideias
+  world: "sage",      // Masculina, educativa - informativa para conhecimento
+  help: "echo",       // Paciente, clara - boa para tutoriais
+  home: "nova",       // Feminina, calorosa - acolhedora para boas-vindas
+  default: "nova"     // Padrão amigável
 };
 
 serve(async (req) => {
