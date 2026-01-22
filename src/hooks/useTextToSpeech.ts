@@ -2,10 +2,11 @@
  * ============================================================
  * useTextToSpeech.ts - Hook de Text-to-Speech
  * ============================================================
- * Versão: 5.0.0
+ * Versão: 5.2.0
  * Data: 2026-01-22
  *
  * Changelog:
+ * - v5.2.0: FIX loop infinito - resetar isLoading ANTES de tentar fallback
  * - v5.0.0: Fallback para Web Speech API quando áudio falha (iOS silent mode)
  * - v4.0.0: FIX memory leak - revoga URL.createObjectURL no cleanup
  * - v3.0.0: Suporte a phoneticMapOverride e userRegion
@@ -68,7 +69,8 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
     };
   }, []);
 
-  // v5.0.0: Aceita overrideOptions com phoneticMapOverride + fallback Web Speech
+  // v5.2.0: Aceita overrideOptions com phoneticMapOverride + fallback Web Speech
+  // FIX: Garante que isLoading seja SEMPRE resetado (evita loop infinito)
   const speak = useCallback(async (
     text: string,
     source: string = "default",
@@ -160,15 +162,15 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
     } catch (err) {
       console.error("TTS Error:", err);
 
+      // v5.2.0: SEMPRE resetar loading ANTES de tentar fallback
+      setLocalLoading(false);
+
       // v5.0.0: Última tentativa com Web Speech se disponível
       if (isMobile && isWebSpeechAvailable()) {
         console.warn("[TTS v5.0] ⚠️ Fallback final para Web Speech API...");
         try {
-          setWebSpeechCallbacks({
-            onStart: () => setLocalLoading(false),
-            onEnd: () => console.log("[TTS v5.0] Web Speech fallback concluído")
-          });
           await speakWithWebSpeech(originalText, 'pt-BR');
+          console.log("[TTS v5.2] ✅ Web Speech fallback concluído");
           return; // Sucesso com fallback
         } catch (webSpeechErr) {
           console.error("[TTS v5.0] Web Speech também falhou:", webSpeechErr);
@@ -176,7 +178,6 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
       }
 
       setError(err instanceof Error ? err.message : "Falha ao gerar fala");
-      setLocalLoading(false);
     }
   }, [voice, options?.userRegion]);
 
