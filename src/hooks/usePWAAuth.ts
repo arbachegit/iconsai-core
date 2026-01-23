@@ -202,12 +202,18 @@ export function usePWAAuth() {
           expires_at?: string;
         };
 
-        // Já verificado - salvar e recarregar
+        // Já verificado - salvar e ir direto para verified
         if (result.already_verified) {
-          console.log("[PWA Auth v8.0] Already verified");
+          console.log("[PWA Auth v9.1] Already verified - going directly to verified state");
           const phoneToSave = result.normalized_phone || result.phone || params.phone;
           localStorage.setItem(STORAGE_KEY, phoneToSave);
-          await checkAccess();
+          // v9.1: Atualizar estado diretamente para verified (sem chamar checkAccess)
+          setState((prev) => ({
+            ...prev,
+            status: "verified",
+            userName: result.user_name || null,
+            userPhone: phoneToSave,
+          }));
           return { success: true };
         }
 
