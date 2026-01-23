@@ -26,7 +26,7 @@ export { default as HumanizationSlidersDefault } from './HumanizationSliders';
 export { InstructionsEditor } from './InstructionsEditor';
 export { default as InstructionsEditorDefault } from './InstructionsEditor';
 
-// Welcome Presets
+// Welcome Presets (Textos de Boas-vindas)
 export { WelcomePresetsEditor, DEFAULT_WELCOME_PRESETS } from './WelcomePresetsEditor';
 export type { WelcomePreset } from './WelcomePresetsEditor';
 export { default as WelcomePresetsEditorDefault } from './WelcomePresetsEditor';
@@ -46,7 +46,7 @@ export { default as VoiceComparisonTableDefault } from './VoiceComparisonTable';
 
 // Constants
 export {
-  OPENAI_VOICES,
+  ARBACHE_VOICES,
   DEFAULT_HUMANIZATION_VALUES,
   DEFAULT_TOGGLE_VALUES,
   MODULE_DEFAULT_VOICES,

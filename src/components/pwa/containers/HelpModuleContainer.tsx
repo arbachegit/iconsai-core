@@ -301,7 +301,7 @@ export const HelpModuleContainer: React.FC<HelpModuleContainerProps> = ({ onBack
           primaryColor={MODULE_CONFIG.color}
           onFrequencyData={setFrequencyData}
           onRecordingChange={setIsRecording}
-          maxDurationSeconds={60}
+          maxDurationSeconds={pwaConfig?.micTimeoutSeconds || 60}
         />
       </div>
     </div>

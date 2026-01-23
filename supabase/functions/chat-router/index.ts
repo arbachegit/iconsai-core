@@ -1,8 +1,12 @@
 // ============================================
-// VERSAO: 2.6.1 | DEPLOY: 2026-01-09
-// MUDANCA: Busca fonéticas em códigos ancestrais
-// FIX: getPhoneticMap expande códigos hierárquicos
+// VERSAO: 2.8.0 | DEPLOY: 2026-01-23
+// MUDANCA: Implementação de ESCOPO (allowedScope/forbiddenScope)
 // ============================================
+// CHANGELOG v2.8.0:
+// - Suporte a ESCOPO do agente (allowedScope e forbiddenScope)
+// - Scope é extraído do metadata JSON do chat_agents
+// - Scope é injetado no system prompt tanto para ChatGPT quanto Gemini
+// - Agente recusa educadamente temas fora do escopo permitido
 // CHANGELOG v2.6.1:
 // - getPhoneticMap agora busca em códigos ancestrais
 // - Ex: "economia.indicadores.monetarios.selic" → busca também em "economia.indicadores.monetarios"
@@ -531,16 +535,28 @@ Ajudar o usuário com qualquer dúvida de forma clara e objetiva.
 
 // ===================== CHATGPT PRIMARY (OpenAI) + GEMINI FALLBACK =====================
 // v2.7.0: OpenAI como primário, Gemini como fallback (SEM Lovable)
+// v2.8.0: Suporte a ESCOPO (allowedScope/forbiddenScope)
 async function callChatGPTForModule(
   query: string,
   moduleSlug: string,
   conversationHistory: Array<{ role: string; content: string }> = [],
+  scopeConfig?: { allowedScope?: string; forbiddenScope?: string },
 ): Promise<{ response: string; success: boolean }> {
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
   // CORRECAO v2.5.0: Obter prompt específico do módulo, fallback para "general" (não "economia")
-  const modulePrompt = CHATGPT_MODULE_PROMPTS[moduleSlug] || CHATGPT_MODULE_PROMPTS["general"];
+  let modulePrompt = CHATGPT_MODULE_PROMPTS[moduleSlug] || CHATGPT_MODULE_PROMPTS["general"];
+
+  // v2.8.0: Injetar escopo no prompt se disponível
+  if (scopeConfig) {
+    if (scopeConfig.allowedScope && scopeConfig.allowedScope.trim()) {
+      modulePrompt += `\n\n## ESCOPO PERMITIDO (O QUE VOCÊ PODE FAZER):\n${scopeConfig.allowedScope.trim()}`;
+    }
+    if (scopeConfig.forbiddenScope && scopeConfig.forbiddenScope.trim()) {
+      modulePrompt += `\n\n## ESCOPO PROIBIDO (O QUE VOCÊ NÃO PODE FAZER - RECUSE EDUCADAMENTE):\n${scopeConfig.forbiddenScope.trim()}\n\nSe o usuário perguntar sobre temas proibidos, responda educadamente: "Desculpe, mas este assunto está fora do meu escopo de atuação. Posso ajudar com outros temas?"`;
+    }
+  }
 
   // Construir mensagens com histórico
   const messages: Array<{ role: string; content: string }> = [{ role: "system", content: modulePrompt }];
@@ -1434,6 +1450,8 @@ interface SystemPromptParams {
   isPwaMode?: boolean;
   maieuticPrompt?: string;
   antiprompt?: string;
+  allowedScope?: string;
+  forbiddenScope?: string;
 }
 
 function buildSystemPrompt(params: SystemPromptParams): string {
@@ -1441,6 +1459,15 @@ function buildSystemPrompt(params: SystemPromptParams): string {
 
   if (params.customPrompt) parts.push(params.customPrompt);
   if (params.guardrails) parts.push(params.guardrails);
+
+  // ESCOPO: Regras de permissão e proibição do agente
+  if (params.allowedScope && params.allowedScope.trim()) {
+    parts.push(`## ESCOPO PERMITIDO (O QUE VOCÊ PODE FAZER):\n${params.allowedScope.trim()}`);
+  }
+  if (params.forbiddenScope && params.forbiddenScope.trim()) {
+    parts.push(`## ESCOPO PROIBIDO (O QUE VOCÊ NÃO PODE FAZER - RECUSE EDUCADAMENTE):\n${params.forbiddenScope.trim()}\n\nSe o usuário perguntar sobre temas proibidos, responda educadamente: "Desculpe, mas este assunto está fora do meu escopo de atuação. Posso ajudar com outros temas?"`);
+  }
+
   if (params.maieuticPrompt) parts.push(`## ABORDAGEM:\n${params.maieuticPrompt}`);
   if (params.antiprompt) parts.push(`## EVITAR:\n${params.antiprompt}`);
   if (params.ragContext) parts.push(params.ragContext);
@@ -1664,7 +1691,30 @@ serve(async (req: Request) => {
       const moduleSlug = agentSlug || chatType || "general";
       logger.info(`[ChatGPT-Primary] Módulo: ${moduleSlug}`);
 
-      const chatGPTResult = await callChatGPTForModule(pwaMessage, moduleSlug, history);
+      // v2.8.0: Carregar escopo do agente antes de chamar ChatGPT
+      let scopeConfig: { allowedScope?: string; forbiddenScope?: string } | undefined;
+      try {
+        const { data: agentForScope } = await supabase
+          .from("chat_agents")
+          .select("metadata")
+          .eq("slug", moduleSlug)
+          .eq("is_active", true)
+          .single();
+
+        if (agentForScope?.metadata && typeof agentForScope.metadata === 'object') {
+          const metadata = agentForScope.metadata as Record<string, unknown>;
+          const allowedScope = (metadata.allowedScope as string) || "";
+          const forbiddenScope = (metadata.forbiddenScope as string) || "";
+          if (allowedScope || forbiddenScope) {
+            scopeConfig = { allowedScope, forbiddenScope };
+            console.log(`[Scope-ChatGPT] Agent ${moduleSlug}: allowed="${allowedScope.substring(0, 30)}..." forbidden="${forbiddenScope.substring(0, 30)}..."`);
+          }
+        }
+      } catch (scopeErr) {
+        console.warn(`[Scope-ChatGPT] Failed to load scope for ${moduleSlug}:`, scopeErr);
+      }
+
+      const chatGPTResult = await callChatGPTForModule(pwaMessage, moduleSlug, history, scopeConfig);
 
       if (chatGPTResult.success && chatGPTResult.response) {
         logger.info(`[ChatGPT-Primary] Sucesso para ${moduleSlug}`);
@@ -1721,6 +1771,8 @@ serve(async (req: Request) => {
       let taxonomyCodes: string[] = [];
       let matchThreshold = 0.15;
       let matchCount = 5;
+      let allowedScope = "";
+      let forbiddenScope = "";
 
       if (orchestratedContext) {
         contextCode = orchestratedContext.contextCode;
@@ -1745,6 +1797,16 @@ serve(async (req: Request) => {
           matchCount = agent.match_count || 5;
           const agentTaxonomies = await getAgentTaxonomyCodes(supabase, moduleSlug);
           taxonomyCodes = agentTaxonomies.included;
+
+          // ESCOPO v2.7.0: Extrair allowedScope e forbiddenScope do metadata
+          if (agent.metadata && typeof agent.metadata === 'object') {
+            const metadata = agent.metadata as Record<string, unknown>;
+            allowedScope = (metadata.allowedScope as string) || "";
+            forbiddenScope = (metadata.forbiddenScope as string) || "";
+            if (allowedScope || forbiddenScope) {
+              console.log(`[Scope] Agent ${moduleSlug}: allowed="${allowedScope.substring(0, 50)}..." forbidden="${forbiddenScope.substring(0, 50)}..."`);
+            }
+          }
         }
       }
 
@@ -1796,6 +1858,8 @@ serve(async (req: Request) => {
         isPwaMode: true,
         maieuticPrompt,
         antiprompt,
+        allowedScope,
+        forbiddenScope,
       });
 
       // v2.7.0: Usar Gemini direto (sem Lovable)

@@ -540,7 +540,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
           primaryColor={MODULE_CONFIG.color}
           onFrequencyData={setFrequencyData}
           onRecordingChange={setIsRecording}
-          maxDurationSeconds={60}
+          maxDurationSeconds={pwaConfig?.micTimeoutSeconds || 60}
         />
       </div>
     </div>

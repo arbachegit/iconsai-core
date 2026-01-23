@@ -401,7 +401,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ module
           primaryColor={config.color}
           onFrequencyData={setFrequencyData}
           onRecordingChange={setIsRecording}
-          maxDurationSeconds={60}
+          maxDurationSeconds={pwaConfig?.micTimeoutSeconds || 60}
         />
       </div>
     </div>

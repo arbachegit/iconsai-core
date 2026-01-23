@@ -39,7 +39,6 @@ import {
 import {
   Volume2,
   Sliders,
-  FileText,
   Users,
   Info,
   Save,
@@ -47,6 +46,7 @@ import {
   Loader2,
   CheckCircle,
   Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,7 +55,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { VoiceSelector } from './VoiceSelector';
 import { HumanizationSliders, type HumanizationValues } from './HumanizationSliders';
 import { InstructionsEditor } from './InstructionsEditor';
-import { WelcomePresetsEditor, DEFAULT_WELCOME_PRESETS, type WelcomePreset } from './WelcomePresetsEditor';
+import { WelcomePresetsEditor } from './WelcomePresetsEditor';
 import { AgentVoiceConfig, DEFAULT_AGENT_CONFIGS, type AgentVoiceSettings } from './AgentVoiceConfig';
 import { TestVoiceButton } from './TestVoiceButton';
 import { VoiceComparisonTable } from './VoiceComparisonTable';
@@ -72,9 +72,6 @@ interface VoiceHumanizationState {
   globalHumanization: HumanizationValues;
   globalInstructions: string;
 
-  // Presets de boas-vindas
-  welcomePresets: WelcomePreset[];
-
   // Configurações por módulo
   agentConfigs: AgentVoiceSettings[];
 
@@ -90,7 +87,6 @@ const DEFAULT_STATE: VoiceHumanizationState = {
     ...DEFAULT_TOGGLE_VALUES,
   },
   globalInstructions: '',
-  welcomePresets: DEFAULT_WELCOME_PRESETS,
   agentConfigs: DEFAULT_AGENT_CONFIGS,
   lastSaved: null,
   isDirty: false,
@@ -116,7 +112,6 @@ export const VoiceHumanizationPanel: React.FC = () => {
         .select('config_key, config_value')
         .in('config_key', [
           'voice_humanization_config',
-          'welcome_presets',
           'agent_voice_configs',
         ]);
 
@@ -138,17 +133,6 @@ export const VoiceHumanizationPanel: React.FC = () => {
             }));
           } catch (e) {
             console.warn('Erro ao parsear voice_humanization_config:', e);
-          }
-        }
-
-        if (configMap.welcome_presets) {
-          try {
-            const parsed = JSON.parse(configMap.welcome_presets);
-            if (Array.isArray(parsed)) {
-              setState((prev) => ({ ...prev, welcomePresets: parsed }));
-            }
-          } catch (e) {
-            console.warn('Erro ao parsear welcome_presets:', e);
           }
         }
 
@@ -184,13 +168,11 @@ export const VoiceHumanizationPanel: React.FC = () => {
         lastSaved: now,
       });
 
-      const welcomePresets = JSON.stringify(state.welcomePresets);
       const agentVoiceConfigs = JSON.stringify(state.agentConfigs);
 
       // Upsert todas as configurações
       const configs = [
         { config_key: 'voice_humanization_config', config_value: voiceHumanizationConfig },
-        { config_key: 'welcome_presets', config_value: welcomePresets },
         { config_key: 'agent_voice_configs', config_value: agentVoiceConfigs },
       ];
 
@@ -274,26 +256,26 @@ export const VoiceHumanizationPanel: React.FC = () => {
 
       {/* Tabs Principal */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 w-full max-w-2xl">
-          <TabsTrigger value="global" className="flex items-center gap-1">
-            <Volume2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Global</span>
+        <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+          <TabsTrigger value="global" className="flex items-center gap-2 py-3 text-base">
+            <Volume2 className="h-5 w-5" />
+            <span>Global</span>
           </TabsTrigger>
-          <TabsTrigger value="humanization" className="flex items-center gap-1">
-            <Sliders className="h-4 w-4" />
-            <span className="hidden sm:inline">Humanização</span>
+          <TabsTrigger value="humanization" className="flex items-center gap-2 py-3 text-base">
+            <Sliders className="h-5 w-5" />
+            <span>Humanização</span>
           </TabsTrigger>
-          <TabsTrigger value="presets" className="flex items-center gap-1">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Presets</span>
+          <TabsTrigger value="presets" className="flex items-center gap-2 py-3 text-base">
+            <MessageSquare className="h-5 w-5" />
+            <span>Textos</span>
           </TabsTrigger>
-          <TabsTrigger value="agents" className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Módulos</span>
+          <TabsTrigger value="agents" className="flex items-center gap-2 py-3 text-base">
+            <Users className="h-5 w-5" />
+            <span>Módulos</span>
           </TabsTrigger>
-          <TabsTrigger value="comparison" className="flex items-center gap-1">
-            <Info className="h-4 w-4" />
-            <span className="hidden sm:inline">Comparação</span>
+          <TabsTrigger value="comparison" className="flex items-center gap-2 py-3 text-base">
+            <Info className="h-5 w-5" />
+            <span>Info</span>
           </TabsTrigger>
         </TabsList>
 
@@ -364,12 +346,9 @@ export const VoiceHumanizationPanel: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* Tab: Presets de Boas-vindas */}
+        {/* Tab: Textos de Boas-vindas */}
         <TabsContent value="presets" className="space-y-6 mt-6">
-          <WelcomePresetsEditor
-            presets={state.welcomePresets}
-            onPresetsChange={(presets) => updateState('welcomePresets', presets)}
-          />
+          <WelcomePresetsEditor />
         </TabsContent>
 
         {/* Tab: Configuração por Módulo */}

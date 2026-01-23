@@ -320,7 +320,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
           primaryColor={MODULE_CONFIG.color}
           onFrequencyData={setFrequencyData}
           onRecordingChange={setIsRecording}
-          maxDurationSeconds={60}
+          maxDurationSeconds={pwaConfig?.micTimeoutSeconds || 60}
         />
       </div>
     </div>

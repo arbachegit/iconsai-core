@@ -1,9 +1,11 @@
 // ============================================
-// VERSAO: 6.0.0 | DEPLOY: 2026-01-22
-// MUDANÇA: Integração com painel admin de humanização
-// - Carrega config de voz do pwa_config/pwa_agent_voice_config
-// - Instructions customizadas por módulo do banco
-// - Fallback para instructions hardcoded
+// VERSAO: 6.1.0 | DEPLOY: 2026-01-23
+// MUDANÇA: Global + Módulo funcionam EM CONJUNTO
+// - Carrega config GLOBAL de voice_humanization_config
+// - Carrega config MÓDULO de agent_voice_configs
+// - MESCLA: Global (base) + Módulo (sobrescreve onde definido)
+// - Instructions: Global + Módulo concatenadas
+// - Sliders de humanização geram instructions automaticamente
 // Fallback: Google Cloud TTS
 // ============================================
 
@@ -527,8 +529,27 @@ const MODULE_VOICE_MAP: Record<string, string> = {
 };
 
 // ============================================
-// v6.0.0: Interface para config de voz do banco
+// v6.1.0: Interfaces para config de voz do banco
 // ============================================
+
+// Configuração global (base)
+interface GlobalVoiceConfig {
+  globalVoice: string;
+  globalHumanization: {
+    warmth: number;
+    enthusiasm: number;
+    pace: number;
+    expressiveness: number;
+    formality: number;
+    speed: number;
+    fillerWords: boolean;
+    naturalBreathing: boolean;
+    emotionalResponses: boolean;
+  };
+  globalInstructions: string;
+}
+
+// Configuração por módulo (sobrescreve global onde definido)
 interface AgentVoiceConfig {
   moduleId: string;
   voice: string;
@@ -784,10 +805,33 @@ serve(async (req) => {
     // Determinar módulo para instructions (usa chatType se disponível)
     const moduleType = chatType || "default";
 
-    // v6.0.0: Tentar carregar config de voz do banco de dados
-    let dbVoiceConfig: AgentVoiceConfig | null = null;
+    // ============================================
+    // v6.1.0: Carregar Global + Módulo e mesclar
+    // Hierarquia: Global (base) + Módulo (sobrescreve)
+    // ============================================
+
+    // 1. Carregar configuração GLOBAL
+    let globalConfig: GlobalVoiceConfig | null = null;
     try {
-      // Primeiro, tentar pwa_agent_voice_config (tabela estruturada)
+      const { data: globalData } = await supabase
+        .from("pwa_config")
+        .select("config_value")
+        .eq("config_key", "voice_humanization_config")
+        .single();
+
+      if (globalData?.config_value) {
+        globalConfig = JSON.parse(globalData.config_value) as GlobalVoiceConfig;
+        console.log(`[TTS v6.1] 🌐 Config GLOBAL carregada: voz=${globalConfig.globalVoice}`);
+      }
+    } catch (globalErr) {
+      console.log(`[TTS v6.1] ℹ️ Config global não encontrada, usando defaults`);
+    }
+
+    // 2. Carregar configuração do MÓDULO
+    let moduleConfig: AgentVoiceConfig | null = null;
+
+    // 2a. Tentar tabela estruturada primeiro
+    try {
       const { data: agentConfig } = await supabase
         .from("pwa_agent_voice_config")
         .select("*")
@@ -795,7 +839,7 @@ serve(async (req) => {
         .single();
 
       if (agentConfig) {
-        dbVoiceConfig = {
+        moduleConfig = {
           moduleId: agentConfig.module_id,
           voice: agentConfig.voice,
           humanization: {
@@ -812,15 +856,14 @@ serve(async (req) => {
           instructions: agentConfig.custom_instructions || "",
           isCustom: agentConfig.is_custom,
         };
-        console.log(`[TTS v6.0] 📦 Config carregada do banco para módulo: ${moduleType}`);
+        console.log(`[TTS v6.1] 📦 Config MÓDULO carregada (tabela): ${moduleType}`);
       }
     } catch (dbErr) {
-      // Se a tabela não existir ou der erro, continuar sem config do banco
-      console.log(`[TTS v6.0] ℹ️ Usando config hardcoded (tabela não disponível):`, dbErr);
+      // Tabela não existe, tentar JSON
     }
 
-    // Se não encontrou na tabela estruturada, tentar pwa_config (JSON)
-    if (!dbVoiceConfig) {
+    // 2b. Se não encontrou, tentar pwa_config JSON
+    if (!moduleConfig) {
       try {
         const { data: pwaConfig } = await supabase
           .from("pwa_config")
@@ -830,32 +873,94 @@ serve(async (req) => {
 
         if (pwaConfig?.config_value) {
           const configs = JSON.parse(pwaConfig.config_value) as AgentVoiceConfig[];
-          dbVoiceConfig = configs.find(c => c.moduleId === moduleType) || null;
-          if (dbVoiceConfig) {
-            console.log(`[TTS v6.0] 📦 Config carregada do pwa_config JSON para módulo: ${moduleType}`);
+          moduleConfig = configs.find(c => c.moduleId === moduleType) || null;
+          if (moduleConfig) {
+            console.log(`[TTS v6.1] 📦 Config MÓDULO carregada (JSON): ${moduleType}`);
           }
         }
       } catch (jsonErr) {
-        console.log(`[TTS v6.0] ℹ️ Erro ao parsear pwa_config JSON:`, jsonErr);
+        console.log(`[TTS v6.1] ℹ️ Config de módulo não encontrada para: ${moduleType}`);
       }
     }
 
-    // Determinar voz baseada no banco ou fallback para hardcoded
-    let selectedVoice = voice;
-    if (dbVoiceConfig) {
-      selectedVoice = dbVoiceConfig.voice;
-    } else if (!OPENAI_VOICES.includes(voice)) {
+    // 3. MESCLAR: Global (base) + Módulo (sobrescreve onde definido)
+    const defaultHumanization = {
+      warmth: 70,
+      enthusiasm: 50,
+      pace: 50,
+      expressiveness: 60,
+      formality: 30,
+      speed: 1.0,
+      fillerWords: true,
+      naturalBreathing: true,
+      emotionalResponses: true,
+    };
+
+    // Começar com defaults
+    let finalConfig: AgentVoiceConfig = {
+      moduleId: moduleType,
+      voice: MODULE_VOICE_MAP[moduleType] || MODULE_VOICE_MAP.default,
+      humanization: { ...defaultHumanization },
+      instructions: "",
+      isCustom: false,
+    };
+
+    // Aplicar Global (se existir)
+    if (globalConfig) {
+      finalConfig.voice = globalConfig.globalVoice || finalConfig.voice;
+      finalConfig.humanization = {
+        ...finalConfig.humanization,
+        ...globalConfig.globalHumanization,
+      };
+      finalConfig.instructions = globalConfig.globalInstructions || "";
+      console.log(`[TTS v6.1] ✅ Global aplicado: voz=${finalConfig.voice}`);
+    }
+
+    // Aplicar Módulo (sobrescreve Global onde definido)
+    if (moduleConfig) {
+      // Voz do módulo sobrescreve se definida
+      if (moduleConfig.voice) {
+        finalConfig.voice = moduleConfig.voice;
+      }
+      // Humanização do módulo sobrescreve
+      if (moduleConfig.humanization) {
+        finalConfig.humanization = {
+          ...finalConfig.humanization,
+          ...moduleConfig.humanization,
+        };
+      }
+      // Instructions do módulo COMPLEMENTAM ou sobrescrevem
+      if (moduleConfig.instructions && moduleConfig.instructions.trim().length > 0) {
+        // Se módulo tem instructions próprias, CONCATENAR com global
+        if (finalConfig.instructions && finalConfig.instructions.trim().length > 0) {
+          finalConfig.instructions = `${finalConfig.instructions}\n\n--- Configurações do Módulo ${moduleType} ---\n${moduleConfig.instructions}`;
+        } else {
+          finalConfig.instructions = moduleConfig.instructions;
+        }
+      }
+      finalConfig.isCustom = moduleConfig.isCustom;
+      console.log(`[TTS v6.1] ✅ Módulo aplicado: ${moduleType}, voz=${finalConfig.voice}`);
+    }
+
+    // Log da configuração final
+    console.log(`[TTS v6.1] 🎯 Config FINAL: voz=${finalConfig.voice}, warmth=${finalConfig.humanization.warmth}, instructions=${finalConfig.instructions.length} chars`);
+
+    // Determinar voz final
+    let selectedVoice = finalConfig.voice;
+    if (!OPENAI_VOICES.includes(selectedVoice)) {
       selectedVoice = MODULE_VOICE_MAP[moduleType] || MODULE_VOICE_MAP.default;
     }
 
-    // Obter instructions: do banco (gerado ou customizado) ou fallback hardcoded
+    // Gerar instructions finais
     let voiceInstructions: string;
-    if (dbVoiceConfig) {
-      voiceInstructions = generateInstructionsFromConfig(dbVoiceConfig);
-      console.log(`[TTS v6.0] 📝 Instructions geradas do banco (${voiceInstructions.length} chars)`);
+    if (finalConfig.instructions && finalConfig.instructions.trim().length > 0) {
+      // Usar instructions customizadas (Global + Módulo mescladas)
+      voiceInstructions = finalConfig.instructions;
+      console.log(`[TTS v6.1] 📝 Usando instructions customizadas (${voiceInstructions.length} chars)`);
     } else {
-      voiceInstructions = VOICE_INSTRUCTIONS[moduleType] || VOICE_INSTRUCTIONS.default;
-      console.log(`[TTS v6.0] 📝 Usando instructions hardcoded para: ${moduleType}`);
+      // Gerar baseado nos sliders de humanização
+      voiceInstructions = generateInstructionsFromConfig(finalConfig);
+      console.log(`[TTS v6.1] 📝 Instructions geradas dos sliders (${voiceInstructions.length} chars)`);
     }
 
     // ============================================
@@ -863,7 +968,7 @@ serve(async (req) => {
     // ============================================
     if (OPENAI_API_KEY) {
       try {
-        console.log("[TTS v6.0] 🎯 Usando gpt-4o-mini-tts com voz:", selectedVoice, "| módulo:", moduleType);
+        console.log("[TTS v6.1] 🎯 Usando gpt-4o-mini-tts com voz:", selectedVoice, "| módulo:", moduleType);
 
         const openaiResponse = await fetch("https://api.openai.com/v1/audio/speech", {
           method: "POST",
@@ -881,7 +986,7 @@ serve(async (req) => {
         });
 
         if (openaiResponse.ok) {
-          console.log("[TTS v6.0] ✅ OpenAI gpt-4o-mini-tts sucesso!");
+          console.log("[TTS v6.1] ✅ OpenAI gpt-4o-mini-tts sucesso!");
           return new Response(openaiResponse.body, {
             headers: {
               ...corsHeaders,
@@ -892,10 +997,10 @@ serve(async (req) => {
         }
 
         const errorText = await openaiResponse.text();
-        console.warn("[TTS v6.0] ⚠️ OpenAI TTS falhou:", openaiResponse.status, errorText);
+        console.warn("[TTS v6.1] ⚠️ OpenAI TTS falhou:", openaiResponse.status, errorText);
 
         // Se gpt-4o-mini-tts falhar, tentar tts-1 como fallback rápido
-        console.log("[TTS v6.0] 🔄 Tentando fallback para tts-1...");
+        console.log("[TTS v6.1] 🔄 Tentando fallback para tts-1...");
         const fallbackResponse = await fetch("https://api.openai.com/v1/audio/speech", {
           method: "POST",
           headers: {
@@ -911,7 +1016,7 @@ serve(async (req) => {
         });
 
         if (fallbackResponse.ok) {
-          console.log("[TTS v6.0] ✅ OpenAI tts-1 fallback sucesso!");
+          console.log("[TTS v6.1] ✅ OpenAI tts-1 fallback sucesso!");
           return new Response(fallbackResponse.body, {
             headers: {
               ...corsHeaders,
@@ -924,11 +1029,11 @@ serve(async (req) => {
         // Continua para Google fallback
 
       } catch (openaiError) {
-        console.warn("[TTS v6.0] ⚠️ OpenAI TTS erro:", openaiError);
+        console.warn("[TTS v6.1] ⚠️ OpenAI TTS erro:", openaiError);
         // Continua para fallback
       }
     } else {
-      console.warn("[TTS v6.0] ⚠️ OPENAI_API_KEY não configurada");
+      console.warn("[TTS v6.1] ⚠️ OPENAI_API_KEY não configurada");
     }
 
     // ============================================
