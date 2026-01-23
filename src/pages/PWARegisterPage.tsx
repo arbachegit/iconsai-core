@@ -30,6 +30,14 @@ interface InvitationData {
 
 const PWA_BG_COLOR = "#0A0E1A";
 const STORAGE_KEY = "pwa-verified-phone";
+const COOKIE_KEY = "pwa_phone";
+const SESSION_DURATION_DAYS = 30;
+
+// Cookie helpers (same as usePWAAuth.ts)
+function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
+}
 
 export default function PWARegisterPage() {
   const { token: tokenParam } = useParams<{ token: string }>();
@@ -238,6 +246,8 @@ export default function PWARegisterPage() {
       if (result.already_verified) {
         const phoneToSave = result.normalized_phone || result.phone || phone;
         localStorage.setItem(STORAGE_KEY, phoneToSave);
+        setCookie(COOKIE_KEY, phoneToSave, SESSION_DURATION_DAYS);
+        console.log("[PWARegister] Já verificado, telefone salvo:", phoneToSave.substring(0, 8) + "...");
         setPageState("success");
         setTimeout(() => navigate("/pwa"), 2000);
         return;
@@ -323,9 +333,11 @@ export default function PWARegisterPage() {
         return;
       }
 
-      // Success! Salvar telefone no localStorage
+      // Success! Salvar telefone no localStorage E cookie (backup)
       const phoneToSave = result.phone || phone;
       localStorage.setItem(STORAGE_KEY, phoneToSave);
+      setCookie(COOKIE_KEY, phoneToSave, SESSION_DURATION_DAYS);
+      console.log("[PWARegister] Telefone salvo:", phoneToSave.substring(0, 8) + "...");
       setPageState("success");
 
       // Redirect to /pwa after 2 seconds
