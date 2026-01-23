@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -240,30 +238,34 @@ const AgentManagementTab: React.FC = () => {
             <TabsContent value="geral" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label className="text-cyan-400">Nome</Label>
-                <Input
+                <input
+                  type="text"
                   value={formData.name || ""}
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="bg-slate-800 border-cyan-500/30 focus:border-cyan-500"
+                  className="flex h-10 w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label className="text-cyan-400">Descrição</Label>
-                <Textarea
+                <textarea
                   value={formData.description || ""}
                   onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   rows={2}
-                  className="bg-slate-800 border-cyan-500/30 focus:border-cyan-500"
+                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label className="text-cyan-400">System Prompt</Label>
-                <Textarea
+                <textarea
                   value={formData.system_prompt || ""}
                   onChange={e => setFormData(prev => ({ ...prev, system_prompt: e.target.value }))}
                   rows={6}
-                  className="bg-slate-800 border-cyan-500/30 focus:border-cyan-500 font-mono text-xs"
+                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-xs text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
               </div>
 
@@ -283,11 +285,13 @@ const AgentManagementTab: React.FC = () => {
             <TabsContent value="modelo" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label className="text-cyan-400">Modelo</Label>
-                <Input
+                <input
+                  type="text"
                   value={formData.model || ""}
                   onChange={e => setFormData(prev => ({ ...prev, model: e.target.value }))}
                   placeholder="Nome do modelo de IA"
-                  className="bg-slate-800 border-cyan-500/30 focus:border-cyan-500"
+                  className="flex h-10 w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
               </div>
 
@@ -310,13 +314,14 @@ const AgentManagementTab: React.FC = () => {
 
               <div className="space-y-2">
                 <Label className="text-cyan-400">Max Tokens</Label>
-                <Input
+                <input
                   type="number"
                   value={formData.max_tokens || 4096}
                   onChange={e => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 4096 }))}
                   min={100}
                   max={128000}
-                  className="bg-slate-800 border-cyan-500/30 focus:border-cyan-500"
+                  className="flex h-10 w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
                 <p className="text-xs text-muted-foreground">
                   Limite máximo de tokens na resposta
@@ -332,12 +337,13 @@ const AgentManagementTab: React.FC = () => {
                   <ShieldCheck className="h-4 w-4" />
                   Escopo Aprovado
                 </Label>
-                <Textarea
+                <textarea
                   value={formData.allowedScope || ""}
                   onChange={e => setFormData(prev => ({ ...prev, allowedScope: e.target.value }))}
                   rows={6}
-                  placeholder="Defina os tópicos, assuntos e comportamentos que este agente PODE abordar.&#10;&#10;Exemplo:&#10;- Responder perguntas sobre saúde e bem-estar&#10;- Fornecer dicas de alimentação saudável&#10;- Orientar sobre exercícios físicos"
-                  className="bg-emerald-950/30 border-emerald-500/30 focus:border-emerald-500 font-mono text-xs"
+                  placeholder="Defina os tópicos e comportamentos que este agente PODE abordar."
+                  className="flex w-full rounded-md border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-xs text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
                 <p className="text-xs text-muted-foreground">
                   Especifique claramente o que o agente está autorizado a fazer e discutir.
@@ -350,12 +356,13 @@ const AgentManagementTab: React.FC = () => {
                   <ShieldOff className="h-4 w-4" />
                   Escopo Proibído
                 </Label>
-                <Textarea
+                <textarea
                   value={formData.forbiddenScope || ""}
                   onChange={e => setFormData(prev => ({ ...prev, forbiddenScope: e.target.value }))}
                   rows={6}
-                  placeholder="Defina os tópicos, assuntos e comportamentos que este agente NÃO PODE abordar.&#10;&#10;Exemplo:&#10;- Prescrever medicamentos&#10;- Fazer diagnósticos médicos&#10;- Discutir política ou religião"
-                  className="bg-red-950/30 border-red-500/30 focus:border-red-500 font-mono text-xs"
+                  placeholder="Defina os tópicos e comportamentos que este agente NÃO PODE abordar."
+                  className="flex w-full rounded-md border border-red-500/30 bg-red-950/30 px-3 py-2 text-xs text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
                 <p className="text-xs text-muted-foreground">
                   Especifique claramente o que o agente está proibido de fazer e discutir.
