@@ -26,10 +26,11 @@ jobs:
           SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
         run: |
           # Lista todas as functions e faz deploy de cada uma
+          # --no-verify-jwt: Permite chamadas sem JWT (funções tratam auth internamente)
           for dir in supabase/functions/*/; do
             if [ -f "${dir}index.ts" ]; then
               func_name=$(basename "$dir")
               echo "🚀 Deploying function: $func_name"
-              supabase functions deploy "$func_name" --project-ref "$SUPABASE_PROJECT_ID"
+              supabase functions deploy "$func_name" --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
             fi
           done
