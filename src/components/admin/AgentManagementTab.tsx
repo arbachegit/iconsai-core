@@ -12,22 +12,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-  Bot, Settings, Save, RefreshCw, Volume2, Upload, BarChart3, 
-  Brush, Calculator, MessageSquare, Edit, 
-  CheckCircle2, XCircle, Loader2
+import {
+  Bot, Settings, Save, RefreshCw, Volume2, Upload, BarChart3,
+  Brush, Calculator, MessageSquare, Edit,
+  CheckCircle2, XCircle, Loader2, ShieldCheck, ShieldOff, Target
 } from "lucide-react";
 
 import type { Database } from "@/integrations/supabase/types";
 
 type ChatAgent = Database["public"]["Tables"]["chat_agents"]["Row"];
 
+// Interface para dados do formulário com campos de escopo
+interface AgentFormData extends Partial<ChatAgent> {
+  allowedScope?: string;
+  forbiddenScope?: string;
+}
+
+// Helper para extrair escopo do metadata
+const extractScopeFromMetadata = (metadata: unknown): { allowedScope: string; forbiddenScope: string } => {
+  if (metadata && typeof metadata === 'object') {
+    const meta = metadata as Record<string, unknown>;
+    return {
+      allowedScope: (meta.allowedScope as string) || '',
+      forbiddenScope: (meta.forbiddenScope as string) || ''
+    };
+  }
+  return { allowedScope: '', forbiddenScope: '' };
+};
+
 const AgentManagementTab: React.FC = () => {
   const [agents, setAgents] = useState<ChatAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingAgent, setEditingAgent] = useState<ChatAgent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<Partial<ChatAgent>>({});
+  const [formData, setFormData] = useState<AgentFormData>({});
   const [saving, setSaving] = useState(false);
 
   const fetchAgents = useCallback(async () => {
@@ -54,7 +72,12 @@ const AgentManagementTab: React.FC = () => {
 
   const handleEdit = (agent: ChatAgent) => {
     setEditingAgent(agent);
-    setFormData({ ...agent });
+    const { allowedScope, forbiddenScope } = extractScopeFromMetadata(agent.metadata);
+    setFormData({
+      ...agent,
+      allowedScope,
+      forbiddenScope
+    });
     setIsDialogOpen(true);
   };
 
@@ -63,6 +86,17 @@ const AgentManagementTab: React.FC = () => {
     setSaving(true);
 
     try {
+      // Mesclar dados de escopo no metadata existente
+      const existingMetadata = (formData.metadata && typeof formData.metadata === 'object')
+        ? formData.metadata as Record<string, unknown>
+        : {};
+
+      const updatedMetadata = {
+        ...existingMetadata,
+        allowedScope: formData.allowedScope || '',
+        forbiddenScope: formData.forbiddenScope || ''
+      };
+
       const { error } = await supabase
         .from("chat_agents")
         .update({
@@ -73,7 +107,7 @@ const AgentManagementTab: React.FC = () => {
           temperature: formData.temperature,
           max_tokens: formData.max_tokens,
           model: formData.model,
-          metadata: formData.metadata,
+          metadata: updatedMetadata,
           updated_at: new Date().toISOString()
         })
         .eq("id", editingAgent.id);
@@ -147,10 +181,10 @@ const AgentManagementTab: React.FC = () => {
                 )}
                 
                 <div className="flex flex-wrap gap-2">
-                  <Badge 
-                    variant="outline" 
-                    className={agent.is_active 
-                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" 
+                  <Badge
+                    variant="outline"
+                    className={agent.is_active
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
                       : "bg-red-500/20 text-red-300 border-red-500/30"
                     }
                   >
@@ -161,6 +195,16 @@ const AgentManagementTab: React.FC = () => {
                     <MessageSquare className="h-3 w-3 mr-1" />
                     {agent.model || 'default'}
                   </Badge>
+                  {(() => {
+                    const { allowedScope, forbiddenScope } = extractScopeFromMetadata(agent.metadata);
+                    const hasScope = allowedScope || forbiddenScope;
+                    return hasScope ? (
+                      <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+                        <Target className="h-3 w-3 mr-1" />
+                        Escopo
+                      </Badge>
+                    ) : null;
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -179,12 +223,16 @@ const AgentManagementTab: React.FC = () => {
           </DialogHeader>
 
           <Tabs defaultValue="geral" className="mt-4">
-            <TabsList className="grid grid-cols-2 bg-slate-800">
+            <TabsList className="grid grid-cols-3 bg-slate-800">
               <TabsTrigger value="geral" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
                 Geral
               </TabsTrigger>
               <TabsTrigger value="modelo" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
                 Modelo
+              </TabsTrigger>
+              <TabsTrigger value="escopo" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                <Target className="h-4 w-4 mr-1" />
+                Escopo
               </TabsTrigger>
             </TabsList>
 
@@ -238,7 +286,7 @@ const AgentManagementTab: React.FC = () => {
                 <Input
                   value={formData.model || ""}
                   onChange={e => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                  placeholder="gpt-4, claude-3, etc."
+                  placeholder="Nome do modelo de IA"
                   className="bg-slate-800 border-cyan-500/30 focus:border-cyan-500"
                 />
               </div>
@@ -273,6 +321,59 @@ const AgentManagementTab: React.FC = () => {
                 <p className="text-xs text-muted-foreground">
                   Limite máximo de tokens na resposta
                 </p>
+              </div>
+            </TabsContent>
+
+            {/* Tab Escopo */}
+            <TabsContent value="escopo" className="space-y-4 mt-4">
+              {/* Escopo Aprovado */}
+              <div className="space-y-2">
+                <Label className="text-emerald-400 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  Escopo Aprovado
+                </Label>
+                <Textarea
+                  value={formData.allowedScope || ""}
+                  onChange={e => setFormData(prev => ({ ...prev, allowedScope: e.target.value }))}
+                  rows={6}
+                  placeholder="Defina os tópicos, assuntos e comportamentos que este agente PODE abordar.&#10;&#10;Exemplo:&#10;- Responder perguntas sobre saúde e bem-estar&#10;- Fornecer dicas de alimentação saudável&#10;- Orientar sobre exercícios físicos"
+                  className="bg-emerald-950/30 border-emerald-500/30 focus:border-emerald-500 font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Especifique claramente o que o agente está autorizado a fazer e discutir.
+                </p>
+              </div>
+
+              {/* Escopo Proibído */}
+              <div className="space-y-2">
+                <Label className="text-red-400 flex items-center gap-2">
+                  <ShieldOff className="h-4 w-4" />
+                  Escopo Proibído
+                </Label>
+                <Textarea
+                  value={formData.forbiddenScope || ""}
+                  onChange={e => setFormData(prev => ({ ...prev, forbiddenScope: e.target.value }))}
+                  rows={6}
+                  placeholder="Defina os tópicos, assuntos e comportamentos que este agente NÃO PODE abordar.&#10;&#10;Exemplo:&#10;- Prescrever medicamentos&#10;- Fazer diagnósticos médicos&#10;- Discutir política ou religião"
+                  className="bg-red-950/30 border-red-500/30 focus:border-red-500 font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Especifique claramente o que o agente está proibido de fazer e discutir.
+                </p>
+              </div>
+
+              {/* Info Card */}
+              <div className="p-4 bg-slate-800 rounded-lg border border-cyan-500/20">
+                <h4 className="text-sm font-medium text-cyan-400 flex items-center gap-2 mb-2">
+                  <Target className="h-4 w-4" />
+                  Como funciona o Escopo
+                </h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• O <span className="text-emerald-400">Escopo Aprovado</span> define o que o agente pode fazer</li>
+                  <li>• O <span className="text-red-400">Escopo Proibído</span> define limites e restrições</li>
+                  <li>• Estas configurações são injetadas no system prompt do agente</li>
+                  <li>• Use linguagem clara e específica para melhores resultados</li>
+                </ul>
               </div>
             </TabsContent>
           </Tabs>

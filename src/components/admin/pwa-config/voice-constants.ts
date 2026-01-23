@@ -2,11 +2,11 @@
  * ============================================================
  * voice-constants.ts - Constantes de Voz para Admin Panel
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-22
+ * Versão: 1.1.0
+ * Data: 2026-01-23
  *
  * Contém:
- * - Lista de 13 vozes OpenAI com características
+ * - Lista de 13 vozes Arbache AI Voice com características
  * - Valores default para sliders de humanização
  * - Instructions base por módulo
  * ============================================================
@@ -21,8 +21,8 @@ export interface VoiceOption {
   color: string;
 }
 
-// 13 vozes OpenAI com características detalhadas
-export const OPENAI_VOICES: VoiceOption[] = [
+// 13 vozes Arbache AI Voice com características detalhadas
+export const ARBACHE_VOICES: VoiceOption[] = [
   {
     id: 'nova',
     name: 'Nova',
@@ -165,10 +165,10 @@ export const AVAILABLE_MODULES = [
   { id: 'help', name: 'Ajuda', icon: 'HelpCircle', color: '#6366F1' },
 ] as const;
 
-// Comparação entre modelos TTS
+// Comparação entre modelos TTS Arbache AI Voice
 export const TTS_MODEL_COMPARISON = {
-  'tts-1': {
-    name: 'tts-1',
+  'arbache-basic': {
+    name: 'Arbache AI Voice Basic',
     description: 'Modelo básico de TTS',
     supportsInstructions: false,
     voiceAffect: false,
@@ -180,8 +180,8 @@ export const TTS_MODEL_COMPARISON = {
     latency: 'Baixa',
     cost: '$',
   },
-  'gpt-4o-mini-tts': {
-    name: 'gpt-4o-mini-tts',
+  'arbache-advanced': {
+    name: 'Arbache AI Voice Advanced',
     description: 'Modelo avançado com instructions',
     supportsInstructions: true,
     voiceAffect: true,

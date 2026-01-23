@@ -2,20 +2,20 @@
  * ============================================================
  * VoiceHumanizationPanel.tsx - Painel Principal de Humanização de Voz
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-22
+ * Versão: 1.1.0
+ * Data: 2026-01-23
  *
  * Painel administrativo completo para configuração de humanização
  * de voz do IconsAI Business.
  *
  * Componentes:
- * - VoiceSelector: Dropdown com 13 vozes OpenAI
+ * - VoiceSelector: Dropdown com 13 vozes Arbache AI Voice
  * - HumanizationSliders: 5 sliders + 3 toggles
  * - WelcomePresetsEditor: 4 presets com chevron
  * - AgentVoiceConfig: Config por módulo/agente
  * - InstructionsEditor: Textarea editável
  * - TestVoiceButton: Botão play/stop
- * - VoiceComparisonTable: tts-1 vs gpt-4o-mini-tts
+ * - VoiceComparisonTable: Arbache AI Voice Basic vs Advanced
  * ============================================================
  */
 

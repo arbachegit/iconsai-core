@@ -26,11 +26,11 @@ import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { VoiceHumanizationPanel } from "./pwa-config";
 
 const VOICE_OPTIONS = [
-  { value: "fernando", label: "Fernando (PT-BR)", provider: "ElevenLabs" },
-  { value: "alloy", label: "Alloy (Neutro)", provider: "OpenAI" },
-  { value: "onyx", label: "Onyx (Grave)", provider: "OpenAI" },
-  { value: "nova", label: "Nova (Feminino)", provider: "OpenAI" },
-  { value: "shimmer", label: "Shimmer (Suave)", provider: "OpenAI" },
+  { value: "fernando", label: "Fernando (PT-BR)", provider: "Arbache AI Voice" },
+  { value: "alloy", label: "Alloy (Neutro)", provider: "Arbache AI Voice" },
+  { value: "onyx", label: "Onyx (Grave)", provider: "Arbache AI Voice" },
+  { value: "nova", label: "Nova (Feminino)", provider: "Arbache AI Voice" },
+  { value: "shimmer", label: "Shimmer (Suave)", provider: "Arbache AI Voice" },
 ];
 
 export default function PWATab() {
@@ -669,7 +669,7 @@ export default function PWATab() {
                     >
                       <span className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-purple-500" />
-                        Painel Avançado de Humanização (gpt-4o-mini-tts)
+                        Painel Avançado de Humanização (Arbache AI Voice)
                       </span>
                       {showAdvancedVoice ? (
                         <ChevronUp className="h-4 w-4" />

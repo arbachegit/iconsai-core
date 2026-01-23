@@ -1,9 +1,9 @@
 /**
  * ============================================================
- * VoiceSelector.tsx - Dropdown com 13 vozes OpenAI
+ * VoiceSelector.tsx - Dropdown com 13 vozes Arbache AI Voice
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-22
+ * Versão: 1.1.0
+ * Data: 2026-01-23
  *
  * Mostra:
  * - Nome da voz
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Volume2 } from 'lucide-react';
-import { OPENAI_VOICES, type VoiceOption } from './voice-constants';
+import { ARBACHE_VOICES, type VoiceOption } from './voice-constants';
 
 interface VoiceSelectorProps {
   value: string;
@@ -36,7 +36,7 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({
   onValueChange,
   disabled = false,
 }) => {
-  const selectedVoice = OPENAI_VOICES.find((v) => v.id === value);
+  const selectedVoice = ARBACHE_VOICES.find((v) => v.id === value);
 
   return (
     <div className="space-y-2">
@@ -62,7 +62,7 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {OPENAI_VOICES.map((voice) => (
+          {ARBACHE_VOICES.map((voice) => (
             <SelectItem key={voice.id} value={voice.id}>
               <div className="flex flex-col gap-1 py-1">
                 <div className="flex items-center gap-2">

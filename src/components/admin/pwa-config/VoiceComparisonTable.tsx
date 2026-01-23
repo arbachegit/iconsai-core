@@ -1,13 +1,13 @@
 /**
  * ============================================================
- * VoiceComparisonTable.tsx - Tabela Comparativa tts-1 vs gpt-4o-mini-tts
+ * VoiceComparisonTable.tsx - Tabela Comparativa Arbache AI Voice
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-22
+ * Versão: 1.1.0
+ * Data: 2026-01-23
  *
  * Mostra diferenças visuais entre:
- * - tts-1 (modelo básico)
- * - gpt-4o-mini-tts (modelo avançado com instructions)
+ * - Arbache AI Voice Basic (modelo básico)
+ * - Arbache AI Voice Advanced (modelo avançado com instructions)
  * ============================================================
  */
 
@@ -29,8 +29,8 @@ interface ComparisonFeature {
   name: string;
   description: string;
   icon: React.ReactNode;
-  tts1: boolean | string;
-  gpt4oMiniTts: boolean | string;
+  arbacheBasic: boolean | string;
+  arbacheAdvanced: boolean | string;
   importance: 'critical' | 'high' | 'medium' | 'low';
 }
 
@@ -39,80 +39,80 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: 'Suporte a Instructions',
     description: 'Permite controle detalhado da voz via texto',
     icon: <Sparkles className="h-4 w-4" />,
-    tts1: false,
-    gpt4oMiniTts: true,
+    arbacheBasic: false,
+    arbacheAdvanced: true,
     importance: 'critical',
   },
   {
     name: 'Voice Affect',
     description: 'Controle do tom emocional (caloroso, frio, etc)',
     icon: <Sparkles className="h-4 w-4" />,
-    tts1: false,
-    gpt4oMiniTts: true,
+    arbacheBasic: false,
+    arbacheAdvanced: true,
     importance: 'critical',
   },
   {
     name: 'Emoção Contextual',
     description: 'Adapta emoção baseado no conteúdo',
     icon: <Sparkles className="h-4 w-4" />,
-    tts1: false,
-    gpt4oMiniTts: true,
+    arbacheBasic: false,
+    arbacheAdvanced: true,
     importance: 'high',
   },
   {
     name: 'Controle de Pacing',
     description: 'Variação de velocidade durante a fala',
     icon: <Clock className="h-4 w-4" />,
-    tts1: false,
-    gpt4oMiniTts: true,
+    arbacheBasic: false,
+    arbacheAdvanced: true,
     importance: 'high',
   },
   {
     name: 'Filler Words',
     description: 'Palavras de preenchimento (então, olha, sabe)',
     icon: <Sparkles className="h-4 w-4" />,
-    tts1: false,
-    gpt4oMiniTts: true,
+    arbacheBasic: false,
+    arbacheAdvanced: true,
     importance: 'medium',
   },
   {
     name: 'Respiração Natural',
     description: 'Pausas de respiração entre frases',
     icon: <Sparkles className="h-4 w-4" />,
-    tts1: false,
-    gpt4oMiniTts: true,
+    arbacheBasic: false,
+    arbacheAdvanced: true,
     importance: 'medium',
   },
   {
     name: 'Entonação PT-BR',
     description: 'Melodia natural do português brasileiro',
     icon: <Sparkles className="h-4 w-4" />,
-    tts1: 'Limitado',
-    gpt4oMiniTts: true,
+    arbacheBasic: 'Limitado',
+    arbacheAdvanced: true,
     importance: 'high',
   },
   {
     name: 'Qualidade de Áudio',
     description: 'Clareza e naturalidade da voz',
     icon: <Zap className="h-4 w-4" />,
-    tts1: 'Básica',
-    gpt4oMiniTts: 'Alta',
+    arbacheBasic: 'Básica',
+    arbacheAdvanced: 'Alta',
     importance: 'high',
   },
   {
     name: 'Latência',
     description: 'Tempo para gerar o áudio',
     icon: <Clock className="h-4 w-4" />,
-    tts1: 'Baixa',
-    gpt4oMiniTts: 'Média',
+    arbacheBasic: 'Baixa',
+    arbacheAdvanced: 'Média',
     importance: 'low',
   },
   {
     name: 'Custo',
     description: 'Preço por caractere processado',
     icon: <DollarSign className="h-4 w-4" />,
-    tts1: '$',
-    gpt4oMiniTts: '$$',
+    arbacheBasic: '$',
+    arbacheAdvanced: '$$',
     importance: 'low',
   },
 ];
@@ -151,7 +151,7 @@ export const VoiceComparisonTable: React.FC = () => {
           Comparação de Modelos TTS
         </CardTitle>
         <CardDescription className="text-xs">
-          Diferenças entre tts-1 (básico) e gpt-4o-mini-tts (avançado com instructions)
+          Diferenças entre Arbache AI Voice Basic e Advanced
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -160,7 +160,7 @@ export const VoiceComparisonTable: React.FC = () => {
           <div className="p-4 rounded-lg border border-muted bg-muted/30">
             <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-gray-500" />
-              tts-1
+              Arbache AI Voice Basic
             </h4>
             <ul className="text-xs text-muted-foreground space-y-1">
               <li>• Modelo básico de TTS</li>
@@ -173,7 +173,7 @@ export const VoiceComparisonTable: React.FC = () => {
           <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/10">
             <h4 className="font-semibold text-sm mb-2 flex items-center gap-2 text-green-500">
               <span className="w-2 h-2 rounded-full bg-green-500" />
-              gpt-4o-mini-tts (Recomendado)
+              Arbache AI Voice Advanced (Recomendado)
             </h4>
             <ul className="text-xs text-muted-foreground space-y-1">
               <li>• <strong className="text-green-500">Instructions completas</strong></li>
@@ -191,8 +191,8 @@ export const VoiceComparisonTable: React.FC = () => {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="w-[40%]">Recurso</TableHead>
-                <TableHead className="text-center w-[20%]">tts-1</TableHead>
-                <TableHead className="text-center w-[20%] bg-green-500/10">gpt-4o-mini-tts</TableHead>
+                <TableHead className="text-center w-[20%]">Basic</TableHead>
+                <TableHead className="text-center w-[20%] bg-green-500/10">Advanced</TableHead>
                 <TableHead className="text-center w-[20%]">Importância</TableHead>
               </TableRow>
             </TableHeader>
@@ -208,9 +208,9 @@ export const VoiceComparisonTable: React.FC = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-center">{renderValue(feature.tts1)}</TableCell>
+                  <TableCell className="text-center">{renderValue(feature.arbacheBasic)}</TableCell>
                   <TableCell className="text-center bg-green-500/5">
-                    {renderValue(feature.gpt4oMiniTts)}
+                    {renderValue(feature.arbacheAdvanced)}
                   </TableCell>
                   <TableCell className="text-center">
                     {getImportanceBadge(feature.importance)}
@@ -224,12 +224,12 @@ export const VoiceComparisonTable: React.FC = () => {
         {/* Conclusão */}
         <div className="mt-4 p-4 rounded-lg border border-green-500/30 bg-green-500/10">
           <h4 className="font-semibold text-sm text-green-500 mb-2">
-            Por que usamos gpt-4o-mini-tts?
+            Por que usamos Arbache AI Voice Advanced?
           </h4>
           <p className="text-xs text-muted-foreground">
-            O modelo <strong>gpt-4o-mini-tts</strong> é a escolha ideal para o IconsAI Business porque
+            O modelo <strong>Arbache AI Voice Advanced</strong> é a escolha ideal para o IconsAI Business porque
             suporta <strong>instructions detalhadas</strong> que permitem criar uma voz genuinamente
-            humanizada. Diferente do tts-1, ele entende contexto emocional, pode usar palavras de
+            humanizada. Diferente do modelo Basic, ele entende contexto emocional, pode usar palavras de
             preenchimento naturais ("então", "olha"), pausas de respiração, e adaptar o tom baseado
             no conteúdo. Isso transforma uma voz robótica em uma experiência conversacional autêntica.
           </p>
