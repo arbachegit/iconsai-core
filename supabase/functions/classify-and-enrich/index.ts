@@ -281,7 +281,7 @@ function enrichTextForSpeech(
 // ============================================
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   const startTime = Date.now();

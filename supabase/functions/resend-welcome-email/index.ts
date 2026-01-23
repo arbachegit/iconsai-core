@@ -17,7 +17,7 @@ serve(async (req) => {
   console.log("[resend-welcome-email] ===== VERSÃO 2.1 =====");
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {

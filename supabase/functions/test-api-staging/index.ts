@@ -188,7 +188,7 @@ function detectPeriodRange(data: unknown): { start: string | null; end: string |
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {

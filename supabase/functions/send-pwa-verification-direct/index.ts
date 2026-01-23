@@ -14,7 +14,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   console.log("\n=== SEND-PWA-VERIFICATION-DIRECT v3.0 START ===");

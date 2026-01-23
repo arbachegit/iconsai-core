@@ -8,7 +8,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {

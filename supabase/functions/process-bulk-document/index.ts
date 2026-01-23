@@ -201,7 +201,7 @@ function chunkText(text: string, size = 750, overlap = 180): string[] {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   const results: { document_id: string; status: string; error?: string }[] = [];
