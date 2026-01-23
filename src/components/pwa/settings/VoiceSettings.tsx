@@ -6,7 +6,7 @@
  * Data: 2026-01-22
  *
  * Permite ao usuário:
- * - Selecionar voz (13 vozes OpenAI gpt-4o-mini-tts)
+ * - Selecionar voz (13 vozes IconsAI-voice-tts)
  * - Ajustar velocidade (0.7x - 1.3x)
  * - Testar voz diretamente na seleção
  * - Aplicar presets por contexto (com instructions humanizadas)
@@ -499,7 +499,7 @@ export function VoiceSettings({ onBack, onSave }: VoiceSettingsProps) {
           <section className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl p-4 text-sm space-y-3">
             <p className="text-primary font-medium">🎙️ Voz Humanizada com IA</p>
             <p className="text-muted-foreground">
-              Usamos o modelo <code className="bg-muted px-1 rounded">gpt-4o-mini-tts</code> com
+              Usamos o modelo <code className="bg-muted px-1 rounded">IconsAI-voice-tts</code> com
               <span className="text-primary font-medium"> instruções detalhadas</span> para criar
               uma voz mais natural e empática.
             </p>

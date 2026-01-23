@@ -193,7 +193,7 @@ export const InstructionsEditor: React.FC<InstructionsEditorProps> = ({
               Instructions TTS
             </CardTitle>
             <CardDescription className="text-xs mt-1">
-              Instruções detalhadas para humanização da voz (gpt-4o-mini-tts)
+              Instruções detalhadas para humanização da voz (IconsAI-voice-tts)
             </CardDescription>
           </div>
           <Badge variant="outline" className="text-xs">
@@ -262,7 +262,7 @@ export const InstructionsEditor: React.FC<InstructionsEditorProps> = ({
         {/* Dica */}
         <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
           <p className="text-xs text-blue-300">
-            <strong>Dica:</strong> As instructions controlam como o modelo gpt-4o-mini-tts
+            <strong>Dica:</strong> As instructions controlam como o modelo IconsAI-voice-tts
             interpreta e vocaliza o texto. Inclua Voice Affect, Tone, Pacing, Emotion,
             e outros parâmetros para máxima humanização.
           </p>
