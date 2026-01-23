@@ -1,9 +1,9 @@
 // ============================================
-// VERSAO: 5.0.0 | DEPLOY: 2026-01-22
-// MUDANÇA: Prompt Nuclear - Voz Humanizada Completa
-// - Instructions detalhadas por módulo (12 parâmetros)
-// - Vozes otimizadas: nova, shimmer, coral, sage, echo
-// - Suporte a: warmth, pacing, emotion, filler words, breathing
+// VERSAO: 6.0.0 | DEPLOY: 2026-01-22
+// MUDANÇA: Integração com painel admin de humanização
+// - Carrega config de voz do pwa_config/pwa_agent_voice_config
+// - Instructions customizadas por módulo do banco
+// - Fallback para instructions hardcoded
 // Fallback: Google Cloud TTS
 // ============================================
 
@@ -526,6 +526,96 @@ const MODULE_VOICE_MAP: Record<string, string> = {
   default: "nova"     // Padrão amigável
 };
 
+// ============================================
+// v6.0.0: Interface para config de voz do banco
+// ============================================
+interface AgentVoiceConfig {
+  moduleId: string;
+  voice: string;
+  humanization: {
+    warmth: number;
+    enthusiasm: number;
+    pace: number;
+    expressiveness: number;
+    formality: number;
+    speed: number;
+    fillerWords: boolean;
+    naturalBreathing: boolean;
+    emotionalResponses: boolean;
+  };
+  instructions: string;
+  isCustom: boolean;
+}
+
+// v6.0.0: Gerar instructions dinamicamente baseado nos parâmetros de humanização
+function generateInstructionsFromConfig(config: AgentVoiceConfig): string {
+  const { humanization } = config;
+
+  // Se tem instructions customizadas, usar diretamente
+  if (config.instructions && config.instructions.trim().length > 0) {
+    return config.instructions;
+  }
+
+  // Gerar baseado nos sliders
+  const warmthLevel = humanization.warmth > 70
+    ? 'very warm, welcoming, and nurturing'
+    : humanization.warmth > 40
+      ? 'warm and friendly'
+      : 'neutral and professional';
+
+  const enthusiasmLevel = humanization.enthusiasm > 70
+    ? 'enthusiastic and energetic, with genuine excitement'
+    : humanization.enthusiasm > 40
+      ? 'engaged and interested'
+      : 'calm, measured, and composed';
+
+  const paceDesc = humanization.pace > 70
+    ? 'dynamic with varied rhythm, speeding up for excitement and slowing for emphasis'
+    : humanization.pace > 40
+      ? 'natural pacing with organic rhythm'
+      : 'slow and deliberate, unhurried';
+
+  const expressiveDesc = humanization.expressiveness > 70
+    ? 'highly expressive with rich melodic variation and emotional range'
+    : humanization.expressiveness > 40
+      ? 'moderately expressive with natural variation'
+      : 'subtle and restrained in expression';
+
+  const formalityLevel = humanization.formality > 70
+    ? 'formal and professional'
+    : humanization.formality > 40
+      ? 'semi-formal, polite but accessible'
+      : 'casual, friendly, and conversational';
+
+  let instructions = `
+Voice Affect: ${warmthLevel}. Convey natural friendliness in Brazilian Portuguese.
+
+Tone: ${enthusiasmLevel}, with ${formalityLevel} language.
+
+Pacing: ${paceDesc}. ${humanization.speed < 0.9 ? 'Speak slower than normal.' : humanization.speed > 1.1 ? 'Speak faster than normal.' : 'Normal speaking speed.'}
+
+Emotion: ${expressiveDesc}.
+
+Demeanor: Supportive and attentive. Make the listener feel valued.
+
+Intonation: Natural melodic variation typical of Brazilian Portuguese.
+  `.trim();
+
+  if (humanization.fillerWords) {
+    instructions += '\n\nFiller Words: Use occasionally to sound natural - "então", "olha", "sabe", "hm" - but not excessively.';
+  }
+
+  if (humanization.naturalBreathing) {
+    instructions += '\n\nBreathing: Include natural breath pauses between sentences and before important points.';
+  }
+
+  if (humanization.emotionalResponses) {
+    instructions += '\n\nConnection: Adapt emotional tone based on content context. Show genuine human connection and empathy.';
+  }
+
+  return instructions;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -682,9 +772,10 @@ serve(async (req) => {
     console.log("Voice selecionada:", voice);
 
     // ============================================
-    // v4.0.0: ESTRATÉGIA DE TTS HUMANIZADO
-    // 1. OpenAI gpt-4o-mini-tts (principal) - com instructions
-    // 2. Google Cloud TTS (fallback) - alta qualidade PT-BR
+    // v6.0.0: ESTRATÉGIA DE TTS HUMANIZADO
+    // 1. Carregar config de voz do banco (pwa_config ou pwa_agent_voice_config)
+    // 2. OpenAI gpt-4o-mini-tts (principal) - com instructions
+    // 3. Google Cloud TTS (fallback) - alta qualidade PT-BR
     // ============================================
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -693,21 +784,86 @@ serve(async (req) => {
     // Determinar módulo para instructions (usa chatType se disponível)
     const moduleType = chatType || "default";
 
-    // Determinar voz baseada no módulo ou usar a especificada
+    // v6.0.0: Tentar carregar config de voz do banco de dados
+    let dbVoiceConfig: AgentVoiceConfig | null = null;
+    try {
+      // Primeiro, tentar pwa_agent_voice_config (tabela estruturada)
+      const { data: agentConfig } = await supabase
+        .from("pwa_agent_voice_config")
+        .select("*")
+        .eq("module_id", moduleType)
+        .single();
+
+      if (agentConfig) {
+        dbVoiceConfig = {
+          moduleId: agentConfig.module_id,
+          voice: agentConfig.voice,
+          humanization: {
+            warmth: agentConfig.warmth,
+            enthusiasm: agentConfig.enthusiasm,
+            pace: agentConfig.pace,
+            expressiveness: agentConfig.expressiveness,
+            formality: agentConfig.formality,
+            speed: agentConfig.speed,
+            fillerWords: agentConfig.filler_words,
+            naturalBreathing: agentConfig.natural_breathing,
+            emotionalResponses: agentConfig.emotional_responses,
+          },
+          instructions: agentConfig.custom_instructions || "",
+          isCustom: agentConfig.is_custom,
+        };
+        console.log(`[TTS v6.0] 📦 Config carregada do banco para módulo: ${moduleType}`);
+      }
+    } catch (dbErr) {
+      // Se a tabela não existir ou der erro, continuar sem config do banco
+      console.log(`[TTS v6.0] ℹ️ Usando config hardcoded (tabela não disponível):`, dbErr);
+    }
+
+    // Se não encontrou na tabela estruturada, tentar pwa_config (JSON)
+    if (!dbVoiceConfig) {
+      try {
+        const { data: pwaConfig } = await supabase
+          .from("pwa_config")
+          .select("config_value")
+          .eq("config_key", "agent_voice_configs")
+          .single();
+
+        if (pwaConfig?.config_value) {
+          const configs = JSON.parse(pwaConfig.config_value) as AgentVoiceConfig[];
+          dbVoiceConfig = configs.find(c => c.moduleId === moduleType) || null;
+          if (dbVoiceConfig) {
+            console.log(`[TTS v6.0] 📦 Config carregada do pwa_config JSON para módulo: ${moduleType}`);
+          }
+        }
+      } catch (jsonErr) {
+        console.log(`[TTS v6.0] ℹ️ Erro ao parsear pwa_config JSON:`, jsonErr);
+      }
+    }
+
+    // Determinar voz baseada no banco ou fallback para hardcoded
     let selectedVoice = voice;
-    if (!OPENAI_VOICES.includes(voice)) {
+    if (dbVoiceConfig) {
+      selectedVoice = dbVoiceConfig.voice;
+    } else if (!OPENAI_VOICES.includes(voice)) {
       selectedVoice = MODULE_VOICE_MAP[moduleType] || MODULE_VOICE_MAP.default;
     }
 
-    // Obter instructions para o módulo
-    const voiceInstructions = VOICE_INSTRUCTIONS[moduleType] || VOICE_INSTRUCTIONS.default;
+    // Obter instructions: do banco (gerado ou customizado) ou fallback hardcoded
+    let voiceInstructions: string;
+    if (dbVoiceConfig) {
+      voiceInstructions = generateInstructionsFromConfig(dbVoiceConfig);
+      console.log(`[TTS v6.0] 📝 Instructions geradas do banco (${voiceInstructions.length} chars)`);
+    } else {
+      voiceInstructions = VOICE_INSTRUCTIONS[moduleType] || VOICE_INSTRUCTIONS.default;
+      console.log(`[TTS v6.0] 📝 Usando instructions hardcoded para: ${moduleType}`);
+    }
 
     // ============================================
     // TENTATIVA 1: OpenAI gpt-4o-mini-tts com instructions
     // ============================================
     if (OPENAI_API_KEY) {
       try {
-        console.log("[TTS v4.0] 🎯 Usando gpt-4o-mini-tts com voz:", selectedVoice, "| módulo:", moduleType);
+        console.log("[TTS v6.0] 🎯 Usando gpt-4o-mini-tts com voz:", selectedVoice, "| módulo:", moduleType);
 
         const openaiResponse = await fetch("https://api.openai.com/v1/audio/speech", {
           method: "POST",
@@ -725,7 +881,7 @@ serve(async (req) => {
         });
 
         if (openaiResponse.ok) {
-          console.log("[TTS v4.0] ✅ OpenAI gpt-4o-mini-tts sucesso!");
+          console.log("[TTS v6.0] ✅ OpenAI gpt-4o-mini-tts sucesso!");
           return new Response(openaiResponse.body, {
             headers: {
               ...corsHeaders,
@@ -736,10 +892,10 @@ serve(async (req) => {
         }
 
         const errorText = await openaiResponse.text();
-        console.warn("[TTS v4.0] ⚠️ OpenAI TTS falhou:", openaiResponse.status, errorText);
+        console.warn("[TTS v6.0] ⚠️ OpenAI TTS falhou:", openaiResponse.status, errorText);
 
         // Se gpt-4o-mini-tts falhar, tentar tts-1 como fallback rápido
-        console.log("[TTS v4.0] 🔄 Tentando fallback para tts-1...");
+        console.log("[TTS v6.0] 🔄 Tentando fallback para tts-1...");
         const fallbackResponse = await fetch("https://api.openai.com/v1/audio/speech", {
           method: "POST",
           headers: {
@@ -755,7 +911,7 @@ serve(async (req) => {
         });
 
         if (fallbackResponse.ok) {
-          console.log("[TTS v4.0] ✅ OpenAI tts-1 fallback sucesso!");
+          console.log("[TTS v6.0] ✅ OpenAI tts-1 fallback sucesso!");
           return new Response(fallbackResponse.body, {
             headers: {
               ...corsHeaders,
@@ -768,11 +924,11 @@ serve(async (req) => {
         // Continua para Google fallback
 
       } catch (openaiError) {
-        console.warn("[TTS v4.0] ⚠️ OpenAI TTS erro:", openaiError);
+        console.warn("[TTS v6.0] ⚠️ OpenAI TTS erro:", openaiError);
         // Continua para fallback
       }
     } else {
-      console.warn("[TTS v4.0] ⚠️ OPENAI_API_KEY não configurada");
+      console.warn("[TTS v6.0] ⚠️ OPENAI_API_KEY não configurada");
     }
 
     // ============================================

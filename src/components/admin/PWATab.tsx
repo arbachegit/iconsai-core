@@ -10,13 +10,20 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Smartphone, Copy, ExternalLink, CheckCircle, Loader2,
   Settings, Volume2, RotateCcw, Save, Play, HelpCircle, Globe,
-  Heart, Lightbulb, Monitor, AlertTriangle, MessageSquare
+  Heart, Lightbulb, Monitor, AlertTriangle, MessageSquare,
+  Sparkles, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
+import { VoiceHumanizationPanel } from "./pwa-config";
 
 const VOICE_OPTIONS = [
   { value: "fernando", label: "Fernando (PT-BR)", provider: "ElevenLabs" },
@@ -32,6 +39,7 @@ export default function PWATab() {
   const [allowDesktopAccess, setAllowDesktopAccess] = useState(false);
   const [isLoadingDesktop, setIsLoadingDesktop] = useState(true);
   const [isSavingDesktop, setIsSavingDesktop] = useState(false);
+  const [showAdvancedVoice, setShowAdvancedVoice] = useState(false);
 
   // PWA Health states
   const [allowPWAHealthDesktopAccess, setAllowPWAHealthDesktopAccess] = useState(false);
@@ -651,6 +659,29 @@ export default function PWATab() {
                     Fidelidade em 100% e Exagero de Estilo em 0%.
                   </p>
                 </div>
+
+                {/* Painel Avançado de Humanização */}
+                <Collapsible open={showAdvancedVoice} onOpenChange={setShowAdvancedVoice}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-between mt-4 border-purple-500/30 hover:bg-purple-500/10"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-purple-500" />
+                        Painel Avançado de Humanização (gpt-4o-mini-tts)
+                      </span>
+                      {showAdvancedVoice ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-4">
+                    <VoiceHumanizationPanel />
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
 
               <Separator />
