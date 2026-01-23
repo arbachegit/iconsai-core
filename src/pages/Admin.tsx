@@ -349,17 +349,17 @@ const Admin = () => {
   const sidebarWidth = isSidebarCollapsed ? 'ml-[72px]' : 'ml-[280px]';
 
   return (
-    <div className="min-h-screen w-full bg-background overflow-x-hidden overflow-y-auto">
+    <div className="h-screen w-full bg-background overflow-hidden">
       {/* Sidebar - Fixed full height */}
-      <AdminSidebar 
-        activeTab={activeTab} 
-        onTabChange={handleTabChange} 
+      <AdminSidebar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
       {/* Main content wrapper with dynamic left margin - explicit z-index for visibility */}
-      <div className={`${sidebarWidth} relative z-10 transition-all duration-500 ease-in-out min-h-screen flex flex-col`}>
+      <div className={`${sidebarWidth} relative z-10 transition-all duration-500 ease-in-out h-screen flex flex-col`}>
         {/* Header - inside main content area, not overlapping sidebar */}
         <header className={`h-14 bg-background/80 backdrop-blur-md border-b border-border/50 fixed top-0 right-0 z-30 flex items-center justify-between px-6 transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'left-[72px]' : 'left-[280px]'}`}>
           {/* Left: Logo + Admin Panel title */}
@@ -440,7 +440,7 @@ const Admin = () => {
         </header>
 
         {/* Main content - explicit visibility and min-height for safe mode */}
-        <main className="flex-1 overflow-y-auto pt-14 min-h-[calc(100vh-3.5rem)] opacity-100 visible bg-background">
+        <main className="flex-1 overflow-y-auto pt-14 opacity-100 visible bg-background">
           <div className="p-8">
             <div className="w-full">
               <ErrorBoundary key={activeTab} fallbackMessage="Erro ao carregar este módulo do painel admin">
