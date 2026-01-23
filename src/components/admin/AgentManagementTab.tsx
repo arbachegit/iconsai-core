@@ -331,62 +331,28 @@ const AgentManagementTab: React.FC = () => {
 
             {/* Tab Escopo */}
             <TabsContent value="escopo" className="space-y-4 mt-4">
-              {/* Escopo Aprovado */}
               <div className="space-y-2">
-                <Label className="text-emerald-400 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4" />
-                  Escopo Aprovado
-                </Label>
-                <textarea
+                <label className="text-sm font-medium text-emerald-400">Escopo Aprovado</label>
+                <input
+                  type="text"
                   value={formData.allowedScope || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormData(prev => ({ ...prev, allowedScope: val }));
-                  }}
-                  rows={6}
-                  placeholder="Defina os tópicos e comportamentos que este agente PODE abordar."
-                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 resize-y"
-                  style={{ pointerEvents: 'auto', userSelect: 'text', WebkitUserSelect: 'text' }}
+                  onChange={e => setFormData(prev => ({ ...prev, allowedScope: e.target.value }))}
+                  placeholder="O que o agente PODE fazer"
+                  className="flex h-10 w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Especifique claramente o que o agente está autorizado a fazer e discutir.
-                </p>
               </div>
 
-              {/* Escopo Proibído */}
               <div className="space-y-2">
-                <Label className="text-red-400 flex items-center gap-2">
-                  <ShieldOff className="h-4 w-4" />
-                  Escopo Proibído
-                </Label>
-                <textarea
+                <label className="text-sm font-medium text-red-400">Escopo Proibído</label>
+                <input
+                  type="text"
                   value={formData.forbiddenScope || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormData(prev => ({ ...prev, forbiddenScope: val }));
-                  }}
-                  rows={6}
-                  placeholder="Defina os tópicos e comportamentos que este agente NÃO PODE abordar."
-                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 resize-y"
-                  style={{ pointerEvents: 'auto', userSelect: 'text', WebkitUserSelect: 'text' }}
+                  onChange={e => setFormData(prev => ({ ...prev, forbiddenScope: e.target.value }))}
+                  placeholder="O que o agente NÃO PODE fazer"
+                  className="flex h-10 w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Especifique claramente o que o agente está proibido de fazer e discutir.
-                </p>
-              </div>
-
-              {/* Info Card */}
-              <div className="p-4 bg-slate-800 rounded-lg border border-cyan-500/20">
-                <h4 className="text-sm font-medium text-cyan-400 flex items-center gap-2 mb-2">
-                  <Target className="h-4 w-4" />
-                  Como funciona o Escopo
-                </h4>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>• O <span className="text-emerald-400">Escopo Aprovado</span> define o que o agente pode fazer</li>
-                  <li>• O <span className="text-red-400">Escopo Proibído</span> define limites e restrições</li>
-                  <li>• Estas configurações são injetadas no system prompt do agente</li>
-                  <li>• Use linguagem clara e específica para melhores resultados</li>
-                </ul>
               </div>
             </TabsContent>
           </Tabs>
