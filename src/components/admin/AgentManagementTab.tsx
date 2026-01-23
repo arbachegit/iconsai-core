@@ -339,11 +339,14 @@ const AgentManagementTab: React.FC = () => {
                 </Label>
                 <textarea
                   value={formData.allowedScope || ""}
-                  onChange={e => setFormData(prev => ({ ...prev, allowedScope: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData(prev => ({ ...prev, allowedScope: val }));
+                  }}
                   rows={6}
                   placeholder="Defina os tópicos e comportamentos que este agente PODE abordar."
-                  className="flex w-full rounded-md border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-xs text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
+                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 resize-y"
+                  style={{ pointerEvents: 'auto', userSelect: 'text', WebkitUserSelect: 'text' }}
                 />
                 <p className="text-xs text-muted-foreground">
                   Especifique claramente o que o agente está autorizado a fazer e discutir.
@@ -358,11 +361,14 @@ const AgentManagementTab: React.FC = () => {
                 </Label>
                 <textarea
                   value={formData.forbiddenScope || ""}
-                  onChange={e => setFormData(prev => ({ ...prev, forbiddenScope: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData(prev => ({ ...prev, forbiddenScope: val }));
+                  }}
                   rows={6}
                   placeholder="Defina os tópicos e comportamentos que este agente NÃO PODE abordar."
-                  className="flex w-full rounded-md border border-red-500/30 bg-red-950/30 px-3 py-2 text-xs text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  style={{ pointerEvents: 'auto', userSelect: 'text' }}
+                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 resize-y"
+                  style={{ pointerEvents: 'auto', userSelect: 'text', WebkitUserSelect: 'text' }}
                 />
                 <p className="text-xs text-muted-foreground">
                   Especifique claramente o que o agente está proibido de fazer e discutir.
