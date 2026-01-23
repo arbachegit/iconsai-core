@@ -349,7 +349,7 @@ const Admin = () => {
   const sidebarWidth = isSidebarCollapsed ? 'ml-[72px]' : 'ml-[280px]';
 
   return (
-    <div className="min-h-screen w-full bg-background overflow-hidden">
+    <div className="min-h-screen w-full bg-background overflow-x-hidden overflow-y-auto">
       {/* Sidebar - Fixed full height */}
       <AdminSidebar 
         activeTab={activeTab} 
