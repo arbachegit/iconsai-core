@@ -333,24 +333,24 @@ const AgentManagementTab: React.FC = () => {
             <TabsContent value="escopo" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-emerald-400">Escopo Aprovado</label>
-                <input
-                  type="text"
+                <textarea
                   value={formData.allowedScope || ""}
                   onChange={e => setFormData(prev => ({ ...prev, allowedScope: e.target.value }))}
                   placeholder="O que o agente PODE fazer"
-                  className="flex h-10 w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  rows={5}
+                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-red-400">Escopo Proibído</label>
-                <input
-                  type="text"
+                <textarea
                   value={formData.forbiddenScope || ""}
                   onChange={e => setFormData(prev => ({ ...prev, forbiddenScope: e.target.value }))}
                   placeholder="O que o agente NÃO PODE fazer"
-                  className="flex h-10 w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  rows={5}
+                  className="flex w-full rounded-md border border-cyan-500/30 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   style={{ pointerEvents: 'auto', userSelect: 'text' }}
                 />
               </div>
