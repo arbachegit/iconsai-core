@@ -177,7 +177,7 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
       />
 
       {/* Área de mensagens - flex-1 para ocupar espaço restante */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ResultArea messages={messages} isLoading={isLoading} />
       </div>
 

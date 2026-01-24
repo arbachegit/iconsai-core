@@ -175,7 +175,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             key="content"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex-1 overflow-y-auto px-4 py-4"
+            className="flex-1 overflow-y-auto px-4 py-4 pwa-scrollable-area"
           >
             {/* Lista de mensagens */}
             {messages.length === 0 ? (

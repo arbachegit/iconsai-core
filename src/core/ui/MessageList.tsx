@@ -195,7 +195,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <div
       ref={scrollRef}
-      className={`h-full overflow-y-auto px-4 py-4 space-y-4 scroll-smooth ${className}`}
+      className={`h-full overflow-y-auto px-4 py-4 space-y-4 scroll-smooth pwa-scrollable-area ${className}`}
       style={{
         backgroundImage: `
           radial-gradient(circle at 20% 50%, ${theme.primaryColor}05 0%, transparent 50%),
