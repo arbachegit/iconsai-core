@@ -513,6 +513,14 @@ body.pwa-scroll-lock {
 }
 
 /* Permitir scroll em áreas internas específicas do PWA */
+.pwa-scrollable-area {
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Garantir scroll dentro de contextos com scroll-lock */
 html.pwa-scroll-lock .pwa-scrollable-area,
 body.pwa-scroll-lock .pwa-scrollable-area,
 .pwa-fullscreen .pwa-scrollable-area {
