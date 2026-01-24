@@ -1,7 +1,11 @@
 // ============================================
-// VERSAO: 2.8.0 | DEPLOY: 2026-01-23
-// MUDANCA: Implementação de ESCOPO (allowedScope/forbiddenScope)
+// VERSAO: 2.9.0 | DEPLOY: 2026-01-23
+// MUDANCA: Perplexity como provider primário (busca em tempo real)
 // ============================================
+// CHANGELOG v2.9.0:
+// - Perplexity API integrado como provider primário
+// - Ordem de fallback: Perplexity → OpenAI → Gemini
+// - Busca em tempo real com citações
 // CHANGELOG v2.8.0:
 // - Suporte a ESCOPO do agente (allowedScope e forbiddenScope)
 // - Scope é extraído do metadata JSON do chat_agents
@@ -533,8 +537,8 @@ Ajudar o usuário com qualquer dúvida de forma clara e objetiva.
 - Sempre seja útil e objetivo`,
 };
 
-// ===================== CHATGPT PRIMARY (OpenAI) + GEMINI FALLBACK =====================
-// v2.7.0: OpenAI como primário, Gemini como fallback (SEM Lovable)
+// ===================== PERPLEXITY PRIMARY + OPENAI/GEMINI FALLBACK =====================
+// v2.9.0: Perplexity como primário (busca em tempo real), OpenAI e Gemini como fallback
 // v2.8.0: Suporte a ESCOPO (allowedScope/forbiddenScope)
 async function callChatGPTForModule(
   query: string,
@@ -542,6 +546,7 @@ async function callChatGPTForModule(
   conversationHistory: Array<{ role: string; content: string }> = [],
   scopeConfig?: { allowedScope?: string; forbiddenScope?: string },
 ): Promise<{ response: string; success: boolean }> {
+  const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY") || Deno.env.get("PERPLEXITY_API_KEY");
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
@@ -570,27 +575,40 @@ async function callChatGPTForModule(
   // Adicionar mensagem atual
   messages.push({ role: "user", content: query });
 
-  // v2.7.0: OpenAI PRIMEIRO (mais confiável)
-  if (OPENAI_API_KEY) {
-    console.log(`[ChatGPT-${moduleSlug}] Tentando OpenAI (primário)...`);
-    const openaiResult = await callChatCompletionsFallback(OPENAI_API_KEY, moduleSlug, messages);
-    if (openaiResult.success) {
-      return openaiResult;
+  // v2.9.0: Perplexity PRIMEIRO (busca em tempo real)
+  if (PERPLEXITY_API_KEY) {
+    console.log(`[ChatRouter-${moduleSlug}] Tentando Perplexity (primário - tempo real)...`);
+    const perplexityResult = await callPerplexityForModule(query, moduleSlug, messages);
+    if (perplexityResult.success) {
+      console.log(`[ChatRouter-${moduleSlug}] ✅ Sucesso com Perplexity`);
+      return perplexityResult;
     }
-    console.warn(`[ChatGPT-${moduleSlug}] OpenAI falhou, tentando Gemini fallback...`);
+    console.warn(`[ChatRouter-${moduleSlug}] Perplexity falhou, tentando OpenAI fallback...`);
   }
 
-  // Fallback: Gemini direto (se GEMINI_API_KEY configurada)
+  // Fallback 1: OpenAI (sem acesso tempo real)
+  if (OPENAI_API_KEY) {
+    console.log(`[ChatRouter-${moduleSlug}] Tentando OpenAI (fallback 1)...`);
+    const openaiResult = await callChatCompletionsFallback(OPENAI_API_KEY, moduleSlug, messages);
+    if (openaiResult.success) {
+      console.log(`[ChatRouter-${moduleSlug}] ✅ Sucesso com OpenAI (fallback)`);
+      return openaiResult;
+    }
+    console.warn(`[ChatRouter-${moduleSlug}] OpenAI falhou, tentando Gemini fallback...`);
+  }
+
+  // Fallback 2: Gemini direto (se GEMINI_API_KEY configurada)
   if (GEMINI_API_KEY) {
-    console.log(`[ChatGPT-${moduleSlug}] Tentando Gemini (fallback)...`);
+    console.log(`[ChatRouter-${moduleSlug}] Tentando Gemini (fallback 2)...`);
     const geminiResult = await callGeminiWithGrounding(moduleSlug, messages);
     if (geminiResult.success) {
+      console.log(`[ChatRouter-${moduleSlug}] ✅ Sucesso com Gemini (fallback)`);
       return geminiResult;
     }
   }
 
   // Nenhuma API funcionou
-  console.error(`[ChatGPT-${moduleSlug}] Todas as APIs falharam`);
+  console.error(`[ChatRouter-${moduleSlug}] ❌ Todas as APIs falharam`);
   return { response: "", success: false };
 }
 
@@ -627,7 +645,7 @@ async function callGeminiWithGrounding(
 - NUNCA mencione que é uma IA, ChatGPT, Gemini ou qualquer modelo`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -737,6 +755,74 @@ Ao responder sobre dados econômicos, notícias ou eventos recentes:
   } catch (error) {
     console.error(`[ChatGPT-Fallback-${moduleSlug}] Exceção:`, error);
     return { response: "", success: false, hasRealtimeAccess: false, disclaimer: null };
+  }
+}
+
+// ===================== PERPLEXITY (BUSCA EM TEMPO REAL) =====================
+// v2.9.0: Perplexity como provider primário para busca em tempo real
+const PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions";
+
+async function callPerplexityForModule(
+  query: string,
+  moduleSlug: string,
+  messages: Array<{ role: string; content: string }>,
+): Promise<{ response: string; success: boolean; citations?: string[] }> {
+  const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY") || Deno.env.get("PERPLEXITY_API_KEY");
+
+  if (!PERPLEXITY_API_KEY) {
+    console.warn(`[Perplexity-${moduleSlug}] PERPLEXITY_API_KEY não configurada`);
+    return { response: "", success: false };
+  }
+
+  try {
+    console.log(`[Perplexity-${moduleSlug}] Chamando Perplexity API (busca em tempo real)...`);
+
+    const response = await fetch(PERPLEXITY_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        messages,
+        temperature: 0.7,
+        max_tokens: 1500,
+        return_citations: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Perplexity-${moduleSlug}] API error:`, response.status, errorText);
+      return { response: "", success: false };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+
+    if (!content) {
+      console.warn(`[Perplexity-${moduleSlug}] Resposta vazia`);
+      return { response: "", success: false };
+    }
+
+    // Sanitizar branding
+    let sanitizedContent = sanitizeBrandingResponse(content);
+
+    // v2.9.0: Remover referências numéricas [1], [2], etc. para não atrapalhar o TTS
+    sanitizedContent = sanitizedContent.replace(/\[\d+\]/g, "");
+    // Remover múltiplos espaços que podem sobrar
+    sanitizedContent = sanitizedContent.replace(/\s{2,}/g, " ").trim();
+
+    console.log(`[Perplexity-${moduleSlug}] Sucesso com busca em tempo real - tamanho:`, sanitizedContent.length);
+    return {
+      response: sanitizedContent,
+      success: true,
+      citations: data.citations || [],
+    };
+  } catch (error) {
+    console.error(`[Perplexity-${moduleSlug}] Exceção:`, error);
+    return { response: "", success: false };
   }
 }
 
@@ -1105,7 +1191,7 @@ async function updateUserContextAfterInteraction(
     if (GEMINI_API_KEY) {
       try {
         const summaryResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: "POST",
             headers: {
@@ -1870,7 +1956,7 @@ serve(async (req: Request) => {
       userMessages.push({ role: "user", parts: [{ text: pwaMessage }] });
 
       const chatResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
