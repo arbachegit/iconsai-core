@@ -169,7 +169,7 @@ export const PWACityContainer: React.FC<PWACityContainerProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-950 overflow-hidden">
       {/* Header */}
       <PWACityHeader
         userName={userName}

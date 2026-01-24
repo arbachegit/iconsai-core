@@ -124,7 +124,7 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children }) => {
             </div>
 
             {/* PWA Content */}
-            <div className="absolute inset-0 overflow-hidden rounded-[45px]">
+            <div className="absolute inset-0 rounded-[45px] overflow-hidden">
               {children}
             </div>
 
