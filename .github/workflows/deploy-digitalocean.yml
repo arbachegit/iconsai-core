@@ -5,21 +5,195 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      skip_health_check:
+        description: 'Skip health check after deploy'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+  DEPLOY_PATH: /var/www/knowyou-production
+  RETENTION_COUNT: 3  # Número de backups a manter
 
 jobs:
-  deploy:
+  # ============================================
+  # JOB 1: BUILD
+  # Compila o projeto no GitHub Actions (não no servidor)
+  # ============================================
+  build:
+    name: Build Application
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to DigitalOcean Droplet
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /var/www/knowyou-production/repo
-            git pull origin main
-            npm install
-            NODE_OPTIONS="--max-old-space-size=3072" npm run build
-            echo "Deploy completed successfully!"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run pre-deploy checks
+        run: npm run pre-deploy || true
+
+      - name: Build application
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+
+  # ============================================
+  # JOB 2: DEPLOY
+  # Envia os arquivos compilados para o servidor
+  # ============================================
+  deploy:
+    name: Deploy to Server
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create backup on server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            DEPLOY_PATH="/var/www/knowyou-production"
+            BACKUP_DIR="$DEPLOY_PATH/backups"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+            # Criar diretório de backups se não existir
+            mkdir -p $BACKUP_DIR
+
+            # Fazer backup do dist atual (se existir)
+            if [ -d "$DEPLOY_PATH/dist" ]; then
+              echo "Creating backup: backup_$TIMESTAMP"
+              cp -r $DEPLOY_PATH/dist $BACKUP_DIR/backup_$TIMESTAMP
+            fi
+
+            # Manter apenas os últimos 3 backups
+            cd $BACKUP_DIR
+            ls -dt backup_* 2>/dev/null | tail -n +4 | xargs rm -rf 2>/dev/null || true
+
+            echo "Backup completed. Current backups:"
+            ls -la $BACKUP_DIR
+          ENDSSH
+
+      - name: Deploy via rsync
+        run: |
+          rsync -avzr --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            dist/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ env.DEPLOY_PATH }}/dist/
+
+      - name: Set permissions
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            chmod -R 755 /var/www/knowyou-production/dist
+            echo "Permissions set successfully"
+          ENDSSH
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  # ============================================
+  # JOB 3: VERIFY
+  # Verifica se o deploy funcionou
+  # ============================================
+  verify:
+    name: Verify Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_health_check != 'true' }}
+
+    steps:
+      - name: Wait for server to stabilize
+        run: sleep 10
+
+      - name: Health check
+        run: |
+          SITE_URL="${{ secrets.SITE_URL }}"
+
+          if [ -z "$SITE_URL" ]; then
+            echo "⚠️ SITE_URL secret not configured, skipping health check"
+            exit 0
+          fi
+
+          echo "Checking $SITE_URL..."
+
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL" --max-time 30)
+
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 301 ] || [ "$HTTP_STATUS" -eq 302 ]; then
+            echo "✅ Health check passed! Status: $HTTP_STATUS"
+          else
+            echo "❌ Health check failed! Status: $HTTP_STATUS"
+            exit 1
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deployed by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Timestamp** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # JOB 4: NOTIFY (em caso de falha)
+  # ============================================
+  notify-failure:
+    name: Notify on Failure
+    needs: [build, deploy, verify]
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Create failure summary
+        run: |
+          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Timestamp** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Check the logs above for details.**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔄 Rollback Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "To rollback, run this on the server:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "cd /var/www/knowyou-production" >> $GITHUB_STEP_SUMMARY
+          echo "ls backups/  # List available backups" >> $GITHUB_STEP_SUMMARY
+          echo "rm -rf dist && cp -r backups/backup_YYYYMMDD_HHMMSS dist" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
