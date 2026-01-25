@@ -1,4 +1,5 @@
 // Landing page with lazy-loaded components
+// NOTA: Componentes legados removidos (ChatStudy, DigitalExclusionSection) - causavam erros de tabelas inexistentes
 import React, { Suspense, lazy } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
@@ -7,14 +8,10 @@ import { Link } from "react-router-dom";
 import { Brain, Mail, Sparkles } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { useTranslation } from "react-i18next";
-import { useYouTubeAutoPreload } from "@/hooks/useYouTubeAutoPreload";
 
 // Lazy load below-the-fold components
-const ChatStudy = lazy(() => import("@/components/ChatStudy"));
 const MediaCarousel = lazy(() => import("@/components/MediaCarousel").then(m => ({ default: m.MediaCarousel })));
-const DigitalExclusionSection = lazy(() => import("@/components/DigitalExclusionSection").then(m => ({ default: m.DigitalExclusionSection })));
 const TuringLegacy = lazy(() => import("@/components/TuringLegacy"));
-const FloatingChatButton = lazy(() => import("@/components/FloatingChatButton").then(m => ({ default: m.FloatingChatButton })));
 const ScrollToTopButton = lazy(() => import("@/components/ScrollToTopButton").then(m => ({ default: m.ScrollToTopButton })));
 const ContactModal = lazy(() => import("@/components/ContactModal").then(m => ({ default: m.ContactModal })));
 
@@ -27,10 +24,7 @@ const SectionLoader = () => (
 
 const Index = () => {
   const { t, i18n } = useTranslation();
-  
-  // Auto-preload YouTube videos in background when cache expires
-  useYouTubeAutoPreload();
-  
+
   return <div className="min-h-screen bg-background">
       <Header />
       <div key={i18n.language} className="language-transition">
@@ -135,7 +129,7 @@ const Index = () => {
         </p>
       </Section>
 
-      {/* Section 7: KnowYOU - Interactive Chat - Custom Full Width Layout */}
+      {/* Section 7: KnowYOU - Media Carousel */}
       <section id="knowyou" className="py-8 relative overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto text-center space-y-6">
@@ -143,12 +137,12 @@ const Index = () => {
             <h2 className="text-4xl md:text-5xl font-bold text-gradient">
               {t('sections.knowyou.title')}
             </h2>
-            
+
             {/* Subtitle */}
             <p className="text-xl text-muted-foreground">
               {t('sections.knowyou.subtitle')}
             </p>
-            
+
             {/* Description Text */}
             <div className="text-center max-w-3xl mx-auto space-y-4">
               <p className="text-lg leading-relaxed">
@@ -158,14 +152,7 @@ const Index = () => {
                 {t('sections.knowyou.content2')}
               </p>
             </div>
-            
-            {/* Chat Component - Full Width */}
-            <div className="mt-8 w-full">
-              <Suspense fallback={<SectionLoader />}>
-                <ChatStudy />
-              </Suspense>
-            </div>
-            
+
             {/* Media Carousel - Full Width */}
             <div className="mt-12 w-full">
               <Suspense fallback={<SectionLoader />}>
@@ -175,11 +162,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* Digital Exclusion Section */}
-      <Suspense fallback={<SectionLoader />}>
-        <DigitalExclusionSection />
-      </Suspense>
 
       {/* Section 8: Bom Prompt */}
       <Section
@@ -267,11 +249,6 @@ const Index = () => {
       </footer>
       </div>
 
-      {/* Floating Chat Button */}
-      <Suspense fallback={null}>
-        <FloatingChatButton />
-      </Suspense>
-      
       {/* Scroll to Top Button */}
       <Suspense fallback={null}>
         <ScrollToTopButton />
