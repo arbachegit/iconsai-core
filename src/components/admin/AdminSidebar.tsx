@@ -7,9 +7,31 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { supabaseUntyped } from "@/integrations/supabase/typed-client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
+import {
+  LayoutDashboard,
+  MessageSquare,
+  LogOut,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Settings,
+  Shield,
+  ShieldCheck,
+  Menu,
+  X,
+  ScrollText,
+  Smartphone,
+  Home,
+  Star,
+  GripVertical,
+  Network,
+  BookOpen,
+  Mail,
+} from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -27,65 +49,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
-import {
-  LayoutDashboard,
-  MessageSquare,
-  FileText,
-  Mail,
-  BarChart3,
-  LogOut,
-  MessagesSquare,
-  Image,
-  Video,
-  BookOpen,
-  Database,
-  GitBranch,
-  Tags,
-  Search,
-  ChevronDown,
-  ChevronUp,
-  Zap,
-  MessageCircle,
-  Brain,
-  Film,
-  Settings,
-  Route,
-  TestTube,
-  Music,
-  ClipboardCheck,
-  ShieldCheck,
-  Shield,
-  History,
-  Users,
-  Target,
-  Globe,
-  Sparkles,
-  Menu,
-  X,
-  Monitor,
-  RefreshCw,
-  Bell,
-  ScrollText,
-  TrendingUp,
-  Newspaper,
-  Webhook,
-  FileJson,
-  MapPin,
-  Bot,
-  Smartphone,
-  Home,
-  DollarSign,
-  TreeDeciduous,
-  Volume2,
-  Network,
-  Layers,
-  Star,
-  GripVertical,
-  ArrowRightLeft,
-} from "lucide-react";
-import { NotificationBell } from './NotificationBell';
 
+// ============================================================
+// ADMIN SIDEBAR SIMPLIFICADO
+// Apenas tabs que funcionam com tabelas existentes no banco
+// ============================================================
 
 type TabType = string;
 
@@ -101,41 +69,39 @@ const playNotificationSound = () => {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
-  
+
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  
-  oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
-  oscillator.frequency.setValueAtTime(1047, audioContext.currentTime + 0.1); // C6
-  
+
+  oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+  oscillator.frequency.setValueAtTime(1047, audioContext.currentTime + 0.1);
+
   gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
   gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-  
+
   oscillator.start(audioContext.currentTime);
   oscillator.stop(audioContext.currentTime + 0.3);
 };
 
-// Sortable Favorite Item Component for drag-and-drop
+// Sortable Favorite Item Component
 interface SortableFavoriteItemProps {
   id: string;
   item: { id: TabType; label: string; icon: any };
   isActive: boolean;
   pendingMessagesCount: number;
-  unreadNotificationsCount: number;
   onTabChange: (tab: TabType) => void;
   onRemove: (id: string) => void;
   navigate: (path: string) => void;
 }
 
-function SortableFavoriteItem({ 
-  id, 
-  item, 
-  isActive, 
-  pendingMessagesCount, 
-  unreadNotificationsCount, 
-  onTabChange, 
+function SortableFavoriteItem({
+  id,
+  item,
+  isActive,
+  pendingMessagesCount,
+  onTabChange,
   onRemove,
-  navigate 
+  navigate
 }: SortableFavoriteItemProps) {
   const {
     attributes,
@@ -155,16 +121,13 @@ function SortableFavoriteItem({
 
   const Icon = item.icon;
   const showContactBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
-  const showNotificationBadge = item.id === "notification-logs" && unreadNotificationsCount > 0;
-  const badgeCount = showContactBadge ? pendingMessagesCount : (showNotificationBadge ? unreadNotificationsCount : 0);
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
+    <div
+      ref={setNodeRef}
+      style={style}
       className={`flex items-center gap-1 ${isDragging ? 'bg-muted/50 rounded-lg' : ''}`}
     >
-      {/* Drag Handle */}
       <button
         {...attributes}
         {...listeners}
@@ -172,7 +135,7 @@ function SortableFavoriteItem({
       >
         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
       </button>
-      
+
       <Button
         variant={isActive ? "default" : "ghost"}
         className={`group flex-1 justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
@@ -186,14 +149,13 @@ function SortableFavoriteItem({
       >
         <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
         <span className="truncate">{item.label}</span>
-        {(showContactBadge || showNotificationBadge) && (
+        {showContactBadge && (
           <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
-            {badgeCount}
+            {pendingMessagesCount}
           </Badge>
         )}
       </Button>
-      
-      {/* Remove from favorites */}
+
       <Button
         variant="ghost"
         size="icon"
@@ -214,26 +176,23 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const { t } = useTranslation();
   const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const previousCountRef = useRef(0);
   const navRef = useRef<HTMLElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
-  
-  // Favorites state with localStorage + database persistence
+
+  // Favorites state
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem('admin-sidebar-favorites');
     return saved ? JSON.parse(saved) : ['dashboard'];
   });
 
-  // DnD sensors for drag-and-drop reordering
+  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -271,7 +230,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             .select('sidebar_favorites')
             .eq('user_id', user.id)
             .single();
-          
+
           if (data?.sidebar_favorites && Array.isArray(data.sidebar_favorites)) {
             setFavorites(data.sidebar_favorites as string[]);
             localStorage.setItem('admin-sidebar-favorites', JSON.stringify(data.sidebar_favorites));
@@ -284,25 +243,25 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     loadFavoritesFromDb();
   }, []);
 
-  // Handle drag end for reordering favorites
+  // Handle drag end
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
       setFavorites((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
         const newItems = arrayMove(items, oldIndex, newIndex);
-        
+
         localStorage.setItem('admin-sidebar-favorites', JSON.stringify(newItems));
         saveFavoritesToDb(newItems);
-        
+
         return newItems;
       });
     }
   }, [saveFavoritesToDb]);
 
-  // Toggle favorite function
+  // Toggle favorite
   const toggleFavorite = useCallback((tabId: string) => {
     setFavorites(prev => {
       const newFavorites = prev.includes(tabId)
@@ -314,78 +273,56 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     });
   }, [saveFavoritesToDb]);
 
-  // Check scroll position to show/hide fade indicators
+  // Check scroll position
   const handleNavScroll = useCallback(() => {
     const nav = navRef.current;
     if (!nav) return;
-    
+
     const { scrollTop, scrollHeight, clientHeight } = nav;
     setCanScrollUp(scrollTop > 10);
     setCanScrollDown(scrollTop + clientHeight < scrollHeight - 10);
   }, []);
 
-
+  // Fetch pending contact messages
   const fetchPendingMessages = useCallback(async () => {
     const { count } = await supabase
       .from("contact_messages")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending");
-    
+
     const newCount = count || 0;
-    
-    // Tocar som apenas se houver nova mensagem (count aumentou)
+
     if (newCount > previousCountRef.current && previousCountRef.current > 0) {
       playNotificationSound();
       toast.info("Nova mensagem de contato recebida!", {
-        description: "Clique em 'Mensagens Contato' para visualizar.",
+        description: "Clique em 'Mensagens de Contato' para visualizar.",
       });
     }
-    
+
     previousCountRef.current = newCount;
     setPendingMessagesCount(newCount);
-  }, []);
-
-  // Fetch unread notifications count
-  const fetchUnreadNotifications = useCallback(async () => {
-    const { count } = await supabaseUntyped
-      .from("notification_logs")
-      .select("*", { count: "exact", head: true })
-      .eq("is_read", false);
-
-    setUnreadNotificationsCount(count || 0);
   }, []);
 
   useEffect(() => {
     fetchPendingMessages();
 
-    // Subscrição realtime para novas mensagens
     const channel = supabase
       .channel('contact-messages-realtime')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'contact_messages'
-        },
+        { event: 'INSERT', schema: 'public', table: 'contact_messages' },
         () => {
           playNotificationSound();
           toast.info("Nova mensagem de contato recebida!", {
-            description: "Clique em 'Mensagens Contato' para visualizar.",
+            description: "Clique em 'Mensagens de Contato' para visualizar.",
           });
           fetchPendingMessages();
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'contact_messages'
-        },
-        () => {
-          fetchPendingMessages();
-        }
+        { event: 'UPDATE', schema: 'public', table: 'contact_messages' },
+        () => fetchPendingMessages()
       )
       .subscribe();
 
@@ -394,91 +331,36 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     };
   }, [fetchPendingMessages]);
 
-  // Fetch and subscribe to notifications
-  useEffect(() => {
-    fetchUnreadNotifications();
-    
-    const channel = supabase
-      .channel('notifications-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notification_logs'
-        },
-        () => {
-          fetchUnreadNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchUnreadNotifications]);
-
   const handleLogout = () => {
     localStorage.removeItem("admin_authenticated");
     navigate("/admin/login");
   };
 
   const toggleSection = (sectionId: string) => {
-    setOpenSections(prev => 
-      prev.includes(sectionId) 
+    setOpenSections(prev =>
+      prev.includes(sectionId)
         ? prev.filter(id => id !== sectionId)
         : [...prev, sectionId]
     );
   };
 
-  // Base menu categories (excluding quick-access which will be dynamic)
+  // Menu categories (simplified - only tabs that work with existing tables)
   const baseMenuCategories = useMemo(() => [
     {
-      id: "chat",
-      label: "Chat & Conversas",
-      icon: MessageCircle,
+      id: "pwa",
+      label: "PWA & Conversas",
+      icon: Smartphone,
       items: [
-        { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
         { id: "pwa" as TabType, label: "Config. PWA", icon: Smartphone },
         { id: "pwa-conversations" as TabType, label: "Conversas PWA", icon: MessageSquare },
-        { id: "maieutic-training" as TabType, label: "Treino IA Maiêutica", icon: Sparkles },
-        { id: "maieutic-effectiveness" as TabType, label: "Eficácia Maiêutica", icon: Brain },
-        { id: "regional-config" as TabType, label: "Configurações Regionais", icon: Globe },
-        { id: "lexicon-phonetics" as TabType, label: "Fonética & TTS", icon: Volume2 },
-        { id: "taxonomy-manager" as TabType, label: "Taxonomia Global", icon: TreeDeciduous },
-        { id: "ontology-concepts" as TabType, label: "Ontologia Conceitos", icon: Network },
-        { id: "deterministic-analysis" as TabType, label: "Fala Determinística", icon: Target },
-        { id: "agent-management" as TabType, label: "Gestão de Agentes", icon: Bot },
       ]
     },
     {
-      id: "rag",
-      label: "RAG & Análise",
-      icon: Brain,
+      id: "messages",
+      label: "Mensagens",
+      icon: Mail,
       items: [
-        { id: "documents" as TabType, label: "RAG Documentos", icon: FileText },
-        { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
-        { id: "rag-diagnostics" as TabType, label: "Diagnóstico RAG", icon: TestTube },
-        { id: "content-profiles" as TabType, label: "Perfis de Conteúdo", icon: Layers },
-        { id: "taxonomy-suggestions" as TabType, label: "Auto-Gestão Taxonomia", icon: Sparkles },
-        { id: "taxonomy-analytics" as TabType, label: "Analytics Taxonomia", icon: BarChart3 },
-        { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
-        { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
-        { id: "doc-reclassification" as TabType, label: "Re-classificar Docs", icon: RefreshCw },
-        { id: "document-onboarding" as TabType, label: "Onboarding Docs", icon: FileText },
-        { id: "ml-review" as TabType, label: "Revisão ML", icon: Sparkles },
-      ]
-    },
-    {
-      id: "media",
-      label: "Mídia & Conteúdo",
-      icon: Film,
-      items: [
-        { id: "content-management" as TabType, label: "Seções Landing Page", icon: FileText },
-        { id: "podcasts" as TabType, label: "Podcasts", icon: Music },
-        { id: "tooltips" as TabType, label: "Tooltips", icon: MessageCircle },
-        { id: "images" as TabType, label: "Cache de Imagens", icon: Image },
-        { id: "videos" as TabType, label: "Inserir Vídeos (Vimeo)", icon: Video },
+        { id: "contact-messages" as TabType, label: "Mensagens de Contato", icon: Mail },
       ]
     },
     {
@@ -486,71 +368,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       label: "Segurança",
       icon: Shield,
       items: [
-        { id: "security-integrity" as TabType, label: "Segurança e Integridade", icon: ShieldCheck },
-        { id: "security-dashboard" as TabType, label: "Dashboard de Segurança", icon: ShieldCheck },
+        { id: "security-dashboard" as TabType, label: "Dashboard Segurança", icon: ShieldCheck },
         { id: "security-whitelist" as TabType, label: "Whitelist de IPs", icon: ShieldCheck },
-        { id: "security-shield-config" as TabType, label: "Config. Security Shield", icon: Shield },
+        { id: "security-shield-config" as TabType, label: "Config. Shield", icon: Shield },
         { id: "security-audit-logs" as TabType, label: "Audit Logs", icon: ScrollText },
-      ]
-    },
-    {
-      id: "sales",
-      label: "Vendas & CRM",
-      icon: Users,
-      items: [
-        { id: "crm" as TabType, label: "CRM DataFlow", icon: Users },
-      ]
-    },
-    {
-      id: "messages-notifications",
-      label: "MSG & NOTIFICAÇÃO",
-      icon: Bell,
-      items: [
-        { id: "contact-messages" as TabType, label: "Mensagens de Contato", icon: MessageSquare },
-        { id: "notification-logs" as TabType, label: "Notificações", icon: Bell },
-      ]
-    },
-    {
-      id: "audit",
-      label: "Auditoria",
-      icon: ClipboardCheck,
-      items: [
-        { id: "api-audit-logs" as TabType, label: "Log de APIs", icon: Webhook },
-        { id: "activity-logs" as TabType, label: "Log de Atividades (admin)", icon: History },
-        { id: "user-usage-logs" as TabType, label: "Log de Uso (Usuários)", icon: Users },
-        { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
-        { id: "tag-modification-logs" as TabType, label: "Logs de Mescla Tags", icon: Tags },
-        { id: "suggestion-audit" as TabType, label: "Auditoria Sugestões", icon: Sparkles },
-        { id: "ml-dashboard" as TabType, label: "Machine Learning ML", icon: Brain },
-        { id: "taxonomy-ml-audit" as TabType, label: "Taxonomy ML", icon: Target },
-        { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
-        { id: "documentation-sync" as TabType, label: "Sincronizar Docs", icon: RefreshCw },
-        { id: "schema-monitor" as TabType, label: "Monitor de Schema", icon: Database },
-      ]
-    },
-    {
-      id: "indicators",
-      label: "INDICADORES ECONÔMICOS",
-      icon: TrendingUp,
-      items: [
-        { id: "economic-indicators" as TabType, label: "Painel de Indicadores", icon: BarChart3 },
-        { id: "regional-indicators" as TabType, label: "Indicadores Regionais", icon: MapPin },
-        { id: "pmc-conversion" as TabType, label: "PMC → R$", icon: DollarSign },
-        { id: "market-news" as TabType, label: "Balcão de Notícias", icon: Newspaper },
-        { id: "json-test" as TabType, label: "Teste de JSON", icon: TestTube },
-        { id: "api-management" as TabType, label: "Gestão de APIs", icon: Webhook },
-        { id: "json-data" as TabType, label: "JSON Dados", icon: FileJson },
-      ]
-    },
-    {
-      id: "analytics-hub",
-      label: "ANALYTICS",
-      icon: BarChart3,
-      items: [
-        { id: "dashboard-external" as TabType, label: "Dashboard", icon: LayoutDashboard },
-        { id: "data-analysis" as TabType, label: "Data Analysis", icon: TrendingUp },
-        { id: "chart-database" as TabType, label: "Chart DataSet", icon: Database },
-        { id: "table-database" as TabType, label: "Table DataSet", icon: Database },
       ]
     },
     {
@@ -559,16 +380,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       icon: Settings,
       items: [
         { id: "app-config" as TabType, label: "Config. de Sistemas", icon: Settings },
-        { id: "notification-settings" as TabType, label: "Config. Notificações", icon: Bell },
-        { id: "whatsapp-tier" as TabType, label: "WhatsApp Tier", icon: TrendingUp },
-        { id: "fallback-config" as TabType, label: "Fallback SMS", icon: ArrowRightLeft },
-        { id: "user-registry" as TabType, label: "Cadastro de Usuários", icon: Users },
-        { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
+        { id: "architecture" as TabType, label: "Arquitetura", icon: Network },
       ]
     }
   ], []);
 
-  // Get all items from all categories for favorite lookup
+  // All items for favorite lookup
   const allItems = useMemo(() => {
     const items: { id: TabType; label: string; icon: any }[] = [
       { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard }
@@ -579,7 +396,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     return items;
   }, [baseMenuCategories]);
 
-  // Build dynamic quick-access category from favorites - FIXED: include favorites in deps
+  // Quick access from favorites
   const quickAccessCategory = useMemo(() => ({
     id: "quick-access",
     label: "Acesso Rápido",
@@ -589,22 +406,22 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       .filter((item): item is { id: TabType; label: string; icon: any } => item !== undefined)
   }), [favorites, allItems]);
 
-  // Combine quick-access with base categories - FIXED: include baseMenuCategories in deps
+  // Combined menu
   const menuCategories = useMemo(() => [
     quickAccessCategory,
     ...baseMenuCategories
   ], [quickAccessCategory, baseMenuCategories]);
 
-  // Filter menu categories based on search query - FIXED: include menuCategories in deps
+  // Filter by search
   const filteredCategories = useMemo(() => {
     if (!searchQuery.trim()) return menuCategories;
-    
+
     const query = searchQuery.toLowerCase();
-    
+
     return menuCategories
       .map(category => ({
         ...category,
-        items: category.items.filter(item => 
+        items: category.items.filter(item =>
           item.label.toLowerCase().includes(query) ||
           category.label.toLowerCase().includes(query)
         )
@@ -612,7 +429,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       .filter(category => category.items.length > 0);
   }, [searchQuery, menuCategories]);
 
-  // Initial check and resize observer for scroll indicators
+  // Scroll indicators
   useEffect(() => {
     handleNavScroll();
     const nav = navRef.current;
@@ -620,30 +437,29 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
     const resizeObserver = new ResizeObserver(handleNavScroll);
     resizeObserver.observe(nav);
-    
+
     return () => resizeObserver.disconnect();
   }, [handleNavScroll, filteredCategories]);
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside 
+      <aside
         className={`
-          ${isCollapsed ? 'w-[72px]' : 'w-[280px]'} 
-          bg-sidebar border-r border-border 
-          fixed left-0 top-0 h-screen z-50 
-          flex flex-col overflow-hidden 
+          ${isCollapsed ? 'w-[72px]' : 'w-[280px]'}
+          bg-sidebar border-r border-border
+          fixed left-0 top-0 h-screen z-50
+          flex flex-col overflow-hidden
           transition-all duration-500 ease-in-out
         `}
       >
-        {/* TOP HEADER: Hamburger + Search (Horizontal-to-Vertical Transformation) */}
+        {/* Header */}
         <div className={`
           border-b border-border shrink-0
           flex transition-all duration-500 ease-in-out
-          ${isCollapsed 
-            ? 'flex-col items-center w-full gap-4 px-3 py-4' 
+          ${isCollapsed
+            ? 'flex-col items-center w-full gap-4 px-3 py-4'
             : 'flex-row items-center w-full gap-3 px-4 py-3'}
         `}>
-          {/* 1. Hamburger Menu with Rotation Animation */}
           <Button
             variant="ghost"
             size="icon"
@@ -656,7 +472,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             </div>
           </Button>
 
-          {/* 2. Search Component - Adapts to sidebar state */}
           {isCollapsed ? (
             <div className="flex flex-col items-center gap-3">
               <Tooltip>
@@ -691,18 +506,17 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   className="pl-9 h-10 text-sm bg-muted/30 border-border rounded-full focus:border-primary/50 w-full"
                 />
               </div>
-              
             </div>
           )}
         </div>
 
-        {/* Top fade indicator */}
-        <div 
+        {/* Top fade */}
+        <div
           className={`absolute top-[100px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
         />
 
-        {/* MIDDLE NAVIGATION - Scrollable with margin-bottom for dock */}
-        <nav 
+        {/* Navigation */}
+        <nav
           ref={navRef}
           onScroll={handleNavScroll}
           className={`flex-1 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-3'} py-2 pb-48 space-y-1`}
@@ -710,9 +524,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           {filteredCategories.map((category, index) => (
             <div key={category.id}>
               {index > 0 && <Separator className="my-2 bg-border/50" />}
-              
+
               {isCollapsed ? (
-                // Collapsed mode: ONLY parent category icon with click-to-expand
                 <div className="flex justify-center">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -721,9 +534,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         size="icon"
                         className="group w-full h-12 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                         onClick={() => {
-                          // Click-to-expand: Always expand sidebar first
                           onToggleCollapse();
-                          // Then open this category's section
                           if (!openSections.includes(category.id)) {
                             toggleSection(category.id);
                           }
@@ -738,8 +549,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   </Tooltip>
                 </div>
               ) : (
-                // Expanded mode: full menu with collapsible sections
-                <Collapsible 
+                <Collapsible
                   open={openSections.includes(category.id)}
                   onOpenChange={() => toggleSection(category.id)}
                 >
@@ -749,16 +559,16 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <CollapsibleTrigger className={`group flex items-center justify-between w-full p-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all duration-300 ease-in-out ${
                         hasActiveChild
                           ? 'bg-fuchsia-800 text-white/90 shadow-sm'
-                          : openSections.includes(category.id) 
-                            ? 'bg-fuchsia-700/80 text-white/80 shadow-sm' 
+                          : openSections.includes(category.id)
+                            ? 'bg-fuchsia-700/80 text-white/80 shadow-sm'
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-sm'
                       }`}>
                         <div className="flex items-center gap-2">
                           <category.icon className={`w-3.5 h-3.5 ${hasActiveChild ? 'text-white/90' : openSections.includes(category.id) ? 'text-white/80' : 'group-hover:text-foreground'}`} />
                           {category.label}
-                          {category.id === "messages-notifications" && (pendingMessagesCount + unreadNotificationsCount) > 0 && !openSections.includes(category.id) && (
+                          {category.id === "messages" && pendingMessagesCount > 0 && !openSections.includes(category.id) && (
                             <Badge variant="destructive" className="ml-1 h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
-                              {pendingMessagesCount + unreadNotificationsCount}
+                              {pendingMessagesCount}
                             </Badge>
                           )}
                         </div>
@@ -766,10 +576,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       </CollapsibleTrigger>
                     );
                   })()}
-                  
+
                   <CollapsibleContent className="space-y-0.5 mt-1">
                     {category.id === "quick-access" ? (
-                      // Quick Access with drag-and-drop
                       <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -786,7 +595,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                               item={item}
                               isActive={activeTab === item.id}
                               pendingMessagesCount={pendingMessagesCount}
-                              unreadNotificationsCount={unreadNotificationsCount}
                               onTabChange={onTabChange}
                               onRemove={toggleFavorite}
                               navigate={navigate}
@@ -795,33 +603,23 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         </SortableContext>
                       </DndContext>
                     ) : (
-                      // Regular categories
                       category.items.map((item) => {
                         const Icon = item.icon;
                         const isActive = activeTab === item.id;
                         const showContactBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
-                        const showNotificationBadge = item.id === "notification-logs" && unreadNotificationsCount > 0;
-                        const badgeCount = showContactBadge ? pendingMessagesCount : (showNotificationBadge ? unreadNotificationsCount : 0);
 
                         return (
                           <div key={item.id} className="flex items-center gap-1">
                             <Button
                               variant={isActive ? "default" : "ghost"}
                               className={`group flex-1 justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
-                              onClick={() => {
-                                // Navigate to external dashboard page
-                                if (item.id === "dashboard-external") {
-                                  navigate("/dashboard");
-                                } else {
-                                  onTabChange(item.id);
-                                }
-                              }}
+                              onClick={() => onTabChange(item.id)}
                             >
                               <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
                               <span className="truncate">{item.label}</span>
-                              {(showContactBadge || showNotificationBadge) && (
+                              {showContactBadge && (
                                 <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
-                                  {badgeCount}
+                                  {pendingMessagesCount}
                                 </Badge>
                               )}
                             </Button>
@@ -834,12 +632,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                                 toggleFavorite(item.id);
                               }}
                             >
-                              <Star 
+                              <Star
                                 className={`h-3.5 w-3.5 transition-colors ${
-                                  favorites.includes(item.id) 
-                                    ? 'fill-yellow-400 text-yellow-400' 
+                                  favorites.includes(item.id)
+                                    ? 'fill-yellow-400 text-yellow-400'
                                     : 'text-muted-foreground hover:text-yellow-400'
-                                }`} 
+                                }`}
                               />
                             </Button>
                           </div>
@@ -853,10 +651,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           ))}
         </nav>
 
-
-        {/* BOTTOM DOCK - Control Center (Gemini-style fixed footer) */}
+        {/* Footer Dock */}
         <div className="absolute bottom-0 left-0 w-full z-50 bg-[#0B1120] border-t border-white/10 p-2 transition-all duration-200">
-          {/* Chevron Toggle - Only visible when sidebar is expanded */}
           {!isCollapsed && (
             <button
               onClick={() => setIsControlCenterCollapsed(!isControlCenterCollapsed)}
@@ -871,13 +667,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           )}
 
           {isCollapsed ? (
-            // SCENARIO A: Sidebar COLLAPSED - Always vertical icons only
             <div className="flex flex-col items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/docs")}
                   >
@@ -889,37 +684,23 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
-                    onClick={() => navigate("/app")}
+                    onClick={() => navigate("/pwa")}
                   >
                     <Smartphone className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">App</TooltipContent>
+                <TooltipContent side="right">PWA</TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
-                    onClick={() => navigate("/dashboard")}
-                  >
-                    <LayoutDashboard className="w-4 h-4 group-hover:text-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Dashboard</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-10 w-10 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
@@ -931,9 +712,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-10 w-10 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                     onClick={handleLogout}
                   >
@@ -944,13 +725,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               </Tooltip>
             </div>
           ) : isControlCenterCollapsed ? (
-            // SCENARIO B-2: Sidebar EXPANDED + Control Center COLLAPSED - Horizontal row of icons
             <div className="flex flex-row items-center justify-around py-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/docs")}
                   >
@@ -962,37 +742,23 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
-                    onClick={() => navigate("/app")}
+                    onClick={() => navigate("/pwa")}
                   >
                     <Smartphone className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">App</TooltipContent>
+                <TooltipContent side="top">PWA</TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
-                    onClick={() => navigate("/dashboard")}
-                  >
-                    <LayoutDashboard className="w-4 h-4 group-hover:text-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Dashboard</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-9 w-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
@@ -1004,9 +770,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-9 w-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                     onClick={handleLogout}
                   >
@@ -1017,10 +783,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               </Tooltip>
             </div>
           ) : (
-            // SCENARIO B-1: Sidebar EXPANDED + Control Center EXPANDED (default) - Vertical with text
             <div className="flex flex-col gap-0.5">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/docs")}
               >
@@ -1028,26 +793,17 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 <span className="whitespace-nowrap">{t('admin.documentation')}</span>
               </Button>
 
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
-                onClick={() => navigate("/app")}
+                onClick={() => navigate("/pwa")}
               >
                 <Smartphone className="w-4 h-4 shrink-0 group-hover:text-foreground" />
-                <span className="whitespace-nowrap">App</span>
+                <span className="whitespace-nowrap">PWA</span>
               </Button>
 
-              <Button 
-                variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
-                onClick={() => navigate("/dashboard")}
-              >
-                <LayoutDashboard className="w-4 h-4 shrink-0 group-hover:text-foreground" />
-                <span className="whitespace-nowrap">Dashboard</span>
-              </Button>
-
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/")}
               >
@@ -1055,8 +811,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 <span className="whitespace-nowrap">Voltar ao Início</span>
               </Button>
 
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                 onClick={handleLogout}
               >

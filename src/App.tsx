@@ -1,17 +1,15 @@
-// Build: 2026-01-17-DEMO-MODE - Sistema de Demonstração
+// Build: 2026-01-25-SIMPLIFIED - Landing page removida, login como página inicial
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import { FloatingAudioPlayer } from "./components/FloatingAudioPlayer";
-// useApiRegistrySync removido - tabela system_api_registry foi deletada
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { BannedScreen } from "./components/BannedScreen";
@@ -32,7 +30,6 @@ const AppPage = lazy(() => import("./pages/AppPage"));
 const Hub = lazy(() => import("./pages/Hub"));
 const PWAVoiceAssistant = lazy(() => import("./components/pwa/voice/PWAVoiceAssistant"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
-const Contact = lazy(() => import("./pages/Contact"));
 const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
 const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
 const PWACityPage = lazy(() => import("./pages/PWACityPage"));
@@ -46,8 +43,6 @@ const PageLoader = () => (
 );
 
 const queryClient = new QueryClient();
-
-// ApiRegistrySyncProvider removido - tabela system_api_registry foi deletada
 
 // Security wrapper component
 interface BanInfo {
@@ -145,9 +140,9 @@ const DemoModeIndicator = () => {
         variant="outline"
         className="bg-yellow-500/20 border-yellow-500 text-yellow-700 dark:text-yellow-300 font-semibold px-3 py-1.5 text-sm shadow-lg"
       >
-        🎭 MODO DEMONSTRAÇÃO
+        MODO DEMONSTRACAO
         {demoType === "clean" && " (Limpo)"}
-        {demoType === "seeded" && " (Com Histórico)"}
+        {demoType === "seeded" && " (Com Historico)"}
       </Badge>
     </div>
   );
@@ -155,7 +150,7 @@ const DemoModeIndicator = () => {
 
 // Demo Cleanup Wrapper
 const DemoCleanupWrapper = ({ children }: { children: React.ReactNode }) => {
-  useDemoCleanup(); // Cleanup automático ao fechar aba
+  useDemoCleanup(); // Cleanup automatico ao fechar aba
   return <>{children}</>;
 };
 
@@ -172,11 +167,14 @@ const App = () => (
                 <BrowserRouter>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
-                    <Route path="/" element={<Index />} />
+                    {/* Redirecionar "/" para login */}
+                    <Route path="/" element={<Navigate to="/admin/login" replace />} />
+
+                    {/* Auth Routes */}
                     <Route path="/admin/login" element={<AdminLogin />} />
                     <Route path="/admin/signup" element={<AdminSignup />} />
                     <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-                    
+
                     {/* Protected Routes - Desktop Only */}
                     <Route path="/hub" element={
                       <DeviceGate allowMobile={false}>
@@ -213,21 +211,20 @@ const App = () => (
                         </ProtectedRoute>
                       </DeviceGate>
                     } />
-                    
+
                     {/* Public Routes */}
                     <Route path="/docs" element={<Documentation />} />
                     <Route path="/arquitetura" element={<Arquitetura />} />
-                    <Route path="/contact" element={<Contact />} />
-                    
+
                     {/* PWA Route - Mobile Only */}
                     <Route path="/pwa" element={
                       <DeviceGate allowDesktop={false}>
                         <PWAVoiceAssistant />
                       </DeviceGate>
                     } />
-                    
+
                     <Route path="/invite/:token" element={<InvitePage />} />
-                    
+
                     {/* PWA Token Route - Mobile Only - Accepts invitation tokens */}
                     <Route path="/pwa/:token" element={
                       <DeviceGate allowDesktop={false}>
@@ -243,7 +240,7 @@ const App = () => (
 
                     {/* Temporary test route */}
                     <Route path="/test/retail-diagram" element={<TestRetailDiagram />} />
-                    
+
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
