@@ -129,6 +129,13 @@ export default function InvitePage() {
         return;
       }
 
+      // Tabela user_invitations foi removida - sistema de convites admin desabilitado
+      // Redirecionando para página inicial
+      setStep("error");
+      setErrorMessage("Sistema de convites temporariamente desabilitado. Use /pwa para acessar o PWA.");
+      return;
+
+      /* Código original comentado - tabela user_invitations removida
       try {
         const { data, error } = await supabase
           .from("user_invitations")
@@ -141,6 +148,9 @@ export default function InvitePage() {
           setErrorMessage("Convite não encontrado");
           return;
         }
+      */
+      try {
+        const data = null; const error = true; // Placeholder
 
         // Check if expired
         if (new Date(data.expires_at) < new Date()) {

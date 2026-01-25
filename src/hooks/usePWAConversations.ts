@@ -162,34 +162,11 @@ export function usePWAConversations() {
     }
   }, []);
 
-  // CORRIGIDO: Permite query vazia para pre-carregar + status = 'approved'
-  const fetchTaxonomySuggestions = useCallback(async (query: string) => {
+  // Tabela global_taxonomy foi removida - retornando array vazio
+  const fetchTaxonomySuggestions = useCallback(async (_query: string) => {
     try {
-      console.log('[usePWAConversations] Buscando taxonomias:', query || '(todas)');
-      
-      let dbQuery = supabase
-        .from('global_taxonomy')
-        .select('id, name, code')
-        .eq('status', 'approved') // CORRIGIDO: era 'active', mas os dados tem 'approved'
-        .limit(20);
-      
-      // Filtrar por query se fornecida
-      if (query.length > 0) {
-        dbQuery = dbQuery.ilike('name', `%${query}%`);
-      }
-      
-      const { data, error } = await dbQuery;
-      
-      if (error) throw error;
-      
-      const suggestions: AutocompleteItem[] = (data || []).map((item) => ({
-        value: item.code || item.name,
-        label: item.name,
-        category: 'taxonomy' as const,
-      }));
-      
-      setTaxonomySuggestions(suggestions);
-      console.log('[usePWAConversations] Taxonomias encontradas:', suggestions.length);
+      // Taxonomias desabilitadas - tabela removida do banco
+      setTaxonomySuggestions([]);
     } catch (err) {
       console.error('[usePWAConversations] Erro ao buscar taxonomias:', err);
       setTaxonomySuggestions([]);

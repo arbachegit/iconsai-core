@@ -120,44 +120,11 @@ export default function PWARegisterPage() {
         }
       }
 
-      // Se tem token (fluxo create-invitation via user_invitations)
+      // Se tem token (fluxo via pwa_invites)
       if (token) {
         try {
-          // Buscar em user_invitations (tokens longos de 64 chars gerados por create-invitation)
-          const { data, error: queryError } = await supabase
-            .from("user_invitations")
-            .select("id, name, phone, email, status, expires_at, has_app_access")
-            .eq("token", token)
-            .eq("status", "pending")
-            .single();
-
-          if (!queryError && data) {
-            // Verificar expiração
-            if (data.expires_at && new Date(data.expires_at) < new Date()) {
-              console.error("Invitation expired");
-              setPageState("invalid");
-              return;
-            }
-
-            // Verificar se tem acesso ao app
-            if (!data.has_app_access) {
-              console.error("User does not have app access");
-              setPageState("invalid");
-              return;
-            }
-
-            setInvitation({
-              id: data.id,
-              name: data.name || "",
-              phone: data.phone || "",
-              email: data.email || undefined,
-            });
-            setPhone(data.phone || "");
-            setPageState("confirm");
-            return;
-          }
-
-          // Fallback: tentar em pwa_invites (compatibilidade com ambas estruturas)
+          // Tabela user_invitations foi removida - usando apenas pwa_invites
+          // Buscar em pwa_invites
           // Using any due to outdated Supabase types
           const { data: pwaData, error: pwaError } = await (supabase as any)
             .from("pwa_invites")
