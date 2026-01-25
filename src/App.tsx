@@ -11,7 +11,7 @@ import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import { FloatingAudioPlayer } from "./components/FloatingAudioPlayer";
-import { useApiRegistrySync } from "./hooks/useApiRegistrySync";
+// useApiRegistrySync removido - tabela system_api_registry foi deletada
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { BannedScreen } from "./components/BannedScreen";
@@ -47,11 +47,7 @@ const PageLoader = () => (
 
 const queryClient = new QueryClient();
 
-// Component that activates API Registry sync
-const ApiRegistrySyncProvider = ({ children }: { children: React.ReactNode }) => {
-  useApiRegistrySync();
-  return <>{children}</>;
-};
+// ApiRegistrySyncProvider removido - tabela system_api_registry foi deletada
 
 // Security wrapper component
 interface BanInfo {
@@ -170,7 +166,6 @@ const App = () => (
         <TooltipProvider>
           <SecurityWrapper>
             <DemoCleanupWrapper>
-              <ApiRegistrySyncProvider>
                 <Toaster />
                 <Sonner />
                 <DemoModeIndicator />
@@ -256,7 +251,6 @@ const App = () => (
               </BrowserRouter>
               {/* Global Floating Audio Player */}
               <FloatingAudioPlayer />
-            </ApiRegistrySyncProvider>
           </DemoCleanupWrapper>
         </SecurityWrapper>
         </TooltipProvider>

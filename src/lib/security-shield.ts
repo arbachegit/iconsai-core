@@ -214,44 +214,11 @@ function isShieldActive(): boolean {
 // CARREGAR CONFIGURAÇÕES DO BANCO
 // ============================================
 async function fetchSecurityConfig(): Promise<void> {
-  try {
-    securityLog("info", "Carregando configurações do banco...");
-
-    const { data, error } = await supabase.from("security_shield_config").select("*").limit(1).single();
-
-    if (error) {
-      securityLog("warn", "Erro ao carregar config do banco, usando DEFAULTS SEGUROS", error.message);
-      // ✅ MANTÉM DEFAULTS SEGUROS (tudo desabilitado)
-      shieldConfig = { ...SAFE_DEFAULTS };
-      configLoadedFromDB = false;
-      return;
-    }
-
-    if (data) {
-      // ✅ Merge com defaults para garantir que todas as propriedades existem
-      shieldConfig = {
-        ...SAFE_DEFAULTS,
-        ...data,
-      };
-      configLoadedFromDB = true;
-
-      securityLog("info", "Configurações carregadas do banco:", {
-        shield_enabled: shieldConfig.shield_enabled,
-        devtools_detection_enabled: shieldConfig.devtools_detection_enabled,
-        keyboard_shortcuts_block_enabled: shieldConfig.keyboard_shortcuts_block_enabled,
-        right_click_block_enabled: shieldConfig.right_click_block_enabled,
-        auto_ban_on_violation: shieldConfig.auto_ban_on_violation,
-      });
-    } else {
-      securityLog("warn", "Nenhuma config encontrada no banco, usando DEFAULTS SEGUROS");
-      shieldConfig = { ...SAFE_DEFAULTS };
-      configLoadedFromDB = false;
-    }
-  } catch (error) {
-    securityLog("error", "Exceção ao carregar config, usando DEFAULTS SEGUROS", error);
-    shieldConfig = { ...SAFE_DEFAULTS };
-    configLoadedFromDB = false;
-  }
+  // ✅ Tabela security_shield_config foi removida do banco
+  // Usando SAFE_DEFAULTS (tudo desabilitado) diretamente
+  securityLog("info", "Usando configurações SAFE_DEFAULTS (shield desabilitado)");
+  shieldConfig = { ...SAFE_DEFAULTS };
+  configLoadedFromDB = false;
 }
 
 // ============================================
