@@ -124,8 +124,22 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children }) => {
             </div>
 
             {/* PWA Content */}
-            <div className="absolute inset-0 rounded-[45px] overflow-hidden">
-              {children}
+            <div
+              className="absolute inset-0 rounded-[45px]"
+              style={{
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  overflow: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {children}
+              </div>
             </div>
 
             {/* Home indicator */}
