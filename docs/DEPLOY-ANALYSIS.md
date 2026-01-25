@@ -253,7 +253,7 @@ Build → Testes → Staging → Aprovacao → Canary → Production
 ## Estrutura no Servidor
 
 ```
-/var/www/knowyou-production/
+/var/www/app/
 ├── dist/                    ← Versao atual (servida pelo Nginx)
 │   ├── index.html
 │   ├── assets/
@@ -278,7 +278,7 @@ https://github.com/arbachegit/iconsai-core/actions
 ### Rollback manual
 ```bash
 ssh user@servidor
-cd /var/www/knowyou-production
+cd /var/www/app
 ls backups/                                    # Ver backups disponiveis
 rm -rf dist && cp -r backups/backup_XXXXX dist # Restaurar
 ```
@@ -287,7 +287,7 @@ rm -rf dist && cp -r backups/backup_XXXXX dist # Restaurar
 ```bash
 # Local
 npm run build
-rsync -avzr --delete dist/ user@servidor:/var/www/knowyou-production/dist/
+rsync -avzr --delete dist/ user@servidor:/var/www/app/dist/
 ```
 
 ---

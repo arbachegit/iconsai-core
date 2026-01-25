@@ -14,7 +14,7 @@ on:
 
 env:
   NODE_VERSION: '20'
-  DEPLOY_PATH: /var/www/knowyou-production
+  DEPLOY_PATH: /var/www/app
   RETENTION_COUNT: 3  # Número de backups a manter
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
       - name: Create backup on server
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            DEPLOY_PATH="/var/www/knowyou-production"
+            DEPLOY_PATH="/var/www/app"
             BACKUP_DIR="$DEPLOY_PATH/backups"
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
@@ -113,7 +113,7 @@ jobs:
       - name: Set permissions
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            chmod -R 755 /var/www/knowyou-production/dist
+            chmod -R 755 /var/www/app/dist
             echo "Permissions set successfully"
           ENDSSH
 
@@ -194,7 +194,7 @@ jobs:
           echo "### 🔄 Rollback Instructions" >> $GITHUB_STEP_SUMMARY
           echo "To rollback, run this on the server:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "cd /var/www/knowyou-production" >> $GITHUB_STEP_SUMMARY
+          echo "cd /var/www/app" >> $GITHUB_STEP_SUMMARY
           echo "ls backups/  # List available backups" >> $GITHUB_STEP_SUMMARY
           echo "rm -rf dist && cp -r backups/backup_YYYYMMDD_HHMMSS dist" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
