@@ -18,3 +18,28 @@ export * from "./ui";
 
 // Hooks
 export * from "./hooks";
+
+// ============================================================
+// PWA Voice Platform - Agent Architecture
+// ============================================================
+
+// EventBus
+export { EventBus, useEventBus } from "./EventBus";
+
+// AudioEngine
+export { AudioEngine, useAudioEngine } from "./AudioEngine";
+
+// Core Components
+export {
+  UnifiedButton,
+  SpectrumAnalyzer,
+  ModuleHeader,
+  HistoryButton,
+  NavigationFooter,
+} from "./components";
+
+// Router
+export { AgentRouter } from "./Router";
+
+// Core App
+export { CoreApp } from "./App";

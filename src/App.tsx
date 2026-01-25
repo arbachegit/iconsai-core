@@ -34,6 +34,7 @@ const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
 const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
 const PWACityPage = lazy(() => import("./pages/PWACityPage"));
 const PWAHealthPage = lazy(() => import("./pages/PWAHealthPage"));
+const CoreApp = lazy(() => import("./core/App"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -237,6 +238,18 @@ const App = () => (
 
                     {/* PWA Health Route - Mobile Only (com toggle para admin/superadmin) */}
                     <Route path="/pwahealth" element={<PWAHealthPage />} />
+
+                    {/* PWA Agent Platform - Voice Agents */}
+                    <Route path="/pwa/agents" element={
+                      <DeviceGate allowDesktop={false}>
+                        <CoreApp />
+                      </DeviceGate>
+                    } />
+                    <Route path="/pwa/agents/:agentName" element={
+                      <DeviceGate allowDesktop={false}>
+                        <CoreApp />
+                      </DeviceGate>
+                    } />
 
                     {/* Temporary test route */}
                     <Route path="/test/retail-diagram" element={<TestRetailDiagram />} />

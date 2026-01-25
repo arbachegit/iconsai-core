@@ -155,3 +155,134 @@ export interface SpectrumConfig {
   primaryColor?: string;
   secondaryColor?: string;
 }
+
+// ============================================
+// UNIFIED BUTTON STATES (Agent Platform)
+// ============================================
+
+export type UnifiedButtonState = 'idle' | 'playing' | 'recording' | 'processing';
+
+// ============================================
+// AGENT CONFIGURATION
+// ============================================
+
+export interface AgentConfig {
+  /** Internal name (used in code) */
+  name: string;
+  /** URL slug for routing */
+  slug: string;
+  /** Display name shown to user */
+  displayName: string;
+  /** Lucide icon name */
+  icon: string;
+  /** Primary color (hex) */
+  color: string;
+  /** Optional welcome audio URL */
+  welcomeAudioUrl?: string;
+  /** Supabase edge function name */
+  edgeFunctionName: string;
+  /** Whether agent is active */
+  isActive?: boolean;
+  /** Sort order for navigation */
+  sortOrder?: number;
+}
+
+// ============================================
+// EVENT BUS TYPES
+// ============================================
+
+export interface AudioPlayEvent {
+  url: string;
+  agentName: string;
+}
+
+export interface AudioStopEvent {
+  agentName: string;
+}
+
+export interface AudioEndedEvent {
+  agentName: string;
+}
+
+export interface RecordingStartEvent {
+  agentName: string;
+}
+
+export interface RecordingStopEvent {
+  audioBlob: Blob;
+  duration: number;
+}
+
+export interface ButtonStateChangeEvent {
+  state: UnifiedButtonState;
+}
+
+export interface NavigationChangeEvent {
+  agentName: string;
+}
+
+export interface EventMap {
+  'audio:play': AudioPlayEvent;
+  'audio:stop': AudioStopEvent;
+  'audio:ended': AudioEndedEvent;
+  'recording:start': RecordingStartEvent;
+  'recording:stop': RecordingStopEvent;
+  'button:stateChange': ButtonStateChangeEvent;
+  'footer:show': void;
+  'navigation:change': NavigationChangeEvent;
+}
+
+// ============================================
+// AGENT PROPS
+// ============================================
+
+export interface AgentProps {
+  /** Device fingerprint */
+  deviceId: string;
+  /** Session ID */
+  sessionId: string;
+  /** Agent configuration */
+  config: AgentConfig;
+}
+
+// ============================================
+// CONVERSATION TYPES (Agent Platform)
+// ============================================
+
+export interface ConversationMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  audioUrl?: string;
+  timestamp: Date;
+}
+
+export interface AgentConversation {
+  id: string;
+  agentName: string;
+  messages: ConversationMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// AUDIO ENGINE TYPES
+// ============================================
+
+export type AudioEngineState = 'idle' | 'loading' | 'playing' | 'paused';
+
+export interface AudioEngineCallbacks {
+  onPlay?: () => void;
+  onPause?: () => void;
+  onStop?: () => void;
+  onEnded?: () => void;
+  onError?: (error: Error) => void;
+  onProgress?: (progress: number) => void;
+  onFrequencyData?: (data: number[]) => void;
+}
+
+// ============================================
+// SPECTRUM ANALYZER MODES
+// ============================================
+
+export type SpectrumMode = 'idle' | 'playing' | 'recording';
