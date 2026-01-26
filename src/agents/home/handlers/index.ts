@@ -68,7 +68,7 @@ export const buscarPopulacao: ToolHandler<
 
   let query = supabase
     .from('municipios')
-    .select('codigo_ibge, nome, uf, populacao, area_km2');
+    .select('codigo_ibge, nome, uf, populacao_2022, regiao, lat, lng');
 
   if (codigo_ibge) {
     query = query.eq('codigo_ibge', codigo_ibge);
@@ -112,8 +112,8 @@ export const buscarEstabelecimentoSaude: ToolHandler<
   // Buscar estabelecimentos
   let query = supabase
     .from('estabelecimentos_saude')
-    .select('*')
-    .eq('codigo_ibge_municipio', mun.codigo_ibge);
+    .select('cnes, nome_fantasia, tipo_estabelecimento, endereco, bairro, telefone, atendimento_urgencia')
+    .eq('codigo_ibge', mun.codigo_ibge);
 
   if (tipo !== 'TODOS') {
     query = query.eq('tipo_estabelecimento', tipo);
@@ -122,8 +122,14 @@ export const buscarEstabelecimentoSaude: ToolHandler<
   const { data, error } = await query.limit(limite);
 
   if (error) {
-    console.error('[buscarEstabelecimentoSaude] Error:', error);
-    return null;
+    // Table might not exist yet or no data
+    console.warn('[buscarEstabelecimentoSaude] Query error:', error.message);
+    return {
+      municipio: mun.nome,
+      message: 'Dados de estabelecimentos de saúde ainda não disponíveis para este município',
+      total: 0,
+      estabelecimentos: [],
+    };
   }
 
   return {
@@ -157,18 +163,24 @@ export const buscarEscola: ToolHandler<
   // Buscar escolas
   let query = supabase
     .from('escolas')
-    .select('*')
-    .eq('codigo_ibge_municipio', mun.codigo_ibge);
+    .select('codigo_inep, nome, dependencia_administrativa, endereco, bairro, telefone, etapas_ensino')
+    .eq('codigo_ibge', mun.codigo_ibge);
 
   if (tipo !== 'TODOS') {
-    query = query.eq('etapa_ensino', tipo);
+    query = query.contains('etapas_ensino', [tipo]);
   }
 
   const { data, error } = await query.limit(limite);
 
   if (error) {
-    console.error('[buscarEscola] Error:', error);
-    return null;
+    // Table might not exist yet or no data
+    console.warn('[buscarEscola] Query error:', error.message);
+    return {
+      municipio: mun.nome,
+      message: 'Dados de escolas ainda não disponíveis para este município',
+      total: 0,
+      escolas: [],
+    };
   }
 
   return {

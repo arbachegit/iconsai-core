@@ -10,10 +10,20 @@ CREATE TABLE IF NOT EXISTS public.iconsai_agents (
   name TEXT NOT NULL UNIQUE,
   slug TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
+  description TEXT,
   icon TEXT DEFAULT 'Bot',
   color TEXT DEFAULT '#00D4FF',
   welcome_audio_url TEXT,
   edge_function_name TEXT NOT NULL,
+  -- MCP Configuration (Tools, Resources, Prompts)
+  mcp_config JSONB DEFAULT '{}',
+  -- Domains this agent can handle
+  domains TEXT[] DEFAULT ARRAY[]::TEXT[],
+  -- Keywords for intent matching
+  keywords TEXT[] DEFAULT ARRAY[]::TEXT[],
+  -- Fallback configuration
+  fallback_provider TEXT DEFAULT 'gemini',
+  fallback_model TEXT DEFAULT 'gemini-2.0-flash',
   is_active BOOLEAN DEFAULT true,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -66,13 +76,38 @@ CREATE TRIGGER update_iconsai_agents_updated_at_trigger
   EXECUTE FUNCTION update_iconsai_agents_updated_at();
 
 -- Insert default home agent
-INSERT INTO public.iconsai_agents (name, slug, display_name, icon, color, edge_function_name, sort_order)
-VALUES ('home', 'home', 'IconsAI', 'Home', '#00D4FF', 'pwa-home-agent', 0)
+INSERT INTO public.iconsai_agents (
+  name,
+  slug,
+  display_name,
+  description,
+  icon,
+  color,
+  edge_function_name,
+  domains,
+  keywords,
+  sort_order
+)
+VALUES (
+  'home',
+  'home',
+  'IconsAI',
+  'Assistente principal do IconsAI - roteia para domínios especializados',
+  'Home',
+  '#00D4FF',
+  'pwa-home-agent',
+  ARRAY['geral', 'localizacao', 'populacao', 'saude', 'educacao', 'atualidades'],
+  ARRAY['iconsai', 'assistente', 'ajuda', 'informacao'],
+  0
+)
 ON CONFLICT (name) DO UPDATE SET
   display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
   icon = EXCLUDED.icon,
   color = EXCLUDED.color,
   edge_function_name = EXCLUDED.edge_function_name,
+  domains = EXCLUDED.domains,
+  keywords = EXCLUDED.keywords,
   updated_at = now();
 
 -- Add comment

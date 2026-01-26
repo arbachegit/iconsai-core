@@ -73,13 +73,18 @@ export async function getAIResponse(
   context: ConversationContext
 ): Promise<AIResponse> {
   try {
+    // Format history for edge function
+    const history = (context.messages || []).map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
     const { data, error } = await supabase.functions.invoke('pwa-home-agent', {
       body: {
-        message: userMessage,
+        prompt: userMessage,
         deviceId: context.deviceId,
         sessionId: context.sessionId,
-        agentName: context.agentName,
-        conversationHistory: context.messages || [],
+        history,
       },
     });
 
