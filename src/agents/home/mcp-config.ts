@@ -1,10 +1,14 @@
 /**
  * Home Agent MCP Configuration
- * @version 1.0.0
+ * @version 2.0.0
  * @date 2026-01-26
  *
  * Defines the tools, resources, and prompts for the Home Agent.
  * This is the main IconsAI assistant that can route to specialized domains.
+ *
+ * Data Sources (via MCP multi-database):
+ * - brasil-data-hub: pop_municipios, geo_municipios, pop_estados
+ * - fiscal-municipal: diagnosticos, indicadores, estabelecimentos_saude, escolas
  */
 
 import type { MCPServerConfig } from '@/lib/mcp/types';
@@ -23,13 +27,15 @@ export const HOME_MCP_CONFIG: MCPServerConfig = {
   // TOOLS - O que este agente pode FAZER
   // ============================================
   tools: [
-    // --- SQL Tools (Dados Estruturados) ---
+    // --- MCP Tools (Brasil Data Hub) ---
     {
       name: 'buscar_municipio',
-      description: 'Busca informações de um município brasileiro por nome ou código IBGE',
-      source: 'sql',
+      description: 'Busca informações completas de um município brasileiro por nome ou código IBGE',
+      source: 'mcp',
+      database: 'brasil-data-hub',
+      table: 'pop_municipios',
       estimatedMs: 100,
-      keywords: ['municipio', 'cidade', 'ibge'],
+      keywords: ['municipio', 'cidade', 'ibge', 'localidade'],
       inputSchema: {
         type: 'object',
         properties: {
@@ -49,10 +55,12 @@ export const HOME_MCP_CONFIG: MCPServerConfig = {
     },
     {
       name: 'buscar_populacao',
-      description: 'Busca dados populacionais de um município',
-      source: 'sql',
-      estimatedMs: 100,
-      keywords: ['populacao', 'habitantes', 'censo'],
+      description: 'Busca dados populacionais completos de um município incluindo população, área, densidade, PIB, IDH e histórico',
+      source: 'mcp',
+      database: 'brasil-data-hub',
+      table: 'pop_municipios',
+      estimatedMs: 150,
+      keywords: ['populacao', 'habitantes', 'censo', 'pib', 'idh', 'densidade', 'area'],
       inputSchema: {
         type: 'object',
         properties: {
@@ -63,6 +71,11 @@ export const HOME_MCP_CONFIG: MCPServerConfig = {
           municipio: {
             type: 'string',
             description: 'Nome do município (alternativa ao código)',
+          },
+          incluir_historico: {
+            type: 'boolean',
+            description: 'Incluir série histórica de população',
+            default: false,
           },
         },
       },

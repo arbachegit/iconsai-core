@@ -48,7 +48,11 @@ export interface MCPTool {
   /** Path to handler function or inline handler */
   handler: string | ToolHandler;
   /** Data source this tool uses */
-  source?: 'sql' | 'rag' | 'api' | 'llm';
+  source?: 'sql' | 'rag' | 'api' | 'llm' | 'mcp';
+  /** Target database for MCP source (e.g., 'brasil-data-hub', 'fiscal-municipal') */
+  database?: string;
+  /** Target table for MCP source */
+  table?: string;
   /** Estimated execution time in ms */
   estimatedMs?: number;
   /** Keywords for intent matching */
