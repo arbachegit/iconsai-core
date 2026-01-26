@@ -15,9 +15,13 @@ import {
   fetchPopMunicipio,
   fetchPopulacaoHistorico,
   fetchIndicadoresDemograficos,
+  fetchGeoMunicipio,
+  fetchMunicipioCompleto,
   getBrasilDataHubClient,
   type PopMunicipioData,
   type MunicipioResumo,
+  type GeoMunicipioData,
+  type MunicipioCompleto,
 } from '@/lib/mcp/database-client';
 
 // ============================================
@@ -26,26 +30,60 @@ import {
 
 /**
  * Busca município por nome ou código IBGE
- * Fonte: brasil-data-hub.pop_municipios (via MCP)
+ * Fonte: brasil-data-hub (geo_municipios + pop_municipios via MCP)
+ * Retorna dados combinados: geográficos + populacionais
  */
 export const buscarMunicipio: ToolHandler<
-  { termo: string; uf?: string },
+  { termo: string; uf?: string; completo?: boolean },
   unknown
 > = async (input, context) => {
-  const { termo, uf } = input;
+  const { termo, uf, completo = false } = input;
 
-  // Try brasil-data-hub first (more complete data)
-  const brasilDataResult = await fetchPopMunicipio(termo, uf);
-
-  if (brasilDataResult && brasilDataResult.length > 0) {
-    console.log('[buscarMunicipio] Found in brasil-data-hub:', brasilDataResult.length);
-    return brasilDataResult;
+  // If complete data requested and we have IBGE code, fetch combined data
+  if (completo && /^\d{7}$/.test(termo)) {
+    const municipioCompleto = await fetchMunicipioCompleto(parseInt(termo));
+    if (municipioCompleto) {
+      console.log('[buscarMunicipio] Found complete data for:', termo);
+      return municipioCompleto;
+    }
   }
 
-  // Fallback to local municipios table
+  // Try brasil-data-hub population data first
+  const popResult = await fetchPopMunicipio(termo, uf);
+
+  if (popResult && popResult.length > 0) {
+    console.log('[buscarMunicipio] Found in pop_municipios:', popResult.length);
+
+    // Enrich with geo data if single result
+    if (popResult.length === 1) {
+      const geoData = await fetchGeoMunicipio(String(popResult[0].cod_ibge));
+      if (geoData && geoData.length > 0) {
+        const geo = geoData[0];
+        return {
+          ...popResult[0],
+          latitude: geo.latitude,
+          longitude: geo.longitude,
+          altitude_metros: geo.altitude_metros,
+          area_km2: geo.area_km2,
+          eh_capital: geo.eh_capital,
+          gentilico: geo.gentilico,
+        };
+      }
+    }
+
+    return popResult;
+  }
+
+  // Try geo_municipios as fallback
+  const geoResult = await fetchGeoMunicipio(termo);
+  if (geoResult && geoResult.length > 0) {
+    console.log('[buscarMunicipio] Found in geo_municipios:', geoResult.length);
+    return geoResult;
+  }
+
+  // Final fallback to local municipios table
   console.log('[buscarMunicipio] Fallback to local municipios table');
 
-  // Se é código IBGE (7 dígitos)
   if (/^\d{7}$/.test(termo)) {
     const { data, error } = await supabase
       .from('municipios')
@@ -60,7 +98,6 @@ export const buscarMunicipio: ToolHandler<
     return data ? [data] : null;
   }
 
-  // Busca por nome
   let query = supabase
     .from('municipios')
     .select('*')

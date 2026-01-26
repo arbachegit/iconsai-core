@@ -52,12 +52,23 @@ export {
   initializeMCPDatabases,
   getBrasilDataHubClient,
   getFiscalMunicipalClient,
+  // Population data
   fetchPopMunicipio,
   fetchPopulacaoHistorico,
   fetchIndicadoresDemograficos,
+  // Geographic data
+  fetchGeoMunicipio,
+  fetchMunicipioCompleto,
+  fetchMunicipiosPorRegiao,
+  fetchCapitais,
+  // State data
   fetchEstado,
+  // Config
   DATABASE_CONFIGS,
+  // Types
   type DatabaseConfig,
   type PopMunicipioData,
   type MunicipioResumo,
+  type GeoMunicipioData,
+  type MunicipioCompleto,
 } from './database-client';

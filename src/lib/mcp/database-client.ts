@@ -373,6 +373,255 @@ export async function fetchIndicadoresDemograficos(
   }
 }
 
+// ============================================
+// GEO_MUNICIPIOS - Geographic Data
+// ============================================
+
+/**
+ * Geographic data from brasil-data-hub.geo_municipios
+ */
+export interface GeoMunicipioData {
+  id: string;
+  codigo_ibge: number;
+  nome: string;
+  estado_id: string;
+  latitude?: number;
+  longitude?: number;
+  altitude_metros?: number;
+  area_km2?: number;
+  densidade_demografica?: number;
+  eh_capital?: boolean;
+  codigo_siafi?: number;
+  gentilico?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Combined municipality data (geo + population)
+ */
+export interface MunicipioCompleto {
+  // Identification
+  codigo_ibge: number;
+  nome: string;
+  uf: string;
+  // Geographic
+  latitude?: number;
+  longitude?: number;
+  altitude_metros?: number;
+  area_km2?: number;
+  eh_capital?: boolean;
+  gentilico?: string;
+  // Demographic (from pop_municipios)
+  populacao?: number;
+  populacao_urbana?: number;
+  populacao_rural?: number;
+  densidade_demografica?: number;
+  faixa_populacional?: string;
+  ano_referencia?: number;
+  // Health indicators
+  taxa_mortalidade?: number;
+  mortalidade_infantil?: number;
+}
+
+/**
+ * Fetch geographic data for a municipality
+ */
+export async function fetchGeoMunicipio(
+  termo: string,
+  uf?: string
+): Promise<GeoMunicipioData[] | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchGeoMunicipio] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    // Check if it's IBGE code (7 digits)
+    if (/^\d{7}$/.test(termo)) {
+      const { data, error } = await client
+        .from('geo_municipios')
+        .select('*')
+        .eq('codigo_ibge', parseInt(termo))
+        .single();
+
+      if (error) {
+        console.error('[fetchGeoMunicipio] Error:', error);
+        return null;
+      }
+
+      return data ? [data] : null;
+    }
+
+    // Search by name
+    let query = client
+      .from('geo_municipios')
+      .select('*')
+      .ilike('nome', `%${termo}%`);
+
+    // Note: geo_municipios doesn't have UF directly, it has estado_id
+    // We'll need to join or filter differently if UF is needed
+
+    const { data, error } = await query.limit(10);
+
+    if (error) {
+      console.error('[fetchGeoMunicipio] Error:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[fetchGeoMunicipio] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch complete municipality data combining geo and population
+ */
+export async function fetchMunicipioCompleto(
+  codigoIbge: number
+): Promise<MunicipioCompleto | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchMunicipioCompleto] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    // Fetch geo data
+    const { data: geo, error: geoError } = await client
+      .from('geo_municipios')
+      .select('*')
+      .eq('codigo_ibge', codigoIbge)
+      .single();
+
+    if (geoError) {
+      console.warn('[fetchMunicipioCompleto] Geo error:', geoError.message);
+    }
+
+    // Fetch latest population data
+    const { data: pop, error: popError } = await client
+      .from('pop_municipios')
+      .select('*')
+      .eq('cod_ibge', codigoIbge)
+      .order('ano', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (popError) {
+      console.warn('[fetchMunicipioCompleto] Pop error:', popError.message);
+    }
+
+    // Combine data
+    if (!geo && !pop) {
+      return null;
+    }
+
+    return {
+      codigo_ibge: codigoIbge,
+      nome: geo?.nome || pop?.nome_municipio || '',
+      uf: pop?.uf || '',
+      // Geographic
+      latitude: geo?.latitude,
+      longitude: geo?.longitude,
+      altitude_metros: geo?.altitude_metros,
+      area_km2: geo?.area_km2,
+      eh_capital: geo?.eh_capital,
+      gentilico: geo?.gentilico,
+      // Demographic
+      populacao: pop?.populacao,
+      populacao_urbana: pop?.populacao_urbana,
+      populacao_rural: pop?.populacao_rural,
+      densidade_demografica: geo?.densidade_demografica || undefined,
+      faixa_populacional: pop?.faixa_populacional,
+      ano_referencia: pop?.ano,
+      // Health
+      taxa_mortalidade: pop?.taxa_mortalidade,
+      mortalidade_infantil: pop?.mortalidade_infantil,
+    };
+  } catch (error) {
+    console.error('[fetchMunicipioCompleto] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch municipalities by geographic bounds (bounding box)
+ */
+export async function fetchMunicipiosPorRegiao(
+  latMin: number,
+  latMax: number,
+  lngMin: number,
+  lngMax: number,
+  limite = 50
+): Promise<GeoMunicipioData[] | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchMunicipiosPorRegiao] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    const { data, error } = await client
+      .from('geo_municipios')
+      .select('*')
+      .gte('latitude', latMin)
+      .lte('latitude', latMax)
+      .gte('longitude', lngMin)
+      .lte('longitude', lngMax)
+      .limit(limite);
+
+    if (error) {
+      console.error('[fetchMunicipiosPorRegiao] Error:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[fetchMunicipiosPorRegiao] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch capitals only
+ */
+export async function fetchCapitais(): Promise<GeoMunicipioData[] | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchCapitais] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    const { data, error } = await client
+      .from('geo_municipios')
+      .select('*')
+      .eq('eh_capital', true)
+      .order('nome');
+
+    if (error) {
+      console.error('[fetchCapitais] Error:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[fetchCapitais] Exception:', error);
+    return null;
+  }
+}
+
+// ============================================
+// ESTADOS
+// ============================================
+
 /**
  * Fetch state data from brasil-data-hub
  */
