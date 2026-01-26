@@ -14,8 +14,10 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   fetchPopMunicipio,
   fetchPopulacaoHistorico,
+  fetchIndicadoresDemograficos,
   getBrasilDataHubClient,
   type PopMunicipioData,
+  type MunicipioResumo,
 } from '@/lib/mcp/database-client';
 
 // ============================================
@@ -81,13 +83,13 @@ export const buscarMunicipio: ToolHandler<
 /**
  * Busca dados populacionais completos
  * Fonte: brasil-data-hub.pop_municipios (via MCP)
- * Inclui: população estimada, censo, área, densidade, PIB, IDH
+ * Inclui: população atual, urbana/rural, mortalidade, nascimentos, série histórica
  */
 export const buscarPopulacao: ToolHandler<
-  { codigo_ibge?: string; municipio?: string; incluir_historico?: boolean },
+  { codigo_ibge?: string; municipio?: string; incluir_historico?: boolean; ano?: number },
   unknown
 > = async (input, context) => {
-  const { codigo_ibge, municipio, incluir_historico = false } = input;
+  const { codigo_ibge, municipio, incluir_historico = false, ano } = input;
 
   const termo = codigo_ibge || municipio;
   if (!termo) {
@@ -100,41 +102,57 @@ export const buscarPopulacao: ToolHandler<
   if (brasilDataResult && brasilDataResult.length > 0) {
     const mun = brasilDataResult[0];
 
-    // Format rich response
+    // Format rich response with real pop_municipios structure
     const response: Record<string, unknown> = {
       municipio: {
-        codigo_ibge: mun.codigo_ibge,
-        nome: mun.nome,
+        cod_ibge: mun.cod_ibge,
+        nome: mun.nome_municipio,
         uf: mun.uf,
-        regiao: mun.regiao,
       },
       populacao: {
-        estimada: mun.populacao_estimada,
-        censo: mun.populacao_censo,
-        ano: mun.ano_populacao,
-        densidade_km2: mun.densidade_demografica,
+        total: mun.populacao_atual,
+        urbana: mun.populacao_urbana,
+        rural: mun.populacao_rural,
+        faixa: mun.faixa_populacional,
+        ano_referencia: mun.ano_referencia,
       },
-      territorio: {
-        area_km2: mun.area_km2,
-        latitude: mun.latitude,
-        longitude: mun.longitude,
-        capital: mun.capital,
-        mesorregiao: mun.mesorregiao,
-        microrregiao: mun.microrregiao,
+      indicadores_saude: {
+        taxa_mortalidade: mun.taxa_mortalidade,
+        mortalidade_infantil: mun.mortalidade_infantil,
       },
-      economia: {
-        pib: mun.pib,
-        pib_per_capita: mun.pib_per_capita,
-        idh: mun.idh,
-      },
-      fonte: 'brasil-data-hub',
+      fonte: mun.fonte || 'brasil-data-hub',
     };
 
     // Include historical data if requested
-    if (incluir_historico && mun.codigo_ibge) {
-      const historico = await fetchPopulacaoHistorico(mun.codigo_ibge);
-      if (historico) {
-        response.historico_populacao = historico;
+    if (incluir_historico && mun.cod_ibge) {
+      const historico = await fetchPopulacaoHistorico(mun.cod_ibge);
+      if (historico && historico.length > 0) {
+        response.serie_historica = historico.map(h => ({
+          ano: h.ano,
+          populacao: h.populacao,
+          populacao_urbana: h.populacao_urbana,
+          populacao_rural: h.populacao_rural,
+          obitos_total: h.obitos_total,
+          nascimentos: h.nascimentos,
+          taxa_mortalidade: h.taxa_mortalidade,
+        }));
+      }
+    }
+
+    // If specific year requested, fetch detailed indicators
+    if (ano && mun.cod_ibge) {
+      const indicadores = await fetchIndicadoresDemograficos(mun.cod_ibge, ano);
+      if (indicadores) {
+        response.dados_ano_especifico = {
+          ano: indicadores.ano,
+          populacao: indicadores.populacao,
+          obitos_total: indicadores.obitos_total,
+          obitos_masculinos: indicadores.obitos_masculinos,
+          obitos_femininos: indicadores.obitos_femininos,
+          nascimentos: indicadores.nascimentos,
+          taxa_mortalidade: indicadores.taxa_mortalidade,
+          mortalidade_infantil: indicadores.mortalidade_infantil,
+        };
       }
     }
 
@@ -164,14 +182,14 @@ export const buscarPopulacao: ToolHandler<
     const mun = data[0];
     return {
       municipio: {
-        codigo_ibge: mun.codigo_ibge,
+        cod_ibge: mun.codigo_ibge,
         nome: mun.nome,
         uf: mun.uf,
         regiao: mun.regiao,
       },
       populacao: {
-        estimada: mun.populacao_2022,
-        ano: 2022,
+        total: mun.populacao_2022,
+        ano_referencia: 2022,
       },
       territorio: {
         latitude: mun.lat,
@@ -180,7 +198,7 @@ export const buscarPopulacao: ToolHandler<
       economia: {
         pib_milhoes: mun.pib_2021_milhoes,
       },
-      fonte: 'local',
+      fonte: 'local-fallback',
     };
   }
 

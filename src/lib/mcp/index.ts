@@ -54,8 +54,10 @@ export {
   getFiscalMunicipalClient,
   fetchPopMunicipio,
   fetchPopulacaoHistorico,
+  fetchIndicadoresDemograficos,
   fetchEstado,
   DATABASE_CONFIGS,
   type DatabaseConfig,
   type PopMunicipioData,
+  type MunicipioResumo,
 } from './database-client';

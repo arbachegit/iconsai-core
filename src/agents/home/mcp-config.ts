@@ -55,12 +55,12 @@ export const HOME_MCP_CONFIG: MCPServerConfig = {
     },
     {
       name: 'buscar_populacao',
-      description: 'Busca dados populacionais completos de um município incluindo população, área, densidade, PIB, IDH e histórico',
+      description: 'Busca dados populacionais completos incluindo população urbana/rural, mortalidade, nascimentos e série histórica',
       source: 'mcp',
       database: 'brasil-data-hub',
       table: 'pop_municipios',
       estimatedMs: 150,
-      keywords: ['populacao', 'habitantes', 'censo', 'pib', 'idh', 'densidade', 'area'],
+      keywords: ['populacao', 'habitantes', 'censo', 'mortalidade', 'nascimentos', 'urbana', 'rural'],
       inputSchema: {
         type: 'object',
         properties: {
@@ -74,8 +74,12 @@ export const HOME_MCP_CONFIG: MCPServerConfig = {
           },
           incluir_historico: {
             type: 'boolean',
-            description: 'Incluir série histórica de população',
+            description: 'Incluir série histórica de população por ano',
             default: false,
+          },
+          ano: {
+            type: 'number',
+            description: 'Ano específico para buscar dados detalhados (ex: 2022)',
           },
         },
       },

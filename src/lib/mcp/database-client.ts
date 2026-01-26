@@ -148,33 +148,60 @@ export function getFiscalMunicipalClient(): SupabaseClient | null {
 // DATA ACCESS FUNCTIONS
 // ============================================
 
+/**
+ * Population data from brasil-data-hub.pop_municipios
+ * Time series table with demographic data per year
+ */
 export interface PopMunicipioData {
-  codigo_ibge: number;
-  nome: string;
+  id: string;
+  cod_ibge: number;
+  nome_municipio: string;
   uf: string;
-  regiao: string;
-  populacao_estimada?: number;
-  populacao_censo?: number;
-  ano_populacao?: number;
-  area_km2?: number;
-  densidade_demografica?: number;
-  pib?: number;
-  pib_per_capita?: number;
-  idh?: number;
-  latitude?: number;
-  longitude?: number;
-  capital?: boolean;
-  mesorregiao?: string;
-  microrregiao?: string;
+  ano: number;
+  populacao: number;
+  faixa_populacional?: string;
+  fonte?: string;
+  data_referencia?: string;
+  data_coleta?: string;
+  atualizado_em?: string;
+  // Demographic breakdown
+  populacao_urbana?: number;
+  populacao_rural?: number;
+  // Mortality data
+  obitos_total?: number;
+  obitos_masculinos?: number;
+  obitos_femininos?: number;
+  taxa_mortalidade?: number;
+  mortalidade_infantil?: number;
+  // Birth data
+  nascimentos?: number;
 }
 
 /**
- * Fetch municipality data from brasil-data-hub
+ * Aggregated municipality data with latest year
+ */
+export interface MunicipioResumo {
+  cod_ibge: number;
+  nome_municipio: string;
+  uf: string;
+  populacao_atual: number;
+  ano_referencia: number;
+  faixa_populacional?: string;
+  populacao_urbana?: number;
+  populacao_rural?: number;
+  taxa_mortalidade?: number;
+  mortalidade_infantil?: number;
+  fonte?: string;
+}
+
+/**
+ * Fetch latest municipality data from brasil-data-hub
+ * Gets the most recent year for each municipality
  */
 export async function fetchPopMunicipio(
   termo: string,
   uf?: string
-): Promise<PopMunicipioData[] | null> {
+): Promise<MunicipioResumo[] | null> {
   const client = getBrasilDataHubClient();
 
   if (!client) {
@@ -188,7 +215,9 @@ export async function fetchPopMunicipio(
       const { data, error } = await client
         .from('pop_municipios')
         .select('*')
-        .eq('codigo_ibge', parseInt(termo))
+        .eq('cod_ibge', parseInt(termo))
+        .order('ano', { ascending: false })
+        .limit(1)
         .single();
 
       if (error) {
@@ -196,27 +225,67 @@ export async function fetchPopMunicipio(
         return null;
       }
 
-      return data ? [data] : null;
+      if (data) {
+        return [{
+          cod_ibge: data.cod_ibge,
+          nome_municipio: data.nome_municipio,
+          uf: data.uf,
+          populacao_atual: data.populacao,
+          ano_referencia: data.ano,
+          faixa_populacional: data.faixa_populacional,
+          populacao_urbana: data.populacao_urbana,
+          populacao_rural: data.populacao_rural,
+          taxa_mortalidade: data.taxa_mortalidade,
+          mortalidade_infantil: data.mortalidade_infantil,
+          fonte: data.fonte,
+        }];
+      }
+      return null;
     }
 
-    // Search by name
+    // Search by name - get latest year for each matching municipality
+    // Using distinct on cod_ibge ordered by ano desc
     let query = client
       .from('pop_municipios')
-      .select('*')
-      .ilike('nome', `%${termo}%`);
+      .select('cod_ibge, nome_municipio, uf, ano, populacao, faixa_populacional, populacao_urbana, populacao_rural, taxa_mortalidade, mortalidade_infantil, fonte')
+      .ilike('nome_municipio', `%${termo}%`)
+      .order('ano', { ascending: false });
 
     if (uf) {
       query = query.eq('uf', uf.toUpperCase());
     }
 
-    const { data, error } = await query.limit(10);
+    const { data, error } = await query.limit(50);
 
     if (error) {
       console.error('[fetchPopMunicipio] Error:', error);
       return null;
     }
 
-    return data;
+    if (!data || data.length === 0) return null;
+
+    // Group by cod_ibge and take only the most recent year
+    const latestByMunicipio = new Map<number, MunicipioResumo>();
+
+    for (const row of data) {
+      if (!latestByMunicipio.has(row.cod_ibge)) {
+        latestByMunicipio.set(row.cod_ibge, {
+          cod_ibge: row.cod_ibge,
+          nome_municipio: row.nome_municipio,
+          uf: row.uf,
+          populacao_atual: row.populacao,
+          ano_referencia: row.ano,
+          faixa_populacional: row.faixa_populacional,
+          populacao_urbana: row.populacao_urbana,
+          populacao_rural: row.populacao_rural,
+          taxa_mortalidade: row.taxa_mortalidade,
+          mortalidade_infantil: row.mortalidade_infantil,
+          fonte: row.fonte,
+        });
+      }
+    }
+
+    return Array.from(latestByMunicipio.values()).slice(0, 10);
   } catch (error) {
     console.error('[fetchPopMunicipio] Exception:', error);
     return null;
@@ -224,12 +293,13 @@ export async function fetchPopMunicipio(
 }
 
 /**
- * Fetch population history for a municipality
+ * Fetch population time series for a municipality
+ * Returns all years available for the given municipality
  */
 export async function fetchPopulacaoHistorico(
   codigoIbge: number,
   anos?: number[]
-): Promise<unknown[] | null> {
+): Promise<PopMunicipioData[] | null> {
   const client = getBrasilDataHubClient();
 
   if (!client) {
@@ -239,19 +309,18 @@ export async function fetchPopulacaoHistorico(
 
   try {
     let query = client
-      .from('pop_municipios_historico')
+      .from('pop_municipios')
       .select('*')
-      .eq('codigo_ibge', codigoIbge)
+      .eq('cod_ibge', codigoIbge)
       .order('ano', { ascending: false });
 
     if (anos && anos.length > 0) {
       query = query.in('ano', anos);
     }
 
-    const { data, error } = await query.limit(20);
+    const { data, error } = await query.limit(30);
 
     if (error) {
-      // Table might not exist
       console.warn('[fetchPopulacaoHistorico] Error:', error.message);
       return null;
     }
@@ -259,6 +328,47 @@ export async function fetchPopulacaoHistorico(
     return data;
   } catch (error) {
     console.error('[fetchPopulacaoHistorico] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch demographic indicators for a municipality
+ * Includes mortality rates and birth data
+ */
+export async function fetchIndicadoresDemograficos(
+  codigoIbge: number,
+  ano?: number
+): Promise<PopMunicipioData | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchIndicadoresDemograficos] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    let query = client
+      .from('pop_municipios')
+      .select('*')
+      .eq('cod_ibge', codigoIbge);
+
+    if (ano) {
+      query = query.eq('ano', ano);
+    } else {
+      query = query.order('ano', { ascending: false }).limit(1);
+    }
+
+    const { data, error } = await query.single();
+
+    if (error) {
+      console.warn('[fetchIndicadoresDemograficos] Error:', error.message);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[fetchIndicadoresDemograficos] Exception:', error);
     return null;
   }
 }
