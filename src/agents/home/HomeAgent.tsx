@@ -1,16 +1,19 @@
 /**
- * HomeAgent - Main Home Agent Component
- * @version 1.0.0
- * @date 2026-01-25
+ * HomeAgent - Main Home Agent Component (MCP-Integrated)
+ * @version 2.0.0
+ * @date 2026-01-26
  *
  * Primary voice interface for IconsAI PWA.
- * Implements the unified button interaction cycle:
+ * Now integrated with MCP orchestrator for intelligent routing.
+ *
+ * Interaction cycle:
  * idle -> playing (welcome) -> recording -> processing -> playing (response) -> recording...
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { AgentProps, UnifiedButtonState, SpectrumMode } from '@/core/types';
+import type { ProcessingStage } from '@/lib/mcp/types';
 import { EventBus } from '@/core/EventBus';
 import { useAudioEngine } from '@/core/AudioEngine';
 import { UnifiedButton } from '@/core/components/UnifiedButton';
@@ -19,6 +22,92 @@ import { ModuleHeader } from '@/core/components/ModuleHeader';
 import { useHomeConversation } from './hooks/useHomeConversation';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { warmupAudioSync } from '@/utils/audio-warmup';
+import { getOrchestrator } from '@/lib/mcp/orchestrator';
+import { HOME_MCP_CONFIG } from './mcp-config';
+import { homeHandlers } from './handlers';
+
+// Register agent on module load
+const orchestrator = getOrchestrator();
+orchestrator.registerAgent(HOME_MCP_CONFIG, homeHandlers);
+
+// ============================================
+// PROCESSING TIMER COMPONENT
+// ============================================
+
+interface ProcessingTimerProps {
+  isActive: boolean;
+  stage: ProcessingStage | null;
+}
+
+const ProcessingTimer: React.FC<ProcessingTimerProps> = ({ isActive, stage }) => {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!isActive) {
+      setSeconds(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSeconds((s) => s + 0.1);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isActive]);
+
+  if (!isActive) return null;
+
+  const stageLabels: Record<ProcessingStage, string> = {
+    classifying: 'Analisando',
+    routing: 'Roteando',
+    fetching: 'Buscando',
+    generating: 'Gerando',
+    speaking: 'Preparando áudio',
+  };
+
+  return (
+    <motion.div
+      className="flex flex-col items-center gap-1"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+    >
+      <span className="text-slate-400 text-xs">
+        {stage ? stageLabels[stage] : 'Processando'}
+      </span>
+      <span className="text-slate-500 text-xs font-mono">
+        {seconds.toFixed(1)}s
+      </span>
+    </motion.div>
+  );
+};
+
+// ============================================
+// PROGRESS BAR COMPONENT
+// ============================================
+
+interface ProgressBarProps {
+  progress: number;
+  color: string;
+}
+
+const ProgressBar: React.FC<ProgressBarProps> = ({ progress, color }) => {
+  return (
+    <div className="w-40 h-1 bg-slate-800 rounded-full overflow-hidden">
+      <motion.div
+        className="h-full rounded-full"
+        style={{ backgroundColor: color }}
+        initial={{ width: 0 }}
+        animate={{ width: `${progress}%` }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+      />
+    </div>
+  );
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export const HomeAgent: React.FC<AgentProps> = ({
   deviceId,
@@ -29,6 +118,10 @@ export const HomeAgent: React.FC<AgentProps> = ({
   const [buttonState, setButtonState] = useState<UnifiedButtonState>('idle');
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Processing state
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingStage, setProcessingStage] = useState<ProcessingStage | null>(null);
 
   // Refs
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -49,10 +142,17 @@ export const HomeAgent: React.FC<AgentProps> = ({
     agentName: config.name,
   });
 
+  // Set up orchestrator progress callback
+  useEffect(() => {
+    orchestrator.onProgress((event) => {
+      setProcessingProgress(event.progress);
+      setProcessingStage(event.stage);
+    });
+  }, []);
+
   // Audio engine
   const audioEngine = useAudioEngine({
     onEnded: () => {
-      // When audio ends, start recording
       if (buttonState === 'playing') {
         startRecordingMode();
       }
@@ -66,7 +166,6 @@ export const HomeAgent: React.FC<AgentProps> = ({
 
   // Audio recorder
   const {
-    state: recorderState,
     audioBase64,
     startRecording,
     stopRecording,
@@ -95,6 +194,8 @@ export const HomeAgent: React.FC<AgentProps> = ({
   const startRecordingMode = useCallback(() => {
     setButtonState('recording');
     setFrequencyData([]);
+    setProcessingProgress(0);
+    setProcessingStage(null);
     startRecording();
 
     // Set 60-second timeout
@@ -105,13 +206,14 @@ export const HomeAgent: React.FC<AgentProps> = ({
 
   // Handle stop recording
   const handleStopRecording = useCallback(async () => {
-    // Clear timeout
     if (recordingTimeoutRef.current) {
       clearTimeout(recordingTimeoutRef.current);
       recordingTimeoutRef.current = null;
     }
 
     setButtonState('processing');
+    setProcessingProgress(5);
+    setProcessingStage('classifying');
     await stopRecording();
   }, [stopRecording]);
 
@@ -128,6 +230,7 @@ export const HomeAgent: React.FC<AgentProps> = ({
 
     if (result.success && result.audioUrl) {
       setButtonState('playing');
+      setProcessingProgress(100);
       await audioEngine.play(result.audioUrl, config.name);
 
       // Mark first interaction complete (shows footer)
@@ -136,22 +239,21 @@ export const HomeAgent: React.FC<AgentProps> = ({
         EventBus.emit('footer:show');
       }
     } else {
-      // Error - go back to recording
+      // Error - go back to idle
       console.error('[HomeAgent] Process error:', result.error);
-      setButtonState('recording');
-      startRecording();
+      setButtonState('idle');
     }
 
     resetRecorder();
+    setProcessingProgress(0);
+    setProcessingStage(null);
   };
 
   // Handle play button click
   const handlePlay = useCallback(async () => {
-    // Warmup audio on user gesture
     warmupAudioSync();
 
     if (!hasPlayedWelcome.current) {
-      // First time - play welcome
       setButtonState('playing');
       const welcomeUrl = await getWelcomeAudio();
 
@@ -159,11 +261,9 @@ export const HomeAgent: React.FC<AgentProps> = ({
         await audioEngine.play(welcomeUrl, config.name);
         hasPlayedWelcome.current = true;
       } else {
-        // No welcome audio - go straight to recording
         startRecordingMode();
       }
     } else {
-      // Already welcomed - go to recording
       startRecordingMode();
     }
   }, [audioEngine, config.name, getWelcomeAudio, startRecordingMode]);
@@ -222,6 +322,21 @@ export const HomeAgent: React.FC<AgentProps> = ({
           />
         </motion.div>
 
+        {/* Processing Progress */}
+        <AnimatePresence>
+          {buttonState === 'processing' && (
+            <motion.div
+              className="mb-4 flex flex-col items-center gap-2"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <ProgressBar progress={processingProgress} color={config.color} />
+              <ProcessingTimer isActive={true} stage={processingStage} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Unified Button */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -240,33 +355,36 @@ export const HomeAgent: React.FC<AgentProps> = ({
         </motion.div>
 
         {/* Error Message */}
-        {error && (
-          <motion.div
-            className="mt-8 px-4 py-2 rounded-lg bg-red-900/50 border border-red-500/50"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <p className="text-red-300 text-sm">{error}</p>
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              className="mt-8 px-4 py-2 rounded-lg bg-red-900/50 border border-red-500/50"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <p className="text-red-300 text-sm">{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Last Response Preview */}
-        {messages.length > 0 && buttonState === 'idle' && (
-          <motion.div
-            className="mt-8 max-w-xs text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <p className="text-slate-400 text-sm line-clamp-2">
-              {messages[messages.length - 1]?.content}
-            </p>
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {messages.length > 0 && buttonState === 'idle' && (
+            <motion.div
+              className="mt-8 max-w-xs text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <p className="text-slate-400 text-sm line-clamp-2">
+                {messages[messages.length - 1]?.content}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
-
-      {/* History Modal would go here */}
-      {/* TODO: Implement ConversationHistory component */}
     </div>
   );
 };
