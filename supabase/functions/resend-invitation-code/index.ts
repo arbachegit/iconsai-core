@@ -82,7 +82,7 @@ serve(async (req) => {
 
     // Buscar convite
     const { data: invitation, error: fetchError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .select("*")
       .eq("token", token)
       .single();
@@ -223,7 +223,7 @@ serve(async (req) => {
 
     // Atualizar tracking
     await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .update({
         resend_count: (invitation.resend_count || 0) + 1,
         last_resend_at: new Date().toISOString(),
@@ -234,15 +234,8 @@ serve(async (req) => {
     const successCount = results.filter((r) => r.success).length;
     console.log(`\n📊 Resultados: ${successCount}/${results.length} sucesso`);
 
-    // Log
-    await supabase.from("notification_logs").insert({
-      event_type: "invitation_resend_summary",
-      channel: "system",
-      recipient: email,
-      subject: `Reenvio: ${product}`,
-      status: successCount > 0 ? "success" : "failed",
-      metadata: { token, product, results, shortUrl: appUrlShort, version: FUNCTION_VERSION },
-    });
+    // Log (notification_logs table removed)
+    console.log(`[LOG] Invitation resend: ${email} - ${product} - ${successCount > 0 ? "success" : "failed"}`);
 
     console.log(`${"=".repeat(50)}\n`);
 

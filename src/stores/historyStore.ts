@@ -137,10 +137,10 @@ export const useHistoryStore = create<HistoryState>()(
             return;
           }
 
-          // Buscar mensagens da sessão
+          // Buscar conversas da sessão
           const { data: dbMessages, error } = await supabase
-            .from("pwa_messages")
-            .select("id, role, content, audio_url, created_at, agent_slug")
+            .from("pwa_conversations")
+            .select("id, role, content, audio_url, created_at, module_slug")
             .eq("session_id", session.id)
             .order("created_at", { ascending: false })
             .limit(100);
@@ -162,7 +162,7 @@ export const useHistoryStore = create<HistoryState>()(
 
           (dbMessages || []).forEach((msg) => {
             // CORRECAO v2.1.0: Usar função auxiliar com fallback seguro
-            const moduleType = getModuleTypeFromSlug(msg.agent_slug);
+            const moduleType = getModuleTypeFromSlug(msg.module_slug);
 
             const audioMessage: AudioMessage = {
               id: msg.id,

@@ -1,9 +1,10 @@
 // ============================================
-// VERSAO: 3.8.0 | DEPLOY: 2026-01-14
-// FIX: URL atualizada para pwa.iconsai.ai
+// VERSAO: 4.0.0 | DEPLOY: 2026-01-28
+// FIX: user_invitations → user_invites
+// FIX: notification_logs removed
 // ============================================
 
-const FUNCTION_VERSION = "3.8.0";
+const FUNCTION_VERSION = "4.0.0";
 const SITE_URL = "https://fia.iconsai.ai";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -147,7 +148,7 @@ serve(async (req) => {
 
     // Verificar duplicados
     const { data: existingInvite } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .select("id")
       .eq("email", email.toLowerCase())
       .in("status", ["pending", "form_submitted"])
@@ -176,7 +177,7 @@ serve(async (req) => {
 
     // Criar convite
     const { data: invitation, error: insertError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .insert({
         token,
         name,
@@ -305,15 +306,9 @@ serve(async (req) => {
       }
     }
 
-    // Log
-    await supabase.from("notification_logs").insert({
-      event_type: "user_invitation_created",
-      channel: "system",
-      recipient: email,
-      subject: "Convite criado",
-      status: results.some((r) => r.success) ? "success" : "failed",
-      metadata: { token, results, shortUrl: appUrlShort, version: FUNCTION_VERSION },
-    });
+    // Log - notification_logs table removed in v3.0
+    console.log(`[LOG] Invitation created: ${email}, results: ${JSON.stringify(results.map(r => ({ channel: r.channel, success: r.success })))}`);
+
 
     const successCount = results.filter((r) => r.success).length;
     console.log(`\n📊 Resultados: ${successCount}/${results.length} sucesso`);

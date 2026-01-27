@@ -1,19 +1,18 @@
-// usePWAConversations Hook - v1.1.0
-// 
+// usePWAConversations Hook - v2.0.0
+//
 // ===== TABELAS DO BANCO DE DADOS =====
-// - pwa_conversation_sessions   : Sessões de conversa
-// - pwa_conversation_messages   : Mensagens das conversas
-// - pwa_conv_summaries          : Resumos das conversas (NÃO usar "pwa_conversation_summaries")
+// - pwa_sessions       : Sessões de conversa
+// - pwa_conversations  : Mensagens das conversas
 // =====================================
 //
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { 
-  PWAUser, 
-  PWAConversationSession, 
-  PWAUsersFilters, 
-  PWAUsersSortConfig, 
-  AutocompleteItem, 
+import type {
+  PWAUser,
+  PWAConversationSession,
+  PWAUsersFilters,
+  PWAUsersSortConfig,
+  AutocompleteItem,
   PWAModuleType,
   CompanySource,
   KeyTopics
@@ -30,9 +29,9 @@ export function usePWAConversations() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState<PWAUsersFilters>({});
-  const [sortConfig, setSortConfig] = useState<PWAUsersSortConfig>({ 
-    column: 'last_activity', 
-    direction: 'desc' 
+  const [sortConfig, setSortConfig] = useState<PWAUsersSortConfig>({
+    column: 'last_activity',
+    direction: 'desc'
   });
   const [taxonomySuggestions, setTaxonomySuggestions] = useState<AutocompleteItem[]>([]);
   const [keyTopicsSuggestions, setKeyTopicsSuggestions] = useState<AutocompleteItem[]>([]);
@@ -42,46 +41,43 @@ export function usePWAConversations() {
     setError(null);
     try {
       console.log('[usePWAConversations] Buscando usuários com filtros:', filters);
-      console.log('[usePWAConversations] Ordenação:', sortConfig);
-      console.log('[usePWAConversations] Página:', currentPage, 'Tamanho:', pageSize);
-      
-      const { data, error: rpcError } = await supabase.rpc('get_pwa_users_aggregated', {
-        p_search: filters.search || null,
-        p_company: filters.company || null,
-        p_date_from: filters.dateFrom || null,
-        p_date_to: filters.dateTo || null,
-        p_sort_column: sortConfig.column,
-        p_sort_direction: sortConfig.direction,
-        p_page_size: pageSize,
-        p_page: currentPage,
+
+      // Query direta na tabela pwa_sessions agrupando por device_id
+      const { data, error: queryError } = await supabase
+        .from('pwa_sessions')
+        .select('device_id, module_slug, started_at, metadata')
+        .order('started_at', { ascending: false })
+        .limit(500);
+
+      if (queryError) throw queryError;
+
+      // Agrupar por device_id
+      const userMap = new Map<string, PWAUser>();
+      (data || []).forEach((session) => {
+        const existing = userMap.get(session.device_id);
+        if (!existing) {
+          userMap.set(session.device_id, {
+            device_id: session.device_id,
+            user_name: (session.metadata as Record<string, unknown>)?.user_name as string || null,
+            user_email: null,
+            company: null,
+            company_source: 'undefined',
+            last_activity: session.started_at,
+            total_sessions: 1,
+            modules_used: [session.module_slug as PWAModuleType],
+          });
+        } else {
+          existing.total_sessions++;
+          if (!existing.modules_used.includes(session.module_slug as PWAModuleType)) {
+            existing.modules_used.push(session.module_slug as PWAModuleType);
+          }
+        }
       });
 
-      if (rpcError) throw rpcError;
-
-      const mappedUsers: PWAUser[] = (data || []).map((row: {
-        device_id: string;
-        user_name: string | null;
-        user_email: string | null;
-        company: string | null;
-        company_source: string | null;
-        last_activity: string;
-        total_sessions: number;
-        modules_used: string[];
-        total_count: number;
-      }) => ({
-        device_id: row.device_id,
-        user_name: row.user_name,
-        user_email: row.user_email,
-        company: row.company,
-        company_source: (row.company_source as CompanySource) || 'undefined',
-        last_activity: row.last_activity,
-        total_sessions: Number(row.total_sessions),
-        modules_used: row.modules_used as PWAModuleType[],
-      }));
-
+      const mappedUsers = Array.from(userMap.values());
       setUsers(mappedUsers);
-      setTotalUsers(data?.[0]?.total_count ?? 0);
-      
+      setTotalUsers(mappedUsers.length);
+
       console.log('[usePWAConversations] Usuários carregados:', mappedUsers.length);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -97,61 +93,73 @@ export function usePWAConversations() {
     setIsLoadingSessions(true);
     try {
       console.log('[usePWAConversations] Buscando sessões para:', deviceId, 'módulo:', moduleType);
-      
+
       // 1. Buscar sessões
       let sessionsQuery = supabase
-        .from('pwa_conversation_sessions')
+        .from('pwa_sessions')
         .select('*')
         .eq('device_id', deviceId)
         .order('started_at', { ascending: false });
-      
+
       if (moduleType) {
-        sessionsQuery = sessionsQuery.eq('module_type', moduleType);
+        sessionsQuery = sessionsQuery.eq('module_slug', moduleType);
       }
-      
+
       const { data: sessionsData, error: sessionsError } = await sessionsQuery;
       if (sessionsError) throw sessionsError;
-      
-      // 2. Para cada sessão, buscar mensagens e resumo
+
+      // 2. Para cada sessão, buscar conversas
       const sessionsWithDetails: PWAConversationSession[] = await Promise.all(
         (sessionsData || []).map(async (session) => {
-          // Buscar mensagens
-          const { data: messagesData } = await supabase
-            .from('pwa_conversation_messages')
+          // Buscar conversas (mensagens)
+          const { data: conversationsData } = await supabase
+            .from('pwa_conversations')
             .select('*')
             .eq('session_id', session.id)
-            .order('timestamp', { ascending: true });
-          
-          // Buscar resumo (tabela: pwa_conv_summaries)
-          const { data: summaryData } = await supabase
-            .from('pwa_conv_summaries')
-            .select('*')
-            .eq('session_id', session.id)
-            .maybeSingle();
-          
-          // Mapear mensagens com tipos corretos
-          const mappedMessages = (messagesData || []).map((msg) => ({
-            ...msg,
-            role: msg.role as 'user' | 'assistant',
-            key_topics: msg.key_topics as unknown as KeyTopics,
+            .order('created_at', { ascending: true });
+
+          // Mapear mensagens
+          const mappedMessages = (conversationsData || []).map((conv) => ({
+            id: conv.id,
+            session_id: conv.session_id,
+            role: conv.role as 'user' | 'assistant',
+            content: conv.content,
+            audio_url: conv.audio_url,
+            audio_duration: conv.audio_duration_seconds,
+            transcription: conv.transcription,
+            timestamp: conv.created_at,
+            taxonomy_tags: conv.taxonomy_tags || [],
+            key_topics: conv.key_topics as unknown as KeyTopics,
+            created_at: conv.created_at,
           }));
-          
-          // Mapear resumo com tipos corretos
-          const mappedSummary = summaryData ? {
-            ...summaryData,
-            key_topics: summaryData.key_topics as unknown as KeyTopics,
-          } : undefined;
-          
+
           return {
-            ...session,
-            company_source: (session.company_source as CompanySource) || 'undefined',
-            module_type: session.module_type as PWAModuleType,
+            id: session.id,
+            device_id: session.device_id,
+            user_name: (session.metadata as Record<string, unknown>)?.user_name as string || null,
+            user_email: null,
+            company: null,
+            company_source: 'undefined' as CompanySource,
+            module_type: session.module_slug as PWAModuleType,
+            started_at: session.started_at,
+            ended_at: session.ended_at,
+            city: null,
+            country: null,
+            latitude: null,
+            longitude: null,
+            created_at: session.created_at,
             messages: mappedMessages,
-            summary: mappedSummary,
+            summary: session.summary ? {
+              id: session.id,
+              session_id: session.id,
+              summary: session.summary,
+              key_topics: { keywords: session.summary_keywords || [] } as unknown as KeyTopics,
+              created_at: session.created_at,
+            } : undefined,
           } as PWAConversationSession;
         })
       );
-      
+
       setSessions(sessionsWithDetails);
       console.log('[usePWAConversations] Sessões carregadas:', sessionsWithDetails.length);
     } catch (err: unknown) {
@@ -162,64 +170,52 @@ export function usePWAConversations() {
     }
   }, []);
 
-  // Tabela global_taxonomy foi removida - retornando array vazio
+  // Taxonomias desabilitadas - tabela removida
   const fetchTaxonomySuggestions = useCallback(async (_query: string) => {
-    try {
-      // Taxonomias desabilitadas - tabela removida do banco
-      setTaxonomySuggestions([]);
-    } catch (err) {
-      console.error('[usePWAConversations] Erro ao buscar taxonomias:', err);
-      setTaxonomySuggestions([]);
-    }
+    setTaxonomySuggestions([]);
   }, []);
 
-  // CORRIGIDO: Permite query vazia para pre-carregar
+  // Buscar temas-chave das conversas
   const fetchKeyTopicsSuggestions = useCallback(async (query: string) => {
     try {
       console.log('[usePWAConversations] Buscando temas-chave:', query || '(todos)');
-      
-      // Buscar mensagens com key_topics
+
       const { data, error } = await supabase
-        .from('pwa_conversation_messages')
+        .from('pwa_conversations')
         .select('key_topics')
         .not('key_topics', 'is', null)
         .limit(100);
-      
+
       if (error) throw error;
-      
-      // Extrair e filtrar tópicos únicos
+
       const topicsSet = new Map<string, AutocompleteItem>();
       const lowerQuery = query.toLowerCase();
-      
+
       (data || []).forEach((row) => {
         const kt = row.key_topics as unknown as KeyTopics | null;
         if (!kt) return;
-        
-        // People
+
         kt.people?.forEach((p) => {
           if ((lowerQuery === '' || p.toLowerCase().includes(lowerQuery)) && !topicsSet.has(p)) {
             topicsSet.set(p, { value: p, label: p, category: 'person' });
           }
         });
-        
-        // Countries
+
         kt.countries?.forEach((c) => {
           if ((lowerQuery === '' || c.toLowerCase().includes(lowerQuery)) && !topicsSet.has(c)) {
             topicsSet.set(c, { value: c, label: c, category: 'country' });
           }
         });
-        
-        // Organizations
+
         kt.organizations?.forEach((o) => {
           if ((lowerQuery === '' || o.toLowerCase().includes(lowerQuery)) && !topicsSet.has(o)) {
             topicsSet.set(o, { value: o, label: o, category: 'organization' });
           }
         });
       });
-      
+
       const suggestions = Array.from(topicsSet.values()).slice(0, 20);
       setKeyTopicsSuggestions(suggestions);
-      console.log('[usePWAConversations] Temas-chave encontrados:', suggestions.length);
     } catch (err) {
       console.error('[usePWAConversations] Erro ao buscar temas-chave:', err);
       setKeyTopicsSuggestions([]);
@@ -235,7 +231,6 @@ export function usePWAConversations() {
   }, [fetchUsers]);
 
   return {
-    // Estado
     users,
     sessions,
     taxonomySuggestions,
@@ -248,14 +243,10 @@ export function usePWAConversations() {
     pageSize,
     filters,
     sortConfig,
-    
-    // Setters
     setFilters,
     setSortConfig,
     setCurrentPage,
     setPageSize,
-    
-    // Actions
     fetchUsers,
     fetchSessionsForUser,
     fetchTaxonomySuggestions,

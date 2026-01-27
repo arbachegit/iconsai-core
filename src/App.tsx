@@ -21,7 +21,7 @@ import { useDemoCleanup } from "./hooks/useDemoCleanup";
 // Lazy load non-critical pages
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminSignup = lazy(() => import("./pages/AdminSignup"));
-const AdminResetPassword = lazy(() => import("./pages/AdminResetPassword"));
+// AdminResetPassword removed - using Supabase built-in password reset
 const Documentation = lazy(() => import("./pages/Documentation"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Arquitetura = lazy(() => import("./pages/Arquitetura"));
@@ -175,7 +175,7 @@ const App = () => (
                     {/* Auth Routes */}
                     <Route path="/admin/login" element={<AdminLogin />} />
                     <Route path="/admin/signup" element={<AdminSignup />} />
-                    <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+                    {/* reset-password route removed - using Supabase built-in reset */}
 
                     {/* Protected Routes - Desktop Only */}
                     <Route path="/hub" element={

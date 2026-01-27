@@ -1,7 +1,7 @@
 // =============================================
-// Device Gate v2.1 - Com toggle allow_desktop_access + Demo Mode
-// Build: 2026-01-17
-// Tabelas: pwa_config, user_roles
+// Device Gate v2.2 - Simplificado
+// Build: 2026-01-28
+// Tabelas: user_roles
 // src/components/gates/DeviceGate.tsx
 // Demo Mode Bypass Support
 // =============================================
@@ -43,28 +43,11 @@ const DeviceGate = ({
     return <>{children}</>;
   }
 
-  // Carregar config allow_desktop_access do banco
+  // Config simplificada - permitir desktop por padrão
   useEffect(() => {
-    const loadDesktopConfig = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("pwa_config")
-          .select("config_value")
-          .eq("config_key", "allow_desktop_access")
-          .single();
-
-        if (!error && data?.config_value === "true") {
-          console.log("[DeviceGate] allow_desktop_access = true (from config)");
-          setAllowDesktopFromConfig(true);
-        }
-      } catch (err) {
-        console.log("[DeviceGate] Config not found, using default (block desktop)");
-      } finally {
-        setConfigLoaded(true);
-      }
-    };
-
-    loadDesktopConfig();
+    // Por padrão, permitir acesso desktop (pode ser controlado via env var futuramente)
+    setAllowDesktopFromConfig(true);
+    setConfigLoaded(true);
   }, []);
 
   // Verificar se é admin quando em mobile

@@ -140,9 +140,9 @@ export default function ChatIconsAI() {
   useEffect(() => {
     const fetchAgentCapabilities = async () => {
       const { data } = await supabase
-        .from("chat_agents")
+        .from("iconsai_agents")
         .select("metadata")
-        .eq("name", "health")
+        .eq("slug", "health")
         .single();
       
       if (data?.metadata && typeof data.metadata === 'object') {

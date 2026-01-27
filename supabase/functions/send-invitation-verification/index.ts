@@ -92,7 +92,7 @@ serve(async (req) => {
 
     // Buscar convite
     const { data: invitation, error: fetchError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .select("*")
       .eq("token", token)
       .single();
@@ -154,7 +154,7 @@ serve(async (req) => {
 
     // Atualizar convite com dados do formulário
     const { error: updateError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .update({
         phone,
         address_cep: addressCep,
@@ -263,15 +263,8 @@ serve(async (req) => {
       );
     }
 
-    // Log
-    await supabase.from("notification_logs").insert({
-      event_type: "user_invitation_form_submitted",
-      channel: sendResult.method,
-      recipient: verificationMethod === "email" ? invitation.email : phone,
-      subject: "Código de verificação enviado",
-      status: "success",
-      metadata: { token: token.slice(0, 8), verificationMethod, firstName, version: FUNCTION_VERSION },
-    });
+    // Log (notification_logs table removed)
+    console.log(`[LOG] Verification code sent: ${verificationMethod} - ${token.slice(0, 8)}...`);
 
     const maskedDestination =
       verificationMethod === "email" ? `***@${invitation.email.split("@")[1]}` : `****${phone.slice(-4)}`;

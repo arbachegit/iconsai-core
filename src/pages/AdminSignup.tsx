@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Check, X, ShieldAlert, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-// Password validation requirements matching AdminResetPassword.tsx
+// Password validation requirements
 const validatePassword = (password: string) => {
   return {
     minLength: password.length >= 8,

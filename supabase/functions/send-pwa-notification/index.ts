@@ -179,22 +179,8 @@ serve(async (req) => {
 
     const result = await sendSms(phone, template, variables || {});
 
-    // Log no banco
-    try {
-      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      await supabase.from("notification_logs").insert({
-        event_type: "pwa_notification",
-        recipient: phone,
-        channel: "sms",
-        subject: `${template} notification`,
-        status: result.success ? "success" : "failed",
-        message_sid: result.messageId || null,
-        error_message: result.error || null,
-        metadata: { template, variables, provider: result.provider, version: FUNCTION_VERSION },
-      });
-    } catch (logErr) {
-      console.warn("[LOG] Erro ao registrar:", logErr);
-    }
+    // Log (notification_logs table removed)
+    console.log(`[LOG] PWA notification: ${phone} - ${template} - ${result.success ? "success" : "failed"}`);
 
     console.log(`[RESULTADO] ${result.success ? "✅ Sucesso" : "❌ Falha"}: ${result.error || "OK"}`);
 

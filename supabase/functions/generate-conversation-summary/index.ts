@@ -1,9 +1,9 @@
 /**
  * ============================================================
- * generate-conversation-summary - Edge Function v1.0.0
+ * generate-conversation-summary - Edge Function v2.0.0
  * ============================================================
  * Gera resumo de conversa ao sair de um módulo
- * Salva em pwa_conversation_summaries e atualiza pwa_user_context
+ * Salva diretamente em pwa_sessions.summary
  * ============================================================
  */
 
@@ -30,15 +30,23 @@ interface Message {
   content: string;
 }
 
+function extractKeywords(messages: Message[]): string[] {
+  const userMessages = messages.filter(m => m.role === "user").map(m => m.content).join(" ");
+  const words = userMessages.toLowerCase().split(/\s+/);
+  const stopWords = ["eu", "meu", "minha", "tenho", "estou", "com", "uma", "um", "de", "que", "para", "por", "como", "você", "pode", "quero", "preciso", "ajuda", "sobre", "isso", "aqui", "ali", "agora", "depois", "antes"];
+  const filtered = words.filter(w => w.length > 3 && !stopWords.includes(w));
+  const uniqueWords = [...new Set(filtered)];
+  return uniqueWords.slice(0, 10);
+}
+
 async function generateSummary(messages: Message[]): Promise<string> {
   const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
-  
+
   if (!openAIApiKey) {
     // Fallback: gerar resumo simples sem IA
     const userMessages = messages.filter(m => m.role === "user");
     if (userMessages.length === 0) return "Nenhuma mensagem do usuário";
-    
-    // Pegar as primeiras palavras da última mensagem do usuário
+
     const lastUserMessage = userMessages[userMessages.length - 1].content;
     const words = lastUserMessage.split(" ").slice(0, 10).join(" ");
     return words.length < lastUserMessage.length ? `${words}...` : words;
@@ -60,7 +68,7 @@ async function generateSummary(messages: Message[]): Promise<string> {
         messages: [
           {
             role: "system",
-            content: `Você é um assistente que resume conversas. 
+            content: `Você é um assistente que resume conversas.
 Gere um resumo MUITO CURTO (máximo 50 palavras) do tema principal discutido.
 Foque no que o usuário perguntou ou no problema mencionado.
 Responda em português brasileiro.
@@ -84,11 +92,11 @@ Não use aspas ou formatação especial.`
     return data.choices[0]?.message?.content || "Conversa sobre diversos temas";
   } catch (error) {
     console.error("[generate-summary] Erro ao gerar resumo com IA:", error);
-    
+
     // Fallback
     const userMessages = messages.filter(m => m.role === "user");
     if (userMessages.length === 0) return "Conversa sem mensagens do usuário";
-    
+
     const lastUserMessage = userMessages[userMessages.length - 1].content;
     const words = lastUserMessage.split(" ").slice(0, 10).join(" ");
     return words.length < lastUserMessage.length ? `${words}...` : words;
@@ -101,24 +109,16 @@ serve(async (req) => {
   }
 
   try {
-    const { deviceId, moduleType, messages } = await req.json();
+    const { sessionId, deviceId, moduleSlug, messages } = await req.json();
 
-    if (!deviceId || !moduleType || !messages || messages.length === 0) {
+    if (!sessionId || !messages || messages.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({ error: "Missing required fields: sessionId, messages" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const validModules = ["health", "ideas", "world", "help"];
-    if (!validModules.includes(moduleType)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid module type" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`[generate-summary] Processing ${messages.length} messages for ${moduleType}`);
+    console.log(`[generate-summary] Processing ${messages.length} messages for session ${sessionId}`);
 
     const supabase = getSupabaseAdmin();
 
@@ -126,80 +126,34 @@ serve(async (req) => {
     const summary = await generateSummary(messages);
     console.log(`[generate-summary] Summary generated: ${summary.substring(0, 50)}...`);
 
-    // Encontrar última mensagem de cada tipo
-    const userMessages = messages.filter((m: Message) => m.role === "user");
-    const assistantMessages = messages.filter((m: Message) => m.role === "assistant");
-    
-    const lastUserMessage = userMessages.length > 0 
-      ? userMessages[userMessages.length - 1].content 
-      : null;
-    const lastAssistantMessage = assistantMessages.length > 0 
-      ? assistantMessages[assistantMessages.length - 1].content 
-      : null;
+    // Extrair palavras-chave
+    const keywords = extractKeywords(messages);
 
-    // Upsert em pwa_conversation_summaries
-    const { error: summaryError } = await supabase
-      .from("pwa_conversation_summaries")
-      .upsert(
-        {
-          device_id: deviceId,
-          module_type: moduleType,
-          summary,
-          message_count: messages.length,
-          last_user_message: lastUserMessage,
-          last_assistant_message: lastAssistantMessage,
-          updated_at: new Date().toISOString(),
-        },
-        { 
-          onConflict: "device_id,module_type",
-          ignoreDuplicates: false 
-        }
-      );
+    // Atualizar pwa_sessions com resumo e keywords
+    const { error: updateError } = await supabase
+      .from("pwa_sessions")
+      .update({
+        summary,
+        summary_keywords: keywords,
+        ended_at: new Date().toISOString(),
+        is_active: false,
+        total_messages: messages.length,
+      })
+      .eq("id", sessionId);
 
-    if (summaryError) {
-      console.error("[generate-summary] Error saving summary:", summaryError);
-      
-      // Tentar insert se upsert falhou (pode não ter constraint)
-      const { error: insertError } = await supabase
-        .from("pwa_conversation_summaries")
-        .insert({
-          device_id: deviceId,
-          module_type: moduleType,
-          summary,
-          message_count: messages.length,
-          last_user_message: lastUserMessage,
-          last_assistant_message: lastAssistantMessage,
-        });
-      
-      if (insertError) {
-        console.error("[generate-summary] Insert also failed:", insertError);
-      }
+    if (updateError) {
+      console.error("[generate-summary] Error updating session:", updateError);
+      throw updateError;
     }
 
-    // Atualizar pwa_user_context com último módulo
-    const { error: contextError } = await supabase
-      .from("pwa_user_context")
-      .upsert(
-        {
-          device_id: deviceId,
-          last_module: moduleType,
-          last_topic_summary: summary,
-          last_user_message: lastUserMessage,
-          last_interaction_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "device_id" }
-      );
-
-    if (contextError) {
-      console.warn("[generate-summary] Error updating context:", contextError);
-    }
+    console.log(`[generate-summary] ✓ Session ${sessionId} updated with summary`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         summary,
-        messageCount: messages.length 
+        keywords,
+        messageCount: messages.length
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

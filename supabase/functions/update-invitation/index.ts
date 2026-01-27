@@ -92,7 +92,7 @@ serve(async (req) => {
 
     // Fetch existing invitation
     const { data: existingInvitation, error: fetchError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .select("*")
       .eq("id", invitation_id)
       .single();
@@ -117,7 +117,7 @@ serve(async (req) => {
     // If email changed, check for duplicates
     if (emailChanged) {
       const { data: existingWithEmail } = await supabase
-        .from("user_invitations")
+        .from("user_invites")
         .select("id")
         .eq("email", updates.email)
         .neq("id", invitation_id)
@@ -174,7 +174,7 @@ serve(async (req) => {
 
     // Update invitation
     const { data: updatedInvitation, error: updateError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .update(updatePayload)
       .eq("id", invitation_id)
       .select()
@@ -216,7 +216,7 @@ serve(async (req) => {
 
         // Update email_sent_at
         await supabase
-          .from("user_invitations")
+          .from("user_invites")
           .update({ email_sent_at: new Date().toISOString() })
           .eq("id", invitation_id);
 
@@ -226,21 +226,8 @@ serve(async (req) => {
       }
     }
 
-    // Log the update
-    await supabase.from("notification_logs").insert({
-      event_type: "invitation_updated",
-      channel: "system",
-      recipient: updatedInvitation.email,
-      subject: "Convite atualizado",
-      message_body: `Convite para ${updatedInvitation.name} foi atualizado${emailChanged ? ' e reenviado' : ''}.`,
-      status: "success",
-      metadata: {
-        invitation_id,
-        emailChanged,
-        updatedBy: user.email,
-        changes: updates
-      }
-    });
+    // Log the update (notification_logs table removed)
+    console.log(`[LOG] Invitation updated: ${updatedInvitation.email} - emailChanged: ${emailChanged}`);
 
     console.log(`Invitation ${invitation_id} updated successfully by ${user.email}`);
 

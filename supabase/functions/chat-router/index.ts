@@ -1,24 +1,16 @@
 // ============================================
-// VERSAO: 2.9.0 | DEPLOY: 2026-01-23
-// MUDANCA: Perplexity como provider primário (busca em tempo real)
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-28
+// MUDANCA: Atualizado para nova arquitetura de tabelas
 // ============================================
+// CHANGELOG v3.0.0:
+// - Removido global_taxonomy, entity_tags, taxonomy_phonetics (tabelas deletadas)
+// - chat_agents → iconsai_agents
+// - pwa_messages → pwa_conversations (agent_slug → module_slug)
+// - Simplificado: sem classificação de taxonomia
 // CHANGELOG v2.9.0:
 // - Perplexity API integrado como provider primário
 // - Ordem de fallback: Perplexity → OpenAI → Gemini
 // - Busca em tempo real com citações
-// CHANGELOG v2.8.0:
-// - Suporte a ESCOPO do agente (allowedScope e forbiddenScope)
-// - Scope é extraído do metadata JSON do chat_agents
-// - Scope é injetado no system prompt tanto para ChatGPT quanto Gemini
-// - Agente recusa educadamente temas fora do escopo permitido
-// CHANGELOG v2.6.1:
-// - getPhoneticMap agora busca em códigos ancestrais
-// - Ex: "economia.indicadores.monetarios.selic" → busca também em "economia.indicadores.monetarios"
-// CHANGELOG v2.6.0:
-// - Funções de classificação inline no chat-router
-// - saveMessage retorna ID da mensagem
-// - Resposta ChatGPT/Gemini inclui messageId, taxonomyTags, phoneticMap
-// - entity_tags salvo async para cada mensagem
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -55,12 +47,8 @@ function sanitizeBrandingResponse(text: string): string {
   return sanitized;
 }
 
-// ===================== TAXONOMY CLASSIFICATION =====================
-// v2.6.0: Classificação taxonomia inline para fonéticas contextuais
-
-let taxonomyCache: Map<string, any[]> | null = null;
-let taxonomyCacheTime = 0;
-const TAXONOMY_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+// ===================== PHONETIC MAP (SIMPLIFIED) =====================
+// v3.0.0: Stub - lexicon_terms table removed
 
 interface TaxonomyTag {
   code: string;
@@ -68,192 +56,14 @@ interface TaxonomyTag {
   confidence: number;
 }
 
-// Mapeamento de módulos PWA para prefixos de taxonomia
-const MODULE_TO_TAXONOMY_PREFIX: Record<string, string> = {
-  world: "economia",
-  health: "saude",
-  ideas: "ideias",
-  help: "conhecimento",
-  economia: "economia",
-  saude: "saude",
-  ideias: "ideias",
-};
-
-async function loadTaxonomyCache(supabase: any): Promise<any[]> {
-  const now = Date.now();
-
-  if (taxonomyCache && now - taxonomyCacheTime < TAXONOMY_CACHE_TTL) {
-    const allNodes: any[] = [];
-    taxonomyCache.forEach((nodes) => allNodes.push(...nodes));
-    return allNodes;
-  }
-
-  const { data, error } = await supabase
-    .from("global_taxonomy")
-    .select("id, code, name, keywords, synonyms, parent_id")
-    .eq("status", "approved");
-
-  if (error || !data) {
-    console.error("[Taxonomy Cache] Error:", error);
-    return [];
-  }
-
-  taxonomyCache = new Map();
-  for (const node of data) {
-    const prefix = node.code.split(".").slice(0, 2).join(".");
-    if (!taxonomyCache.has(prefix)) {
-      taxonomyCache.set(prefix, []);
-    }
-    taxonomyCache.get(prefix)!.push(node);
-  }
-  taxonomyCacheTime = now;
-
-  console.log(`[Taxonomy Cache] Loaded ${data.length} nodes`);
-  return data;
-}
-
-function classifyByKeywords(text: string, moduleType: string, taxonomy: any[]): TaxonomyTag[] {
-  const normalizedText = text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  const results: Array<{ code: string; name: string; confidence: number; matches: number }> = [];
-
-  const taxonomyPrefix = MODULE_TO_TAXONOMY_PREFIX[moduleType] || moduleType;
-  const relevantNodes = taxonomy.filter((t) => t.code.startsWith(taxonomyPrefix));
-
-  for (const node of relevantNodes) {
-    let matchCount = 0;
-    const keywords = node.keywords || [];
-    const synonyms = node.synonyms || [];
-    const totalKeywords = keywords.length + synonyms.length;
-
-    if (totalKeywords === 0) continue;
-
-    for (const keyword of keywords) {
-      if (normalizedText.includes(keyword.toLowerCase())) {
-        matchCount++;
-      }
-    }
-
-    for (const synonym of synonyms) {
-      if (normalizedText.includes(synonym.toLowerCase())) {
-        matchCount++;
-      }
-    }
-
-    if (matchCount > 0) {
-      const confidence = Math.min(matchCount / Math.max(totalKeywords, 1), 1);
-      results.push({
-        code: node.code,
-        name: node.name,
-        confidence,
-        matches: matchCount,
-      });
-    }
-  }
-
-  return results
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 3)
-    .map(({ code, name, confidence }) => ({ code, name, confidence }));
-}
-
 async function getPhoneticMap(
   supabase: any,
   moduleType: string,
-  taxonomyCodes: string[],
 ): Promise<Record<string, string>> {
-  const phoneticMap: Record<string, string> = {};
-
-  try {
-    // 1. Léxico geral
-    const { data: lexiconTerms } = await supabase
-      .from("lexicon_terms")
-      .select("term, pronunciation_phonetic")
-      .eq("is_approved", true)
-      .not("pronunciation_phonetic", "is", null)
-      .limit(200);
-
-    if (lexiconTerms) {
-      for (const term of lexiconTerms) {
-        if (term.pronunciation_phonetic) {
-          phoneticMap[term.term] = term.pronunciation_phonetic;
-        }
-      }
-    }
-
-    // 2. Fonética específica da taxonomia (se tabela existir)
-    if (taxonomyCodes.length > 0) {
-      try {
-        // Expandir códigos para incluir ancestrais hierárquicos
-        const expandedCodes = new Set<string>();
-        for (const code of taxonomyCodes) {
-          expandedCodes.add(code);
-          const parts = code.split(".");
-          // Adicionar códigos ancestrais (mínimo 2 partes: ex: "economia.indicadores")
-          for (let i = 2; i < parts.length; i++) {
-            expandedCodes.add(parts.slice(0, i).join("."));
-          }
-        }
-
-        console.log(
-          `[Phonetics] Expanded ${taxonomyCodes.length} codes to ${expandedCodes.size}: ${Array.from(expandedCodes).slice(0, 5).join(", ")}...`,
-        );
-
-        const { data: taxonomyPhonetics } = await supabase
-          .from("taxonomy_phonetics")
-          .select("term, phonetic")
-          .in("taxonomy_code", Array.from(expandedCodes))
-          .eq("is_active", true)
-          .order("priority", { ascending: false });
-
-        if (taxonomyPhonetics) {
-          for (const item of taxonomyPhonetics) {
-            phoneticMap[item.term] = item.phonetic;
-          }
-          console.log(`[Phonetics] Found ${taxonomyPhonetics.length} taxonomy-specific phonetics`);
-        }
-      } catch (err) {
-        // Tabela pode não existir ainda, ignorar
-        console.log("[Phonetics] taxonomy_phonetics table not available");
-      }
-    }
-  } catch (err) {
-    console.warn("[Phonetics] Error loading phonetic map:", err);
-  }
-
-  return phoneticMap;
+  return {};
 }
 
-async function saveEntityTags(supabase: any, messageId: string, taxonomyTags: TaxonomyTag[]): Promise<void> {
-  if (!messageId || taxonomyTags.length === 0) return;
-
-  try {
-    const codes = taxonomyTags.map((t) => t.code);
-    const { data: taxonomies } = await supabase.from("global_taxonomy").select("id, code").in("code", codes);
-
-    if (!taxonomies || taxonomies.length === 0) return;
-
-    const inserts = taxonomies.map((tax: any) => {
-      const tag = taxonomyTags.find((t) => t.code === tax.code);
-      return {
-        entity_id: messageId,
-        entity_type: "pwa_message",
-        taxonomy_id: tax.id,
-        confidence: tag?.confidence || 0.5,
-        source: "auto-classify",
-      };
-    });
-
-    await supabase.from("entity_tags").insert(inserts);
-    console.log(`[Entity Tags] Saved ${inserts.length} tags for message ${messageId}`);
-  } catch (err) {
-    console.error("[Entity Tags] Save error:", err);
-  }
-}
-
-// Função principal de classificação e enriquecimento
+// Stub simplificado - retorna apenas phoneticMap (sem taxonomia)
 async function classifyAndEnrichResponse(
   supabase: any,
   responseText: string,
@@ -261,28 +71,8 @@ async function classifyAndEnrichResponse(
   messageId?: string,
 ): Promise<{ taxonomyTags: TaxonomyTag[]; phoneticMap: Record<string, string> }> {
   try {
-    // 1. Carregar taxonomia
-    const taxonomy = await loadTaxonomyCache(supabase);
-
-    // 2. Classificar
-    const taxonomyTags = classifyByKeywords(responseText, moduleType, taxonomy);
-    const taxonomyCodes = taxonomyTags.map((t) => t.code);
-
-    // 3. Buscar fonéticas
-    const phoneticMap = await getPhoneticMap(supabase, moduleType, taxonomyCodes);
-
-    // 4. Salvar tags (async, não bloqueia)
-    if (messageId) {
-      saveEntityTags(supabase, messageId, taxonomyTags).catch((err) => {
-        console.warn("[Entity Tags] Background save failed:", err);
-      });
-    }
-
-    console.log(
-      `[Classify] ${moduleType} | ${taxonomyTags.length} tags | ${Object.keys(phoneticMap).length} phonetics`,
-    );
-
-    return { taxonomyTags, phoneticMap };
+    const phoneticMap = await getPhoneticMap(supabase, moduleType);
+    return { taxonomyTags: [], phoneticMap };
   } catch (err) {
     console.error("[Classify] Error:", err);
     return { taxonomyTags: [], phoneticMap: {} };
@@ -1085,6 +875,7 @@ const BRAZILIAN_STATES: Record<string, string> = {
 };
 
 // ===================== MAIEUTIC METRICS =====================
+// v3.0.0: Stub - maieutic_metrics table removed
 async function logMaieuticMetrics(
   supabase: any,
   sessionId: string | null,
@@ -1093,25 +884,7 @@ async function logMaieuticMetrics(
   responseText: string,
   contextCode: string,
 ): Promise<void> {
-  try {
-    const pillboxCount = responseText.split(/\n\n+/).filter((p) => p.trim().length > 0).length;
-    const questionsAsked = (responseText.match(/\?/g) || []).length;
-
-    await supabase.from("maieutic_metrics").insert({
-      session_id: sessionId || null,
-      cognitive_mode: cognitiveMode,
-      detected_categories: detectedCategories,
-      response_length: responseText.length,
-      pillbox_count: pillboxCount,
-      questions_asked: questionsAsked,
-      user_asked_clarification: false,
-      user_confirmed_understanding: false,
-      conversation_continued: false,
-      context_code: contextCode,
-    });
-  } catch (err) {
-    console.error("[Maieutic Metrics] Failed:", err);
-  }
+  // No-op: table removed
 }
 
 function detectUserFeedbackType(message: string): {
@@ -1141,38 +914,17 @@ function detectUserFeedbackType(message: string): {
   };
 }
 
+// v3.0.0: Stub - maieutic_metrics table removed
 async function updatePreviousMetricWithFeedback(
   supabase: any,
   sessionId: string,
   feedbackType: { askedClarification: boolean; confirmedUnderstanding: boolean },
 ): Promise<void> {
-  try {
-    const { data: lastMetric } = await supabase
-      .from("maieutic_metrics")
-      .select("id")
-      .eq("session_id", sessionId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (lastMetric) {
-      await supabase
-        .from("maieutic_metrics")
-        .update({
-          user_asked_clarification: feedbackType.askedClarification,
-          user_confirmed_understanding: feedbackType.confirmedUnderstanding,
-          conversation_continued: true,
-        })
-        .eq("id", lastMetric.id);
-    }
-  } catch (err) {
-    console.error("[Maieutic Metrics] Update failed:", err);
-  }
+  // No-op: table removed
 }
 
 // ===================== USER CONTEXT UPDATE =====================
-// Atualiza memória persistente do usuário para saudações contextuais
-// v2.7.0: Usa Gemini direto (sem Lovable)
+// v3.0.0: Stub - pwa_user_context table removed
 async function updateUserContextAfterInteraction(
   supabase: any,
   deviceId: string,
@@ -1181,129 +933,17 @@ async function updateUserContextAfterInteraction(
   userMessage: string,
   assistantResponse: string,
 ): Promise<void> {
-  try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-    // Gerar resumo do tópico via IA (máximo 15 palavras)
-    let topicSummary = userMessage.substring(0, 100);
-
-    // Só tenta gerar resumo se tiver API key
-    if (GEMINI_API_KEY) {
-      try {
-        const summaryResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  role: "user",
-                  parts: [{ text: `Resuma em NO MÁXIMO 15 palavras o tema principal:\nUsuário: "${userMessage.substring(0, 300)}"\nResposta: "${assistantResponse.substring(0, 200)}"` }],
-                },
-              ],
-              systemInstruction: {
-                parts: [{ text: "Resuma em NO MÁXIMO 15 palavras o tema principal da interação. Responda APENAS com o resumo, sem prefixos ou explicações." }],
-              },
-              generationConfig: {
-                maxOutputTokens: 50,
-                temperature: 0.3,
-              },
-            }),
-          }
-        );
-
-        if (summaryResponse.ok) {
-          const summaryData = await summaryResponse.json();
-          const generatedSummary = summaryData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (generatedSummary && generatedSummary.length > 5) {
-            topicSummary = generatedSummary.substring(0, 200);
-          }
-        }
-      } catch (summaryError) {
-        console.warn("[Context] Failed to generate topic summary:", summaryError);
-      }
-    }
-
-    // Verificar se existe registro para este device
-    const { data: existing } = await supabase
-      .from("pwa_user_context")
-      .select("id, interaction_count")
-      .eq("device_id", deviceId)
-      .maybeSingle();
-
-    if (existing) {
-      // Atualizar registro existente
-      await supabase
-        .from("pwa_user_context")
-        .update({
-          user_name: userName || null,
-          last_module: moduleId,
-          last_topic_summary: topicSummary,
-          last_user_message: userMessage.substring(0, 500),
-          interaction_count: existing.interaction_count + 1,
-          last_interaction_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("device_id", deviceId);
-
-      console.log(
-        `[Context] Updated user context: ${deviceId.substring(0, 15)}... count=${existing.interaction_count + 1}`,
-      );
-    } else {
-      // Criar novo registro
-      await supabase.from("pwa_user_context").insert({
-        device_id: deviceId,
-        user_name: userName || null,
-        interaction_count: 1,
-        last_module: moduleId,
-        last_topic_summary: topicSummary,
-        last_user_message: userMessage.substring(0, 500),
-        last_interaction_at: new Date().toISOString(),
-      });
-
-      console.log(`[Context] Created user context: ${deviceId.substring(0, 15)}...`);
-    }
-  } catch (err) {
-    console.error("[Context] Update failed:", err);
-  }
+  // No-op: table removed
 }
 
 // ===================== ORCHESTRATOR =====================
+// v3.0.0: Stub - RPC function removed
 async function getOrchestratedContext(
   supabase: any,
   query: string,
   overrideSlug?: string | null,
 ): Promise<OrchestratedContext | null> {
-  try {
-    const { data, error } = await supabase.rpc("get_orchestrated_context", {
-      p_query: query,
-      p_override_slug: overrideSlug || null,
-    });
-
-    if (error || !data) return null;
-
-    return {
-      contextCode: data.contextCode || "geral",
-      contextName: data.contextName || "Contexto Geral",
-      promptTemplate: data.promptTemplate || "",
-      promptAdditions: data.promptAdditions || "",
-      antiprompt: data.antiprompt || "",
-      maieuticPrompt: data.maieuticPrompt || "",
-      taxonomyCodes: data.taxonomyCodes || [],
-      matchThreshold: data.matchThreshold || 0.15,
-      matchCount: data.matchCount || 5,
-      tone: data.tone || "formal",
-      cognitiveMode: data.cognitiveMode || "normal",
-      confidence: data.confidence || 0.5,
-      wasOverridden: data.wasOverridden || false,
-    };
-  } catch (err) {
-    console.error("[Orchestrator] Exception:", err);
-    return null;
-  }
+  return null;
 }
 
 // ===================== HELPER FUNCTIONS =====================
@@ -1319,39 +959,9 @@ function detectIndicators(query: string): string[] {
   return codes;
 }
 
-// Constante para definir quando dados são considerados desatualizados
-const MAX_INDICATOR_DAYS_OLD = 60;
-
+// v3.0.0: Stub - economic_indicators_history table removed
 async function fetchLatestIndicators(supabase: any, codes: string[]): Promise<Record<string, any>> {
-  const results: Record<string, any> = {};
-  const today = new Date();
-
-  for (const code of codes) {
-    try {
-      const { data } = await supabase
-        .from("economic_indicators_history")
-        .select("*")
-        .eq("indicator_code", code)
-        .order("reference_date", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data) {
-        const refDate = new Date(data.reference_date);
-        const daysSinceUpdate = Math.floor((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24));
-
-        results[code] = {
-          ...data,
-          daysSinceUpdate,
-          isStale: daysSinceUpdate > MAX_INDICATOR_DAYS_OLD,
-          referenceFormatted: refDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
-        };
-      }
-    } catch (err) {
-      console.warn(`[Indicators] Failed ${code}`);
-    }
-  }
-  return results;
+  return {};
 }
 
 function formatIndicatorsContext(indicators: Record<string, any>): string {
@@ -1407,6 +1017,7 @@ function getEmotionalContext(indicators: Record<string, any>): string {
 }
 
 // ===================== RAG FUNCTIONS =====================
+// v3.0.0: Stub - document tables and RPC removed
 async function searchRAGDocuments(
   supabase: any,
   query: string,
@@ -1418,94 +1029,25 @@ async function searchRAGDocuments(
   taxonomyCodes: string[],
   scopeTopics: string[],
 ): Promise<{ context: string; documentTitles: string[] }> {
-  try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) return { context: "", documentTitles: [] };
-
-    const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: "text-embedding-3-small", input: query }),
-    });
-
-    if (!embeddingResponse.ok) return { context: "", documentTitles: [] };
-
-    const embeddingData = await embeddingResponse.json();
-    const embedding = embeddingData.data?.[0]?.embedding;
-    if (!embedding) return { context: "", documentTitles: [] };
-
-    const { data: documents, error } = await supabase.rpc("search_documents_with_taxonomy", {
-      query_embedding: embedding,
-      match_threshold: matchThreshold,
-      match_count: matchCount,
-      taxonomy_codes: taxonomyCodes.length > 0 ? taxonomyCodes : null,
-      allowed_tags: allowedTags,
-      forbidden_tags: forbiddenTags,
-    });
-
-    if (error || !documents || documents.length === 0) return { context: "", documentTitles: [] };
-
-    const documentTitles = documents.map((d: any) => d.title || "Sem título");
-    const context = documents.map((d: any) => `### ${d.title || "Documento"}\n${d.content}`).join("\n\n");
-
-    return { context: `## DOCUMENTOS:\n${context}`, documentTitles };
-  } catch (err) {
-    return { context: "", documentTitles: [] };
-  }
+  return { context: "", documentTitles: [] };
 }
 
+// v3.0.0: Stub - chat_config table removed
 async function getChatConfig(supabase: any, chatType: string): Promise<any> {
-  try {
-    const { data } = await supabase.from("chat_config").select("*").eq("chat_type", chatType).single();
-
-    return data
-      ? {
-          matchThreshold: data.match_threshold || 0.15,
-          matchCount: data.match_count || 5,
-          systemPromptBase: data.system_prompt_base || "",
-          scopeTopics: data.scope_topics || [],
-        }
-      : { matchThreshold: 0.15, matchCount: 5, systemPromptBase: "", scopeTopics: [] };
-  } catch {
-    return { matchThreshold: 0.15, matchCount: 5, systemPromptBase: "", scopeTopics: [] };
-  }
+  return { matchThreshold: 0.15, matchCount: 5, systemPromptBase: "", scopeTopics: [] };
 }
 
+// v3.0.0: Stub - agent_taxonomy_rules table removed
 async function getAgentTaxonomyCodes(
   supabase: any,
   agentSlug: string,
 ): Promise<{ included: string[]; excluded: string[] }> {
-  try {
-    const { data } = await supabase
-      .from("agent_taxonomy_rules")
-      .select("taxonomy_code, rule_type")
-      .eq("agent_slug", agentSlug);
-
-    if (!data) return { included: [], excluded: [] };
-    return {
-      included: data.filter((r: any) => r.rule_type === "include").map((r: any) => r.taxonomy_code),
-      excluded: data.filter((r: any) => r.rule_type === "exclude").map((r: any) => r.taxonomy_code),
-    };
-  } catch {
-    return { included: [], excluded: [] };
-  }
+  return { included: [], excluded: [] };
 }
 
+// v3.0.0: Stub - regional_tone_config table removed
 async function getCulturalToneRules(supabase: any, region?: string): Promise<string> {
-  if (!region) return "";
-  try {
-    const { data } = await supabase
-      .from("regional_tone_config")
-      .select("tone_rules")
-      .eq("region_code", region)
-      .single();
-    return data?.tone_rules || "";
-  } catch {
-    return "";
-  }
+  return "";
 }
 
 // CORRECAO v2.5.0: Guardrails específicos por módulo
@@ -1622,16 +1164,16 @@ async function getRecentHistory(
       sessionId = newSession?.id || `temp-${Date.now()}`;
     }
 
-    // Use existing pwa_messages table, filter by agent_slug if provided
+    // Use pwa_conversations table, filter by module_slug if provided
     let query = supabase
-      .from("pwa_messages")
+      .from("pwa_conversations")
       .select("role, content")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: false })
       .limit(50);
 
     if (agentSlug) {
-      query = query.eq("agent_slug", agentSlug);
+      query = query.eq("module_slug", agentSlug);
     }
 
     const { data: messages } = await query;
@@ -1652,12 +1194,12 @@ async function saveMessage(
   if (sessionId.startsWith("temp-")) return null;
   try {
     const { data, error } = await supabase
-      .from("pwa_messages")
+      .from("pwa_conversations")
       .insert({
         session_id: sessionId,
         role,
         content,
-        agent_slug: agentSlug || null,
+        module_slug: agentSlug || null,
       })
       .select("id")
       .single();
@@ -1781,7 +1323,7 @@ serve(async (req: Request) => {
       let scopeConfig: { allowedScope?: string; forbiddenScope?: string } | undefined;
       try {
         const { data: agentForScope } = await supabase
-          .from("chat_agents")
+          .from("iconsai_agents")
           .select("metadata")
           .eq("slug", moduleSlug)
           .eq("is_active", true)
@@ -1871,7 +1413,7 @@ serve(async (req: Request) => {
       } else {
         // CORRECAO v2.5.0: Usar moduleSlug, não hardcode "economia"
         const { data: agent } = await supabase
-          .from("chat_agents")
+          .from("iconsai_agents")
           .select("*")
           .eq("slug", moduleSlug)
           .eq("is_active", true)

@@ -1,6 +1,8 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-28
+// FIX: user_invitations → user_invites
+// FIX: profiles → platform_users
+// FIX: Removed user_registrations, notification_logs, admin_settings
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -27,7 +29,7 @@ serve(async (req) => {
 
     // Fetch invitation
     const { data: invitation, error: fetchError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .select("*")
       .eq("token", token)
       .single();
@@ -65,7 +67,7 @@ serve(async (req) => {
 
     // Increment attempts
     await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .update({ 
         verification_attempts: invitation.verification_attempts + 1,
         updated_at: new Date().toISOString()
@@ -159,23 +161,13 @@ serve(async (req) => {
 
     if (roleError) {
       console.error("CRITICAL: Error assigning role:", roleError);
-      
-      // Log this critical error to notification_logs
-      await supabase.from("notification_logs").insert({
-        event_type: "role_assignment_error",
-        channel: "system",
-        recipient: invitation.email,
-        subject: "Erro crítico ao atribuir role",
-        message_body: `Falha ao atribuir role ${invitation.role} para ${invitation.email}: ${roleError.message}`,
-        status: "error",
-        metadata: { userId, role: invitation.role, error: roleError.message }
-      });
+      console.log(`[LOG] Role assignment error: ${invitation.email} - ${roleError.message}`);
 
       // Return error - role assignment is critical
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Erro ao configurar permissões. Contate o administrador.",
-          details: roleError.message 
+          details: roleError.message
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -183,43 +175,31 @@ serve(async (req) => {
 
     console.log(`Role ${invitation.role} assigned successfully to user ${userId}`);
 
-    // Create profile
-    const nameParts = invitation.name.split(" ");
+    // Create platform_user profile
+    const nameParts = (invitation.name || invitation.first_name || "").split(" ");
     const { error: profileError } = await supabase
-      .from("profiles")
+      .from("platform_users")
       .insert({
-        id: userId,
-        first_name: nameParts[0],
-        last_name: nameParts.slice(1).join(" ") || null,
-        phone: invitation.phone
-      });
-
-    if (profileError) {
-      console.error("Error creating profile:", profileError);
-    }
-
-    // Add to user_registrations for tracking (with new access fields)
-    const { error: regError } = await supabase
-      .from("user_registrations")
-      .insert({
-        first_name: nameParts[0],
-        last_name: nameParts.slice(1).join(" ") || "",
+        auth_user_id: userId,
+        first_name: nameParts[0] || invitation.first_name,
+        last_name: nameParts.slice(1).join(" ") || invitation.last_name || null,
         email: invitation.email,
         phone: invitation.phone,
         role: invitation.role,
-        status: "approved",
-        approved_at: new Date().toISOString(),
-        has_platform_access: invitation.has_platform_access ?? true,
-        has_app_access: invitation.has_app_access ?? false
+        status: "active",
+        email_verified: true,
+        phone_verified: true,
+        password_set: true,
+        institution_id: invitation.institution_id || null,
       });
 
-    if (regError) {
-      console.error("Error creating registration record:", regError);
+    if (profileError) {
+      console.error("Error creating platform_user profile:", profileError);
     }
 
     // Update invitation status to completed
     const { error: updateError } = await supabase
-      .from("user_invitations")
+      .from("user_invites")
       .update({
         status: "completed",
         completed_at: new Date().toISOString(),
@@ -231,57 +211,8 @@ serve(async (req) => {
       console.error("Error updating invitation status:", updateError);
     }
 
-    // Notify Super Admin
-    try {
-      const { data: settings } = await supabase
-        .from("admin_settings")
-        .select("whatsapp_target_phone, whatsapp_global_enabled")
-        .single();
-
-      if (settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
-        const roleLabel = invitation.role === 'superadmin' ? 'Super Admin' : invitation.role === 'admin' ? 'Admin' : 'Usuário';
-        const methodLabel = invitation.verification_method === 'email' ? 'Email' : 'WhatsApp';
-        const accessLabels = [];
-        if (invitation.has_platform_access) accessLabels.push("🖥️ Plataforma");
-        if (invitation.has_app_access) accessLabels.push("📱 APP");
-        
-        const adminMessage = `✅ *Cadastro Concluído*
-
-👤 ${invitation.name}
-📧 ${invitation.email}
-🔑 Role: ${roleLabel}
-🔓 Acesso: ${accessLabels.join(" + ") || "Plataforma"}
-✔️ Verificado via: ${methodLabel}
-
-🎉 Usuário pode fazer login.`;
-
-        await supabase.functions.invoke("send-whatsapp", {
-          body: {
-            phoneNumber: settings.whatsapp_target_phone,
-            message: adminMessage
-          }
-        });
-      }
-    } catch (notifyError) {
-      console.error("Error notifying admin:", notifyError);
-    }
-
-    // Log the event
-    await supabase.from("notification_logs").insert({
-      event_type: "user_invitation_completed",
-      channel: "system",
-      recipient: invitation.email,
-      subject: "Cadastro concluído",
-      message_body: `${invitation.name} completou o cadastro com role ${invitation.role}`,
-      status: "success",
-      metadata: { 
-        token, 
-        role: invitation.role, 
-        verificationMethod: invitation.verification_method,
-        hasPlatformAccess: invitation.has_platform_access,
-        hasAppAccess: invitation.has_app_access
-      }
-    });
+    // Log the event (admin_settings and notification_logs tables removed in v3.0)
+    console.log(`[LOG] User registration completed: ${invitation.email} - role: ${invitation.role}`);
 
     return new Response(
       JSON.stringify({

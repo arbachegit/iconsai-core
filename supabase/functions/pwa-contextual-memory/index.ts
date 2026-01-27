@@ -1,5 +1,6 @@
-// VERSAO: 1.0.0 | DEPLOY: 2026-01-08
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-28
 // Memória Contextual por Módulo
+// Tabelas: pwa_sessions, pwa_conversations
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -146,30 +147,30 @@ async function getModuleMemory(supabase: any, deviceId: string, moduleType: stri
     if (!session) return null;
     
     const { data: lastUserMsg } = await supabase
-      .from("pwa_messages")
+      .from("pwa_conversations")
       .select("content, created_at")
       .eq("session_id", session.id)
-      .eq("agent_slug", moduleType)
+      .eq("module_slug", moduleType)
       .eq("role", "user")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
-    
+
     const { data: lastAssistantMsg } = await supabase
-      .from("pwa_messages")
+      .from("pwa_conversations")
       .select("content, created_at")
       .eq("session_id", session.id)
-      .eq("agent_slug", moduleType)
+      .eq("module_slug", moduleType)
       .eq("role", "assistant")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
-    
+
     const { count } = await supabase
-      .from("pwa_messages")
+      .from("pwa_conversations")
       .select("id", { count: "exact", head: true })
       .eq("session_id", session.id)
-      .eq("agent_slug", moduleType)
+      .eq("module_slug", moduleType)
       .eq("role", "user");
     
     if (!lastUserMsg) return null;
@@ -263,10 +264,10 @@ serve(async (req: Request) => {
       }
       
       const { data: messages } = await supabase
-        .from("pwa_messages")
+        .from("pwa_conversations")
         .select("role, content, created_at")
         .eq("session_id", session.id)
-        .eq("agent_slug", moduleType)
+        .eq("module_slug", moduleType)
         .order("created_at", { ascending: false })
         .limit(20);
       

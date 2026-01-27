@@ -1,6 +1,7 @@
 // ============================================
-// VERSAO: 1.0.1 | DEPLOY: 2026-01-09
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-28
 // Salva mensagens de conversa do PWA
+// Tabelas: pwa_sessions, pwa_conversations
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -9,19 +10,17 @@ import { getSupabaseAdmin } from "../_shared/supabase.ts";
 
 interface SaveMessageRequest {
   deviceId: string;
-  moduleType: string;
+  moduleSlug: string;
   sessionId?: string;
   role: string;
   content: string;
   transcription?: string;
   audioUrl?: string;
   audioDuration?: number;
-  city?: string;
   metadata?: Record<string, unknown>;
 }
 
-const VALID_ROLES = ["user", "assistant", "summary"];
-const VALID_MODULES = ["world", "health", "ideas", "help"];
+const VALID_ROLES = ["user", "assistant"];
 
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -40,17 +39,17 @@ serve(async (req: Request) => {
     const body: SaveMessageRequest = await req.json();
 
     // Validate required fields
-    if (!body.deviceId || !body.moduleType || !body.role || !body.content) {
-      console.error("[pwa-save-message] Campos faltando:", { 
-        deviceId: !!body.deviceId, 
-        moduleType: !!body.moduleType, 
-        role: !!body.role, 
-        content: !!body.content 
+    if (!body.deviceId || !body.moduleSlug || !body.role || !body.content) {
+      console.error("[pwa-save-message] Campos faltando:", {
+        deviceId: !!body.deviceId,
+        moduleSlug: !!body.moduleSlug,
+        role: !!body.role,
+        content: !!body.content
       });
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Campos obrigatórios: deviceId, moduleType, role, content" 
+        JSON.stringify({
+          success: false,
+          error: "Campos obrigatórios: deviceId, moduleSlug, role, content"
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -59,20 +58,9 @@ serve(async (req: Request) => {
     // Validate role
     if (!VALID_ROLES.includes(body.role)) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `role deve ser: ${VALID_ROLES.join(", ")}` 
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Validate moduleType
-    if (!VALID_MODULES.includes(body.moduleType)) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `moduleType deve ser: ${VALID_MODULES.join(", ")}` 
+        JSON.stringify({
+          success: false,
+          error: `role deve ser: ${VALID_ROLES.join(", ")}`
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -80,12 +68,11 @@ serve(async (req: Request) => {
 
     const supabase = getSupabaseAdmin();
     let sessionId = body.sessionId;
-    let conversationId: string;
 
-    // Get or create conversation session
+    // Get or create session
     if (sessionId) {
       const { data: existingSession, error: sessionError } = await supabase
-        .from("pwa_conversation_sessions")
+        .from("pwa_sessions")
         .select("id")
         .eq("id", sessionId)
         .single();
@@ -93,18 +80,16 @@ serve(async (req: Request) => {
       if (sessionError || !existingSession) {
         console.log("[pwa-save-message] Sessão não encontrada, criando nova:", sessionId);
         sessionId = undefined;
-      } else {
-        conversationId = existingSession.id;
       }
     }
 
     if (!sessionId) {
       const { data: newSession, error: createError } = await supabase
-        .from("pwa_conversation_sessions")
+        .from("pwa_sessions")
         .insert({
           device_id: body.deviceId,
-          module_type: body.moduleType,
-          city: body.city || null,
+          module_slug: body.moduleSlug,
+          metadata: body.metadata || {},
         })
         .select("id")
         .single();
@@ -115,45 +100,48 @@ serve(async (req: Request) => {
       }
 
       sessionId = newSession.id;
-      conversationId = newSession.id;
       console.log("[pwa-save-message] Nova sessão criada:", sessionId);
     }
 
-    // Save message
-  const { data: message, error: messageError } = await supabase
-    .from("pwa_conversation_messages")
-    .insert({
-      session_id: sessionId,
-      device_id: body.deviceId,
-      role: body.role,
-      content: body.content,
-      transcription: body.transcription || null,
-      audio_url: body.audioUrl || null,
-      audio_duration: body.audioDuration || null,
-    })
-    .select("id, created_at")
-    .single();
+    // Save conversation message
+    const { data: conversation, error: convError } = await supabase
+      .from("pwa_conversations")
+      .insert({
+        session_id: sessionId,
+        device_id: body.deviceId,
+        module_slug: body.moduleSlug,
+        role: body.role,
+        content: body.content,
+        transcription: body.transcription || null,
+        audio_url: body.audioUrl || null,
+        audio_duration_seconds: body.audioDuration || null,
+        metadata: body.metadata || {},
+      })
+      .select("id, created_at")
+      .single();
 
-    if (messageError || !message) {
-      console.error("[pwa-save-message] Erro ao salvar mensagem:", messageError);
+    if (convError || !conversation) {
+      console.error("[pwa-save-message] Erro ao salvar conversa:", convError);
       throw new Error("Falha ao salvar mensagem");
     }
 
-    // Update session timestamp
+    // Update session activity
     await supabase
-      .from("pwa_conversation_sessions")
-      .update({ updated_at: new Date().toISOString() })
+      .from("pwa_sessions")
+      .update({
+        last_activity_at: new Date().toISOString(),
+        total_messages: supabase.rpc('increment_counter', { row_id: sessionId, column_name: 'total_messages' })
+      })
       .eq("id", sessionId);
 
-    console.log(`[pwa-save-message] ✓ Mensagem ${message.id} salva na sessão ${sessionId}`);
+    console.log(`[pwa-save-message] ✓ Conversa ${conversation.id} salva na sessão ${sessionId}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        messageId: message.id,
-        conversationId: conversationId!,
+        messageId: conversation.id,
         sessionId: sessionId,
-        createdAt: message.created_at,
+        createdAt: conversation.created_at,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -162,9 +150,9 @@ serve(async (req: Request) => {
     console.error("[pwa-save-message] Erro:", error.message || error);
 
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message || "Erro interno do servidor" 
+      JSON.stringify({
+        success: false,
+        error: error.message || "Erro interno do servidor"
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

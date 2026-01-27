@@ -115,7 +115,7 @@ export const AgentChat = memo(function AgentChat({
     const fetchAgent = async () => {
       setIsLoadingAgent(true);
       const { data, error } = await supabase
-        .from("chat_agents")
+        .from("iconsai_agents")
         .select("*")
         .eq("slug", agentSlug)
         .eq("is_active", true)

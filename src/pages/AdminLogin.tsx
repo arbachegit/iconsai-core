@@ -104,7 +104,7 @@ const AdminLogin = () => {
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isEmailValid) {
       toast({
         title: "Email inválido",
@@ -113,56 +113,32 @@ const AdminLogin = () => {
       });
       return;
     }
-    
+
     setIsResetting(true);
 
     try {
-      // First check if the email exists in auth.users via Edge Function
-      const response = await supabase.functions.invoke('send-recovery-code', {
-        body: { email: resetEmail }
+      // Use Supabase built-in password reset
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/admin/login`,
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Erro ao enviar código');
+      if (error) {
+        throw error;
       }
-
-      const data = response.data;
-
-      if (data.error === 'email_not_found') {
-        setEmailError("Email não registrado no sistema");
-        toast({
-          title: "Email não encontrado",
-          description: "Este email não está registrado no sistema.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data.error) {
-        toast({
-          title: "Erro",
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // (audit logging handled server-side)
 
       toast({
-        title: "Código enviado",
-        description: "Verifique seu email para o código de recuperação",
+        title: "Email enviado",
+        description: "Verifique seu email para redefinir sua senha.",
       });
 
-      // Navigate to reset page with email
-      navigate(`/admin/reset-password?email=${encodeURIComponent(resetEmail)}`);
+      setShowForgotPassword(false);
+      setResetEmail("");
 
     } catch (err: any) {
-      console.error("Error requesting recovery code:", err);
-      // (audit logging handled server-side)
+      console.error("Error requesting password reset:", err);
       toast({
         title: "Erro",
-        description: err.message || "Erro ao solicitar código de recuperação",
+        description: err.message || "Erro ao solicitar redefinição de senha",
         variant: "destructive",
       });
     } finally {

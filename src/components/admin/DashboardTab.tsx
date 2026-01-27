@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  MessageSquare, ShieldAlert, Users, Mail,
+  MessageSquare, Users, Building2, Activity,
   ArrowUpRight, ArrowDownRight, Info, Smartphone
 } from "lucide-react";
 import {
@@ -18,8 +18,8 @@ import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // ============================================================
-// DASHBOARD SIMPLIFICADO
-// Usa apenas tabelas existentes: pwa_*, security_*, contact_messages
+// DASHBOARD - Nova Arquitetura
+// Tabelas: pwa_sessions, pwa_conversations, platform_users, institutions
 // ============================================================
 
 // Stat Card Component
@@ -79,57 +79,57 @@ export const DashboardTab = () => {
     setIsMounted(true);
   }, []);
 
-  // Fetch PWA conversation sessions (existing table)
+  // Fetch PWA sessions
   const { data: pwaSessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ["dashboard-pwa-sessions"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("pwa_conversation_sessions")
-        .select("id, started_at, device_id")
+        .from("pwa_sessions")
+        .select("id, started_at, device_id, module_slug")
         .order("started_at", { ascending: false })
         .limit(500);
       return data || [];
     },
   });
 
-  // Fetch security audit logs (existing table)
-  const { data: securityAlerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ["dashboard-security-alerts"],
+  // Fetch PWA conversations
+  const { data: pwaConversations, isLoading: convsLoading } = useQuery({
+    queryKey: ["dashboard-pwa-conversations"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("security_audit_log")
-        .select("id, severity, occurred_at")
-        .gte("occurred_at", subDays(new Date(), 30).toISOString())
-        .order("occurred_at", { ascending: false });
+        .from("pwa_conversations")
+        .select("id, created_at, session_id")
+        .order("created_at", { ascending: false })
+        .limit(1000);
       return data || [];
     },
   });
 
-  // Fetch contact messages (existing table)
-  const { data: contactMessages, isLoading: messagesLoading } = useQuery({
-    queryKey: ["dashboard-contact-messages"],
+  // Fetch platform users count
+  const { data: platformUsers } = useQuery({
+    queryKey: ["dashboard-platform-users"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("contact_messages")
+        .from("platform_users")
         .select("id, status, created_at")
-        .order("created_at", { ascending: false });
+        .eq("status", "active");
       return data || [];
     },
   });
 
-  // Fetch banned devices count (existing table)
-  const { data: bannedDevices } = useQuery({
-    queryKey: ["dashboard-banned-devices"],
+  // Fetch institutions count
+  const { data: institutions } = useQuery({
+    queryKey: ["dashboard-institutions"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("banned_devices")
-        .select("id")
+        .from("institutions")
+        .select("id, is_active")
         .eq("is_active", true);
       return data || [];
     },
   });
 
-  const isLoading = sessionsLoading || alertsLoading || messagesLoading;
+  const isLoading = sessionsLoading || convsLoading;
 
   if (!isMounted) {
     return (
@@ -147,16 +147,14 @@ export const DashboardTab = () => {
     );
   }
 
-  // Calculate metrics from existing tables
-  const totalPWASessions = pwaSessions?.length || 0;
+  // Calculate metrics
+  const totalSessions = pwaSessions?.length || 0;
   const uniqueDevices = new Set(pwaSessions?.map(s => s.device_id)).size;
-  const securityIncidents = securityAlerts?.length || 0;
-  const criticalIncidents = securityAlerts?.filter(a => a.severity === 'critical').length || 0;
-  const pendingMessages = contactMessages?.filter(m => m.status === 'pending').length || 0;
-  const totalMessages = contactMessages?.length || 0;
-  const activeBans = bannedDevices?.length || 0;
+  const totalConversations = pwaConversations?.length || 0;
+  const activeUsers = platformUsers?.length || 0;
+  const activeInstitutions = institutions?.length || 0;
 
-  // Generate chart data for PWA sessions (last 7 days)
+  // Generate chart data for sessions (last 7 days)
   const generateChartData = () => {
     const days = [];
     for (let i = 6; i >= 0; i--) {
@@ -168,14 +166,14 @@ export const DashboardTab = () => {
         s.started_at?.startsWith(dateStr)
       ).length ?? 0;
 
-      const incidentsCount = securityAlerts?.filter(a =>
-        a.occurred_at?.startsWith(dateStr)
+      const conversationsCount = pwaConversations?.filter(c =>
+        c.created_at?.startsWith(dateStr)
       ).length ?? 0;
 
       days.push({
         name: dayName.charAt(0).toUpperCase() + dayName.slice(1),
         sessoes: sessionsCount,
-        incidentes: incidentsCount,
+        conversas: conversationsCount,
       });
     }
     return days;
@@ -197,41 +195,41 @@ export const DashboardTab = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Sessões PWA"
-          value={totalPWASessions.toLocaleString()}
+          value={totalSessions.toLocaleString()}
           change={`${uniqueDevices} dispositivos`}
           icon={Smartphone}
           trend="neutral"
-          tooltip="Total de sessões de conversa no PWA. Cada sessão representa uma interação com o assistente de voz."
+          tooltip="Total de sessões no PWA. Cada sessão representa uma interação com o assistente."
         />
         <StatCard
-          title="Dispositivos Únicos"
-          value={uniqueDevices.toLocaleString()}
-          change="últimos 30 dias"
-          icon={Users}
+          title="Conversas"
+          value={totalConversations.toLocaleString()}
+          change="mensagens trocadas"
+          icon={MessageSquare}
           trend="neutral"
-          tooltip="Quantidade de dispositivos únicos que acessaram o PWA."
+          tooltip="Total de mensagens trocadas entre usuários e assistentes."
         />
         <StatCard
-          title="Mensagens de Contato"
-          value={totalMessages.toString()}
-          change={`${pendingMessages} pendentes`}
-          icon={Mail}
-          trend={pendingMessages > 0 ? "up" : "neutral"}
-          tooltip="Mensagens recebidas pelo formulário de contato do site."
+          title="Usuários Ativos"
+          value={activeUsers.toString()}
+          change="na plataforma"
+          icon={Users}
+          trend={activeUsers > 0 ? "up" : "neutral"}
+          tooltip="Usuários cadastrados e ativos na plataforma."
         />
         <StatCard
-          title="Incidentes de Segurança"
-          value={securityIncidents.toString()}
-          change={`${criticalIncidents} críticos | ${activeBans} banidos`}
-          icon={ShieldAlert}
-          trend={criticalIncidents > 0 ? "down" : "neutral"}
-          tooltip="Violações de segurança detectadas nos últimos 30 dias."
+          title="Instituições"
+          value={activeInstitutions.toString()}
+          change="ativas"
+          icon={Building2}
+          trend={activeInstitutions > 0 ? "up" : "neutral"}
+          tooltip="Instituições cadastradas e ativas."
         />
       </div>
 
       {/* CHARTS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PWA Sessions Chart */}
+        {/* Sessions Chart */}
         <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-foreground">Sessões PWA</h3>
@@ -280,19 +278,19 @@ export const DashboardTab = () => {
           </div>
         </div>
 
-        {/* Security Incidents Chart */}
+        {/* Conversations Chart */}
         <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-foreground">Incidentes de Segurança</h3>
-            <p className="text-sm text-muted-foreground">Volume de incidentes nos últimos 7 dias</p>
+            <h3 className="text-lg font-semibold text-foreground">Conversas</h3>
+            <p className="text-sm text-muted-foreground">Volume de mensagens nos últimos 7 dias</p>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorIncidentes" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#e94560" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#e94560" stopOpacity={0}/>
+                  <linearGradient id="colorConversas" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
@@ -317,73 +315,15 @@ export const DashboardTab = () => {
                 />
                 <Area
                   type="monotone"
-                  dataKey="incidentes"
-                  stroke="#e94560"
+                  dataKey="conversas"
+                  stroke="#10b981"
                   strokeWidth={3}
                   fillOpacity={1}
-                  fill="url(#colorIncidentes)"
-                  name="Incidentes"
+                  fill="url(#colorConversas)"
+                  name="Conversas"
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
-          <div className="flex items-center gap-3 mb-4">
-            <Smartphone className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">PWA Voice</h3>
-          </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total de sessões</span>
-              <span className="font-medium">{totalPWASessions}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Dispositivos únicos</span>
-              <span className="font-medium">{uniqueDevices}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
-          <div className="flex items-center gap-3 mb-4">
-            <Mail className="h-5 w-5 text-blue-500" />
-            <h3 className="text-lg font-semibold">Contato</h3>
-          </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total de mensagens</span>
-              <span className="font-medium">{totalMessages}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Pendentes</span>
-              <span className={`font-medium ${pendingMessages > 0 ? 'text-amber-500' : ''}`}>
-                {pendingMessages}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
-          <div className="flex items-center gap-3 mb-4">
-            <ShieldAlert className="h-5 w-5 text-red-500" />
-            <h3 className="text-lg font-semibold">Segurança</h3>
-          </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Incidentes (30d)</span>
-              <span className="font-medium">{securityIncidents}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Dispositivos banidos</span>
-              <span className={`font-medium ${activeBans > 0 ? 'text-red-500' : ''}`}>
-                {activeBans}
-              </span>
-            </div>
           </div>
         </div>
       </div>

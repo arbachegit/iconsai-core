@@ -248,28 +248,11 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     });
   }, []);
 
-  // Load desktop access config from database
+  // Config simplificada - permitir desktop por padrão
   useEffect(() => {
-    const loadDesktopConfig = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("pwa_config")
-          .select("config_value")
-          .eq("config_key", "allow_desktop_access")
-          .single();
-
-        if (!error && data?.config_value === "true") {
-          console.log("[PWAVoiceAssistant] allow_desktop_access = true (from config)");
-          setAllowDesktopFromConfig(true);
-        }
-      } catch (err) {
-        console.log("[PWAVoiceAssistant] Config not found, using default");
-      } finally {
-        setConfigLoaded(true);
-      }
-    };
-
-    loadDesktopConfig();
+    // Por padrão, permitir acesso desktop
+    setAllowDesktopFromConfig(true);
+    setConfigLoaded(true);
   }, []);
 
   // Check mobile - now respects allow_desktop_access config
