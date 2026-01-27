@@ -23,6 +23,7 @@ import { SpectrumAnalyzer } from '@/core/components/SpectrumAnalyzer';
 import { ModuleHeader } from '@/core/components/ModuleHeader';
 import { VoiceButton } from '@/core/components/VoiceButton';
 import { useVoiceService } from '@/core/services/VoiceService';
+import { useAgentConfig } from '@/core/hooks/useAgentConfig';
 import { warmupAudioSync } from '@/utils/audio-warmup';
 import { getOrchestrator } from '@/lib/mcp/orchestrator';
 import { HOME_MCP_CONFIG } from './mcp-config';
@@ -117,11 +118,20 @@ export const HomeAgent: React.FC<AgentProps> = ({
   sessionId,
   config,
 }) => {
+  // Fetch agent configuration from database (with fallback to hardcoded)
+  const agentConfig = useAgentConfig({
+    slug: config.slug,
+    deviceId,
+  });
+
+  // Use welcome message from database if available, otherwise fallback to hardcoded
+  const welcomeMessage = agentConfig.config?.welcome_message || HOME_WELCOME_MESSAGE.text;
+
   // Use VoiceService hook
   const voice = useVoiceService({
     agentName: config.name,
     agentSlug: config.slug,
-    welcomeMessage: HOME_WELCOME_MESSAGE.text,
+    welcomeMessage,
     primaryColor: config.color,
     deviceId,
     sessionId,

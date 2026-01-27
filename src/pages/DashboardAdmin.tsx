@@ -165,7 +165,7 @@ const DashboardAdmin = () => {
             <div className="flex items-center gap-3">
               <img
                 src={knowyouAdminLogo}
-                alt="KnowYOU Admin"
+                alt="IconsAI Admin"
                 className="h-8 w-auto"
               />
               <span className="font-semibold text-sm">Dashboard</span>

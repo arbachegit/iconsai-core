@@ -206,7 +206,7 @@ const Admin = () => {
           <div className="flex items-center gap-3">
             <img
               src={knowyouAdminLogo}
-              alt="KnowYOU"
+              alt="IconsAI"
               className="h-8 w-8 rounded-full object-cover"
             />
             <span className="text-sm font-medium text-foreground whitespace-nowrap">
