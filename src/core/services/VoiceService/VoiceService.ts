@@ -415,20 +415,39 @@ export class VoiceService {
 
   private async textToSpeech(text: string): Promise<{ success: boolean; audioUrl?: string; error?: string }> {
     try {
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: {
+      // Use fetch directly to get proper binary response
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
+        },
+        body: JSON.stringify({
           text,
           voice: this.config.voice || 'nova',
           speed: this.config.speed || 1.0,
           chatType: 'home',
-        },
+        }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[VoiceService] TTS error:', response.status, errorText);
+        return { success: false, error: `TTS failed: ${response.status}` };
       }
 
-      const audioUrl = this.convertToAudioUrl(data);
+      const blob = await response.blob();
+      console.log('[VoiceService] TTS received blob:', blob.size, 'bytes');
+
+      if (blob.size === 0) {
+        return { success: false, error: 'TTS returned empty audio' };
+      }
+
+      const audioUrl = URL.createObjectURL(blob);
       return { success: true, audioUrl };
     } catch (err) {
       return {

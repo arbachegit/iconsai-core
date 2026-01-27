@@ -112,16 +112,36 @@ export class VoicePlayer {
   async playFromTTS(text: string, chatType: string = 'home', voice: string = 'nova'): Promise<void> {
     console.log('[VoicePlayer] TTS request:', { textLength: text.length, voice });
 
-    const { data, error } = await supabase.functions.invoke('text-to-speech', {
-      body: { text, chatType, voice, speed: 1.0 },
+    // Use fetch directly to get proper binary response
+    // supabase.functions.invoke sometimes doesn't handle binary correctly
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey,
+      },
+      body: JSON.stringify({ text, chatType, voice, speed: 1.0 }),
     });
 
-    if (error) {
-      console.error('[VoicePlayer] TTS error:', error);
-      throw new Error(error.message);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[VoicePlayer] TTS error:', response.status, errorText);
+      throw new Error(`TTS failed: ${response.status}`);
     }
 
-    const audioUrl = this.convertToAudioUrl(data);
+    // Get response as blob directly
+    const blob = await response.blob();
+    console.log('[VoicePlayer] TTS received blob:', blob.size, 'bytes, type:', blob.type);
+
+    if (blob.size === 0) {
+      throw new Error('TTS returned empty audio');
+    }
+
+    const audioUrl = URL.createObjectURL(blob);
     await this.play(audioUrl);
   }
 
