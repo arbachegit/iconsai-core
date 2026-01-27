@@ -3,7 +3,7 @@ import { streamChat, extractSuggestions, removeSuggestionsFromText, AgentConfig 
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
-import { useChatAnalytics } from "./useChatAnalytics";
+// useChatAnalytics removed - table was deleted
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { saveSuggestionAudit } from "@/lib/suggestion-audit";
@@ -82,7 +82,7 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
   const { settings } = useAdminSettings();
-  const { createSession, updateSession } = useChatAnalytics();
+  // Analytics removed - table was deleted
   const [audioProgress, setAudioProgress] = useState<{
     currentTime: number;
     duration: number;
@@ -148,8 +148,7 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
       console.error("Erro ao carregar histórico:", error);
     }
 
-    createSession({ session_id: sessionId, user_name: null }).catch(console.error);
-  }, [sessionId, createSession, storageKey]);
+  }, [sessionId, storageKey]);
 
   // Save history to localStorage (com amostra limitada de fileData)
   const saveHistory = useCallback((msgs: Message[]) => {
@@ -383,19 +382,6 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
                 saveHistory(updated);
                 return updated;
               });
-              updateSession({
-                session_id: sessionId,
-                updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
-              }).catch(console.error);
-            } catch (error) {
-              console.error("Erro ao gerar áudio:", error);
-              setMessages((prev) => {
-                const updated = prev.map((m, i) =>
-                  i === prev.length - 1 ? { ...m, content: cleanedResponse } : m
-                );
-                saveHistory(updated);
-                return updated;
-              });
             } finally {
               setIsGeneratingAudio(false);
             }
@@ -409,39 +395,6 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
             });
           }
 
-          updateSession({
-            session_id: sessionId,
-            updates: { message_count: messages.length + 2 },
-          }).catch(console.error);
-
-          setIsLoading(false);
-        } else {
-          // Preparar mensagens com fileData completo (da memória ou localStorage)
-          // IMPORTANTE: Incluir activeFileData na ÚLTIMA mensagem do usuário se não tiver fileData próprio
-          const messagesWithFileData = newMessages.map((m, idx) => {
-            // Tentar pegar dados completos da memória primeiro
-            const fullFileData = fileDataMapRef.current.get(idx);
-            
-            // Se a mensagem já tem fileData (da memória ou localStorage), usar ela
-            if (fullFileData || m.fileData) {
-              return { 
-                role: m.role, 
-                content: m.content,
-                fileData: fullFileData || m.fileData
-              };
-            }
-            
-            // Se é a última mensagem do usuário e temos activeFileData, incluir
-            if (activeFileData && m.role === "user" && idx === newMessages.length - 1) {
-              return { 
-                role: m.role, 
-                content: m.content,
-                fileData: activeFileData
-              };
-            }
-            
-            return { role: m.role, content: m.content };
-          });
           
           await streamChat({
             messages: messagesWithFileData,
@@ -480,21 +433,6 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
                     return updated;
                   });
 
-                  updateSession({
-                    session_id: sessionId,
-                    updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
-                  }).catch(console.error);
-                } catch (error) {
-                  console.error("Erro ao gerar áudio:", error);
-                  setMessages((prev) => {
-                    const updated = prev.map((m, i) =>
-                      i === prev.length - 1
-                        ? { ...m, content: cleanedResponse }
-                        : m
-                    );
-                    saveHistory(updated);
-                    return updated;
-                  });
                 } finally {
                   setIsGeneratingAudio(false);
                 }
@@ -510,19 +448,6 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
                 });
               }
 
-              updateSession({
-                session_id: sessionId,
-                updates: { message_count: messages.length + 2 },
-              }).catch(console.error);
-
-              setIsLoading(false);
-            },
-            onError: (error) => {
-              toast({
-                title: "Erro",
-                description: error.message,
-                variant: "destructive",
-              });
               setIsLoading(false);
             },
           });
@@ -537,7 +462,7 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, toast, saveHistory, settings, sessionId, updateSession, attachedDocumentId, analyzeSentiment, chatType, userRegion]
+    [messages, isLoading, toast, saveHistory, settings, sessionId, attachedDocumentId, analyzeSentiment, chatType, userRegion]
   );
 
   const clearHistory = useCallback(() => {

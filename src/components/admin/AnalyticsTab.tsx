@@ -1,4 +1,3 @@
-import { useChatAnalytics } from "@/hooks/useChatAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +25,6 @@ import html2canvas from "html2canvas";
 import { useRef } from "react";
 
 export const AnalyticsTab = () => {
-  const { analytics, isLoading } = useChatAnalytics();
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversation data for analysis - use chat_sessions instead of conversation_history
