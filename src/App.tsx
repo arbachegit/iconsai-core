@@ -30,6 +30,7 @@ const AppPage = lazy(() => import("./pages/AppPage"));
 const Hub = lazy(() => import("./pages/Hub"));
 const PWAVoiceAssistant = lazy(() => import("./components/pwa/voice/PWAVoiceAssistant"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
+const InviteAcceptPage = lazy(() => import("./pages/InviteAcceptPage"));
 const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
 const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
 const PWACityPage = lazy(() => import("./pages/PWACityPage"));
@@ -225,6 +226,9 @@ const App = () => (
                     } />
 
                     <Route path="/invite/:token" element={<InvitePage />} />
+
+                    {/* User Invite Accept Route - New user registration flow */}
+                    <Route path="/accept-invite/:token" element={<InviteAcceptPage />} />
 
                     {/* PWA Token Route - Mobile Only - Accepts invitation tokens */}
                     <Route path="/pwa/:token" element={

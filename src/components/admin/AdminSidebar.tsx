@@ -31,6 +31,10 @@ import {
   Network,
   BookOpen,
   Mail,
+  Building2,
+  Users,
+  Activity,
+  Brain,
 } from "lucide-react";
 import {
   DndContext,
@@ -346,6 +350,17 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
   // Menu categories (simplified - only tabs that work with existing tables)
   const baseMenuCategories = useMemo(() => [
+    {
+      id: "user-management",
+      label: "Gestão de Usuários",
+      icon: Users,
+      items: [
+        { id: "institutions" as TabType, label: "Instituições", icon: Building2 },
+        { id: "institution-users" as TabType, label: "Usuários", icon: Users },
+        { id: "user-activity-logs" as TabType, label: "Logs de Atividade", icon: Activity },
+        { id: "emotion-analytics" as TabType, label: "Análise de Emoções", icon: Brain },
+      ]
+    },
     {
       id: "pwa",
       label: "PWA & Conversas",

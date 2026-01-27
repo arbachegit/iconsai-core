@@ -39,6 +39,11 @@ const SecurityAuditLogsTab = lazy(() => import("@/components/admin/SecurityAudit
 const SecurityShieldConfigTab = lazy(() => import("@/components/admin/SecurityShieldConfigTab").then(m => ({ default: m.SecurityShieldConfigTab })));
 const AppConfigTab = lazy(() => import("@/components/admin/AppConfigTab"));
 const InfrastructureArchitectureTab = lazy(() => import("@/components/admin/InfrastructureArchitectureTab").then(m => ({ default: m.InfrastructureArchitectureTab })));
+// User Management Tabs (IconsAI)
+const InstitutionsTab = lazy(() => import("@/components/admin/InstitutionsTab"));
+const InstitutionUsersTab = lazy(() => import("@/components/admin/InstitutionUsersTab"));
+const UserActivityLogsTab = lazy(() => import("@/components/admin/UserActivityLogsTab"));
+const EmotionAnalyticsTab = lazy(() => import("@/components/admin/EmotionAnalyticsTab"));
 
 const TabLoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -58,7 +63,12 @@ export type TabType =
   | "security-audit-logs"
   | "security-shield-config"
   | "app-config"
-  | "architecture";
+  | "architecture"
+  // User Management (IconsAI)
+  | "institutions"
+  | "institution-users"
+  | "user-activity-logs"
+  | "emotion-analytics";
 
 // Labels para cada tab
 export const TAB_LABELS: Record<TabType, string> = {
@@ -73,6 +83,11 @@ export const TAB_LABELS: Record<TabType, string> = {
   "security-shield-config": "Config. Security Shield",
   "app-config": "Configurações do Sistema",
   "architecture": "Arquitetura",
+  // User Management (IconsAI)
+  "institutions": "Instituições",
+  "institution-users": "Usuários",
+  "user-activity-logs": "Logs de Atividade",
+  "emotion-analytics": "Análise de Emoções",
 };
 
 const Admin = () => {
@@ -178,6 +193,11 @@ const Admin = () => {
         case "security-shield-config": return <SecurityShieldConfigTab />;
         case "app-config": return <AppConfigTab />;
         case "architecture": return <InfrastructureArchitectureTab />;
+        // User Management (IconsAI)
+        case "institutions": return <InstitutionsTab />;
+        case "institution-users": return <InstitutionUsersTab />;
+        case "user-activity-logs": return <UserActivityLogsTab />;
+        case "emotion-analytics": return <EmotionAnalyticsTab />;
         default: return <DashboardTab />;
       }
     })();
