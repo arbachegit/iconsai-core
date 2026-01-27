@@ -13,12 +13,12 @@ const HEALTH_CONFIG: UseChatConfig = {
   guardrailMessage: "Sou especializado em auxiliar profissionais de saúde. Não posso criar imagens sobre",
 };
 
-interface UseChatIconsAI BusinessOptions {
+interface UseChatIconsAIOptions {
   userRegion?: string;
 }
 
 export type { Message };
 
-export function useChatIconsAI Business(options: UseChatIconsAI BusinessOptions = {}) {
+export function useChatIconsAI(options: UseChatIconsAIOptions = {}) {
   return useChat(HEALTH_CONFIG, options);
 }
