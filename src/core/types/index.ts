@@ -286,3 +286,25 @@ export interface AudioEngineCallbacks {
 // ============================================
 
 export type SpectrumMode = 'idle' | 'playing' | 'recording';
+
+// ============================================
+// VOICE SERVICE STATE (with explicit 'ready' state)
+// ============================================
+
+/**
+ * VoiceServiceState - States for VoiceService
+ * Key difference from UnifiedButtonState: includes 'ready' state
+ * for explicit user control (no automatic transition to recording).
+ *
+ * - idle: Initial state, waiting for user to start
+ * - playing: Audio is playing (welcome or response)
+ * - ready: Audio finished, waiting for user to click mic
+ * - recording: User is speaking
+ * - processing: Processing user input and generating response
+ */
+export type VoiceServiceState =
+  | 'idle'
+  | 'playing'
+  | 'ready'
+  | 'recording'
+  | 'processing';

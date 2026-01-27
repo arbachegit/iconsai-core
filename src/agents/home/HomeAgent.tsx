@@ -1,30 +1,33 @@
 /**
- * HomeAgent - Main Home Agent Component (MCP-Integrated)
- * @version 2.0.0
- * @date 2026-01-26
+ * HomeAgent - Main Home Agent Component (VoiceService-Powered)
+ * @version 3.0.0
+ * @date 2026-01-27
  *
  * Primary voice interface for IconsAI PWA.
- * Now integrated with MCP orchestrator for intelligent routing.
+ * Now uses VoiceService for modular, explicit-control voice interaction.
  *
- * Interaction cycle:
- * idle -> playing (welcome) -> recording -> processing -> playing (response) -> recording...
+ * Interaction cycle (with explicit user control):
+ * idle -> [click play] -> playing (welcome) -> [audio ends] -> ready
+ * ready -> [click mic] -> recording -> [click stop] -> processing
+ * processing -> [response ready] -> playing -> [audio ends] -> ready
+ *
+ * Key change: User explicitly clicks mic to start recording!
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { AgentProps, UnifiedButtonState, SpectrumMode } from '@/core/types';
+import type { AgentProps, SpectrumMode } from '@/core/types';
 import type { ProcessingStage } from '@/lib/mcp/types';
 import { EventBus } from '@/core/EventBus';
-import { useAudioEngine } from '@/core/AudioEngine';
-import { UnifiedButton } from '@/core/components/UnifiedButton';
 import { SpectrumAnalyzer } from '@/core/components/SpectrumAnalyzer';
 import { ModuleHeader } from '@/core/components/ModuleHeader';
-import { useHomeConversation } from './hooks/useHomeConversation';
-import { useAudioRecorder } from '@/hooks/useAudioRecorder';
+import { VoiceButton } from '@/core/components/VoiceButton';
+import { useVoiceService } from '@/core/services/VoiceService';
 import { warmupAudioSync } from '@/utils/audio-warmup';
 import { getOrchestrator } from '@/lib/mcp/orchestrator';
 import { HOME_MCP_CONFIG } from './mcp-config';
 import { homeHandlers } from './handlers';
+import { HOME_WELCOME_MESSAGE } from './config';
 
 // Register agent on module load
 const orchestrator = getOrchestrator();
@@ -114,33 +117,21 @@ export const HomeAgent: React.FC<AgentProps> = ({
   sessionId,
   config,
 }) => {
-  // Button state
-  const [buttonState, setButtonState] = useState<UnifiedButtonState>('idle');
-  const [frequencyData, setFrequencyData] = useState<number[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
-
-  // Processing state
-  const [processingProgress, setProcessingProgress] = useState(0);
-  const [processingStage, setProcessingStage] = useState<ProcessingStage | null>(null);
-
-  // Refs
-  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasPlayedWelcome = useRef(false);
-
-  // Conversation hook
-  const {
-    messages,
-    isProcessing,
-    error,
-    sendAudioMessage,
-    getWelcomeAudio,
-    setFirstInteractionComplete,
-    isFirstInteractionComplete,
-  } = useHomeConversation({
+  // Use VoiceService hook
+  const voice = useVoiceService({
+    agentName: config.name,
+    agentSlug: config.slug,
+    welcomeMessage: HOME_WELCOME_MESSAGE.text,
+    primaryColor: config.color,
     deviceId,
     sessionId,
-    agentName: config.name,
   });
+
+  // Processing state for progress display
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingStage, setProcessingStage] = useState<ProcessingStage | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [hasFirstInteraction, setHasFirstInteraction] = useState(false);
 
   // Set up orchestrator progress callback
   useEffect(() => {
@@ -150,37 +141,17 @@ export const HomeAgent: React.FC<AgentProps> = ({
     });
   }, []);
 
-  // Audio engine
-  const audioEngine = useAudioEngine({
-    onEnded: () => {
-      if (buttonState === 'playing') {
-        startRecordingMode();
-      }
-    },
-    onFrequencyData: (data) => {
-      if (buttonState === 'playing') {
-        setFrequencyData(data);
-      }
-    },
-  });
+  // Show footer after first interaction
+  useEffect(() => {
+    if (voice.lastResponse && !hasFirstInteraction) {
+      setHasFirstInteraction(true);
+      EventBus.emit('footer:show');
+    }
+  }, [voice.lastResponse, hasFirstInteraction]);
 
-  // Audio recorder
-  const {
-    audioBase64,
-    startRecording,
-    stopRecording,
-    reset: resetRecorder,
-  } = useAudioRecorder({
-    onFrequencyData: (data) => {
-      if (buttonState === 'recording') {
-        setFrequencyData(data);
-      }
-    },
-  });
-
-  // Convert button state to spectrum mode
+  // Convert voice state to spectrum mode
   const getSpectrumMode = (): SpectrumMode => {
-    switch (buttonState) {
+    switch (voice.state) {
       case 'playing':
         return 'playing';
       case 'recording':
@@ -190,107 +161,29 @@ export const HomeAgent: React.FC<AgentProps> = ({
     }
   };
 
-  // Start recording mode
-  const startRecordingMode = useCallback(() => {
-    setButtonState('recording');
-    setFrequencyData([]);
-    setProcessingProgress(0);
-    setProcessingStage(null);
-    startRecording();
-
-    // Set 60-second timeout
-    recordingTimeoutRef.current = setTimeout(() => {
-      handleStopRecording();
-    }, 60000);
-  }, [startRecording]);
-
-  // Handle stop recording
-  const handleStopRecording = useCallback(async () => {
-    if (recordingTimeoutRef.current) {
-      clearTimeout(recordingTimeoutRef.current);
-      recordingTimeoutRef.current = null;
-    }
-
-    setButtonState('processing');
-    setProcessingProgress(5);
-    setProcessingStage('classifying');
-    await stopRecording();
-  }, [stopRecording]);
-
-  // Process recorded audio when available
-  useEffect(() => {
-    if (audioBase64 && buttonState === 'processing') {
-      processAudio(audioBase64);
-    }
-  }, [audioBase64, buttonState]);
-
-  // Process audio and get response
-  const processAudio = async (base64: string) => {
-    const result = await sendAudioMessage(base64);
-
-    if (result.success && result.audioUrl) {
-      setButtonState('playing');
-      setProcessingProgress(100);
-      await audioEngine.play(result.audioUrl, config.name);
-
-      // Mark first interaction complete (shows footer)
-      if (!isFirstInteractionComplete) {
-        setFirstInteractionComplete();
-        EventBus.emit('footer:show');
-      }
-    } else {
-      // Error - go back to idle
-      console.error('[HomeAgent] Process error:', result.error);
-      setButtonState('idle');
-    }
-
-    resetRecorder();
-    setProcessingProgress(0);
-    setProcessingStage(null);
-  };
-
-  // Handle play button click
-  const handlePlay = useCallback(async () => {
+  // Handler for play button (idle state)
+  const handlePlay = useCallback(() => {
     warmupAudioSync();
+    voice.playWelcome();
+  }, [voice]);
 
-    if (!hasPlayedWelcome.current) {
-      setButtonState('playing');
-      const welcomeUrl = await getWelcomeAudio();
+  // Handler for record button (ready state)
+  const handleRecord = useCallback(() => {
+    voice.startRecording();
+  }, [voice]);
 
-      if (welcomeUrl) {
-        await audioEngine.play(welcomeUrl, config.name);
-        hasPlayedWelcome.current = true;
-      } else {
-        startRecordingMode();
-      }
-    } else {
-      startRecordingMode();
-    }
-  }, [audioEngine, config.name, getWelcomeAudio, startRecordingMode]);
-
-  // Handle stop button click
+  // Handler for stop button (playing or recording state)
   const handleStop = useCallback(() => {
-    if (buttonState === 'playing') {
-      audioEngine.stop();
-      setButtonState('idle');
-    } else if (buttonState === 'recording') {
-      handleStopRecording();
+    if (voice.isPlaying) {
+      voice.stop();
+    } else if (voice.isRecording) {
+      voice.stopRecording();
     }
-  }, [buttonState, audioEngine, handleStopRecording]);
+  }, [voice]);
 
   // Handle history button click
   const handleHistoryClick = useCallback(() => {
     setShowHistory(true);
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current);
-      }
-      audioEngine.stop();
-    };
   }, []);
 
   return (
@@ -299,7 +192,7 @@ export const HomeAgent: React.FC<AgentProps> = ({
       <ModuleHeader
         config={config}
         onHistoryClick={handleHistoryClick}
-        hasHistory={messages.length > 0}
+        hasHistory={!!voice.lastResponse}
       />
 
       {/* Main Content */}
@@ -313,7 +206,7 @@ export const HomeAgent: React.FC<AgentProps> = ({
         >
           <SpectrumAnalyzer
             mode={getSpectrumMode()}
-            frequencyData={frequencyData}
+            frequencyData={voice.frequencyData}
             primaryColor={config.color}
             secondaryColor="#8B5CF6"
             barCount={24}
@@ -324,7 +217,7 @@ export const HomeAgent: React.FC<AgentProps> = ({
 
         {/* Processing Progress */}
         <AnimatePresence>
-          {buttonState === 'processing' && (
+          {voice.isProcessing && (
             <motion.div
               className="mb-4 flex flex-col items-center gap-2"
               initial={{ opacity: 0, height: 0 }}
@@ -337,40 +230,54 @@ export const HomeAgent: React.FC<AgentProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Unified Button */}
+        {/* Voice Button */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4, type: 'spring', stiffness: 200 }}
         >
-          <UnifiedButton
-            state={buttonState}
+          <VoiceButton
+            state={voice.state}
             onPlay={handlePlay}
-            onRecord={startRecordingMode}
+            onRecord={handleRecord}
             onStop={handleStop}
-            progress={audioEngine.progress}
+            progress={voice.progress}
             primaryColor={config.color}
-            disabled={isProcessing && buttonState !== 'processing'}
+            disabled={false}
           />
         </motion.div>
 
+        {/* Recording Duration */}
+        <AnimatePresence>
+          {voice.isRecording && voice.recordingDuration > 0 && (
+            <motion.div
+              className="mt-4 text-slate-400 text-sm font-mono"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {voice.recordingDuration}s
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Error Message */}
         <AnimatePresence>
-          {error && (
+          {voice.error && (
             <motion.div
               className="mt-8 px-4 py-2 rounded-lg bg-red-900/50 border border-red-500/50"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <p className="text-red-300 text-sm">{error}</p>
+              <p className="text-red-300 text-sm">{voice.error}</p>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Last Response Preview */}
         <AnimatePresence>
-          {messages.length > 0 && buttonState === 'idle' && (
+          {voice.lastResponse && voice.isIdle && (
             <motion.div
               className="mt-8 max-w-xs text-center"
               initial={{ opacity: 0 }}
@@ -379,7 +286,7 @@ export const HomeAgent: React.FC<AgentProps> = ({
               transition={{ delay: 0.5 }}
             >
               <p className="text-slate-400 text-sm line-clamp-2">
-                {messages[messages.length - 1]?.content}
+                {voice.lastResponse}
               </p>
             </motion.div>
           )}
