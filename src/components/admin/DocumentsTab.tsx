@@ -3103,7 +3103,7 @@ export const DocumentsTab = () => {
                 <div>
                   <h4 className="font-medium text-blue-500">🤖 Validação Inteligente</h4>
                   <p className="text-muted-foreground text-xs mt-1">
-                    O sistema usa o <strong>SLM (Small Language Model - KnowYOU)</strong> para classificar automaticamente o contexto (<Badge variant="outline" className="text-xs">HEALTH</Badge>, <Badge variant="outline" className="text-xs">STUDY</Badge> - as suas IAs inseridas no sistema) e verifica a legibilidade do documento antes de prosseguir.
+                    O sistema usa o <strong>SLM (Small Language Model - IconsAI)</strong> para classificar automaticamente o contexto (<Badge variant="outline" className="text-xs">HEALTH</Badge>, <Badge variant="outline" className="text-xs">STUDY</Badge> - as suas IAs inseridas no sistema) e verifica a legibilidade do documento antes de prosseguir.
                   </p>
                 </div>
                 
@@ -3151,7 +3151,7 @@ export const DocumentsTab = () => {
                 <div>
                   <h4 className="font-medium text-emerald-500">📚 Geração Fundamentada</h4>
                   <p className="text-muted-foreground text-xs mt-1">
-                    O <strong>LLM (Gemini 3.0)</strong> e/ou o <strong>SLM (KnowYOU)</strong> são forçados a usar os chunks de contexto recuperados para fundamentar a resposta, prevenindo "alucinações" e garantindo a precisão.
+                    O <strong>LLM (Gemini 3.0)</strong> e/ou o <strong>SLM (IconsAI)</strong> são forçados a usar os chunks de contexto recuperados para fundamentar a resposta, prevenindo "alucinações" e garantindo a precisão.
                   </p>
                 </div>
                 

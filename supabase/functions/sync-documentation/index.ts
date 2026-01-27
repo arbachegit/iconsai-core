@@ -60,7 +60,7 @@ const FRONTEND_COMPONENTS = [
   { name: 'AIHistoryPanel', path: 'src/components/AIHistoryPanel.tsx', category: 'Landing', description: 'Painel de história da IA' },
   { name: 'AudioControls', path: 'src/components/AudioControls.tsx', category: 'Utility', description: 'Controles de áudio' },
   { name: 'ChatChartRenderer', path: 'src/components/ChatChartRenderer.tsx', category: 'Chat', description: 'Renderizador de gráficos no chat' },
-  { name: 'ChatKnowYOU', path: 'src/components/ChatKnowYOU.tsx', category: 'Chat', description: 'Assistente de saúde interativo' },
+  { name: 'ChatIconsAI', path: 'src/components/ChatIconsAI.tsx', category: 'Chat', description: 'Assistente de saúde interativo' },
   { name: 'ChatModal', path: 'src/components/ChatModal.tsx', category: 'Chat', description: 'Modal de chat' },
   { name: 'ChatStudy', path: 'src/components/ChatStudy.tsx', category: 'Chat', description: 'Assistente de estudos interativo' },
   { name: 'ContactModal', path: 'src/components/ContactModal.tsx', category: 'Utility', description: 'Modal de contato' },
@@ -145,7 +145,7 @@ const sendFailureAlert = async (
       .select('gmail_notification_email')
       .single();
     
-    const adminEmail = adminSettings?.gmail_notification_email || 'suporte@knowyou.app';
+    const adminEmail = adminSettings?.gmail_notification_email || 'suporte@iconsai.app';
     const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     
     // Send email via send-email function
@@ -192,7 +192,7 @@ const sendFailureAlert = async (
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
             
             <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              KnowYOU AI - Sistema de Documentação Técnica
+              IconsAI AI - Sistema de Documentação Técnica
             </p>
           </div>
         `,

@@ -201,7 +201,7 @@ serve(async (req) => {
                   answer: cached.answer,
                   source: {
                     url: cached.source_url || null,
-                    name: cached.source_name || "Cache KnowYOU",
+                    name: cached.source_name || "Cache IconsAI",
                     type: cached.source_type || "ai"
                   },
                   fromCache: true,

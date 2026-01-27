@@ -23,12 +23,12 @@ export const PWA_SEED_DATA: DemoConversation[] = [
   // Conversa 1: Introdução
   {
     role: "user",
-    content: "Olá! Como funciona o KnowYOU?",
+    content: "Olá! Como funciona o IconsAI?",
     timestamp: "2026-01-17T10:00:00Z",
   },
   {
     role: "assistant",
-    content: "Olá! Sou o KnowYOU, seu assistente pessoal de voz. Posso ajudar você em 4 áreas: Ajuda (informações gerais), Mundo (notícias e curiosidades), Saúde (orientações médicas básicas) e Ideias (brainstorming e criatividade). Como posso te ajudar hoje?",
+    content: "Olá! Sou o IconsAI, seu assistente pessoal de voz. Posso ajudar você em 4 áreas: Ajuda (informações gerais), Mundo (notícias e curiosidades), Saúde (orientações médicas básicas) e Ideias (brainstorming e criatividade). Como posso te ajudar hoje?",
     timestamp: "2026-01-17T10:00:05Z",
   },
 

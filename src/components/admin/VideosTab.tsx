@@ -245,7 +245,7 @@ export const VideosTab = () => {
                 }
               />
               <CardDescription className="mt-2">
-                Adicione vídeos do Vimeo para exibição na plataforma KnowYOU
+                Adicione vídeos do Vimeo para exibição na plataforma IconsAI
               </CardDescription>
             </div>
 

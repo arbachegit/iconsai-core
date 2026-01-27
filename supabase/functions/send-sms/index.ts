@@ -146,7 +146,7 @@ serve(async (req) => {
     // =========================
     const apiKey = Deno.env.get("INFOBIP_API_KEY");
     const baseUrl = Deno.env.get("INFOBIP_BASE_URL") || "5589kd.api.infobip.com";
-    const sender = Deno.env.get("INFOBIP_SENDER") || "KnowYOU";
+    const sender = Deno.env.get("INFOBIP_SENDER") || "IconsAI";
 
     let infobipError: string | null = null;
 

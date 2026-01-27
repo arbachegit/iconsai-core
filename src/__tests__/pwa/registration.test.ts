@@ -125,7 +125,7 @@ describe('PWA Registration Flow', () => {
         success: true,
         message: 'Cadastro realizado com sucesso',
         session_token: 'generated-session-token',
-        pwa_access: ['economista', 'knowyou'],
+        pwa_access: ['economista', 'iconsai'],
       };
 
       mockRpc.mockResolvedValueOnce({

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
+import iconsaiAdminLogo from "@/assets/knowyou-admin-logo.png";
 import {
   LayoutDashboard,
   MessageSquare,

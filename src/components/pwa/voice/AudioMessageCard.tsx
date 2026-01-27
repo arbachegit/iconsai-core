@@ -222,7 +222,7 @@ export const AudioMessageCard: React.FC<AudioMessageCardProps> = ({ message, use
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `knowyou_${message.id}.webm`;
+      a.download = `iconsai_${message.id}.webm`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

@@ -102,7 +102,7 @@ serve(async (req) => {
       .select("gmail_notification_email, email_global_enabled, whatsapp_target_phone, whatsapp_global_enabled")
       .single();
 
-    const recipientEmail = settings?.gmail_notification_email || "suporte@knowyou.app";
+    const recipientEmail = settings?.gmail_notification_email || "suporte@iconsai.app";
     const timestamp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
     // 3. Send email to support team
@@ -117,13 +117,13 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "KnowYOU AI <noreply@knowyou.app>",
+          from: "IconsAI AI <noreply@iconsai.app>",
           to: [recipientEmail],
-          subject: `[Contato KnowYOU] ${subject}`,
+          subject: `[Contato IconsAI] ${subject}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
               <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">KnowYOU AI</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">IconsAI AI</h1>
               </div>
               <div style="padding: 30px; background: #ffffff;">
                 <h2 style="color: #1e3a5f; margin-top: 0;">Nova mensagem de contato</h2>
@@ -137,7 +137,7 @@ serve(async (req) => {
               </div>
               <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} KnowYOU AI
+                  © ${new Date().getFullYear()} IconsAI AI
                 </p>
               </div>
             </div>
@@ -170,13 +170,13 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "KnowYOU AI <noreply@knowyou.app>",
+          from: "IconsAI AI <noreply@iconsai.app>",
           to: [email],
           subject: `Recebemos sua mensagem - ${subject}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
               <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">KnowYOU AI</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">IconsAI AI</h1>
               </div>
               <div style="padding: 30px; background: #ffffff;">
                 <h2 style="color: #0ea5e9; margin-top: 0;">Obrigado por entrar em contato!</h2>
@@ -191,7 +191,7 @@ serve(async (req) => {
               </div>
               <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} KnowYOU AI
+                  © ${new Date().getFullYear()} IconsAI AI
                 </p>
               </div>
             </div>
@@ -252,7 +252,7 @@ serve(async (req) => {
         sender_email: email,
         snippet: message.substring(0, 100),
         timestamp,
-        platform_name: "KnowYOU AI",
+        platform_name: "IconsAI AI",
       };
 
       const injectVars = (tpl: string) => {
@@ -281,7 +281,7 @@ serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: "KnowYOU AI <noreply@knowyou.app>",
+              from: "IconsAI AI <noreply@iconsai.app>",
               to: [recipientEmail],
               subject: emailSubject,
               html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,

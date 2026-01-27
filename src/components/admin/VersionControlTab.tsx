@@ -162,7 +162,7 @@ export const VersionControlTab = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `changelog-knowyou.${data.format === "json" ? "json" : "md"}`;
+      a.download = `changelog-iconsai.${data.format === "json" ? "json" : "md"}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -450,7 +450,7 @@ export const VersionControlTab = () => {
                     ? "ex: Implementação de UX/UI: botão copiar, mini player flutuante, design tokens"
                     : versionDialog === "minor"
                     ? "ex: Melhorias no sistema RAG e interface admin"
-                    : "ex: Lançamento oficial da plataforma KnowYOU v1.0"
+                    : "ex: Lançamento oficial da plataforma IconsAI v1.0"
                 }
                 value={logMessage}
                 onChange={(e) => setLogMessage(e.target.value)}

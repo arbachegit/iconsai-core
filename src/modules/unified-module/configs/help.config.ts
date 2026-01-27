@@ -23,7 +23,7 @@ export const HELP_CONFIG: ModuleConfig = {
   name: "Ajuda",
   icon: HelpCircle,
   theme: HELP_THEME,
-  welcomeText: "Olá! Posso te explicar como usar cada módulo do KnowYOU. O que você precisa de ajuda?",
+  welcomeText: "Olá! Posso te explicar como usar cada módulo do IconsAI. O que você precisa de ajuda?",
   placeholder: "Pergunte como usar...",
   endpoint: "chat-router",
 };

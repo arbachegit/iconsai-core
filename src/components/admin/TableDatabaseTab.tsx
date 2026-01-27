@@ -875,7 +875,7 @@ export function TableDatabaseTab() {
     );
   }
 
-  // Render indicator card with knowyou-indicator-card class
+  // Render indicator card with iconsai-indicator-card class
   const renderIndicatorCard = (indicator: IndicatorWithApi, overrideMonetaryMode?: boolean) => {
     const stats = indicatorStats[indicator.id];
     const unitInfo = formatUnit(indicator.unit);
@@ -888,7 +888,7 @@ export function TableDatabaseTab() {
     return (
       <div
         key={indicator.id}
-        className="knowyou-indicator-card"
+        className="iconsai-indicator-card"
         onClick={() => {
           if (overrideMonetaryMode !== undefined) {
             setShowMonetaryValues(overrideMonetaryMode);
@@ -972,7 +972,7 @@ export function TableDatabaseTab() {
   return (
     <div className="space-y-6">
       {/* Header Card */}
-      <div className="knowyou-header-card">
+      <div className="iconsai-header-card">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Database className="h-6 w-6 text-primary" />
@@ -989,7 +989,7 @@ export function TableDatabaseTab() {
                 {lastUpdate.count.toLocaleString()} registros • {format(lastUpdate.date, "dd/MM/yyyy")}
               </span>
             )}
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2 knowyou-badge">
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2 iconsai-badge">
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Atualizar
             </Button>
@@ -998,7 +998,7 @@ export function TableDatabaseTab() {
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="knowyou-metric-card">
+          <div className="iconsai-metric-card">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Calendar className="h-4 w-4 text-primary" />
               <span className="text-sm">Período</span>
@@ -1013,7 +1013,7 @@ export function TableDatabaseTab() {
             </div>
           </div>
 
-          <div className="knowyou-metric-card">
+          <div className="iconsai-metric-card">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <RefreshCw className="h-4 w-4 text-primary" />
               <span className="text-sm">Frequência</span>
@@ -1031,7 +1031,7 @@ export function TableDatabaseTab() {
             </Select>
           </div>
 
-          <div className="knowyou-metric-card">
+          <div className="iconsai-metric-card">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <TrendingUp className="h-4 w-4 text-primary" />
               <span className="text-sm">Total de Séries</span>
@@ -1044,19 +1044,19 @@ export function TableDatabaseTab() {
         <div>
           <p className="text-sm text-muted-foreground mb-3">Séries Disponíveis:</p>
           <div className="flex flex-wrap gap-3">
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Mensal</span>
               <span className="ml-2 font-bold">{seriesCounts.monthly}</span>
             </Badge>
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Trimestral</span>
               <span className="ml-2 font-bold">{seriesCounts.quarterly}</span>
             </Badge>
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Anual</span>
               <span className="ml-2 font-bold">{seriesCounts.yearly}</span>
             </Badge>
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Diário</span>
               <span className="ml-2 font-bold">{seriesCounts.daily}</span>
             </Badge>

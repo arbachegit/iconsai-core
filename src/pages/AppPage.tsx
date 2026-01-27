@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { AgentChat } from "@/components/chat/AgentChat";
 import { UserBadge } from "@/components/UserBadge";
 import { useAuth } from "@/hooks/useAuth";
-import knowyouLogo from "@/assets/knowyou-admin-logo.png";
+import iconsaiLogo from "@/assets/knowyou-admin-logo.png";
 
 type AppView = "home" | "chat" | "data" | "analytics" | "settings";
 
@@ -38,7 +38,7 @@ export default function AppPage() {
 
   const menuItems = [
     { id: "home" as AppView, label: "Início", icon: Home },
-    { id: "chat" as AppView, label: "Assistente KnowYOU", icon: MessageSquare },
+    { id: "chat" as AppView, label: "Assistente IconsAI", icon: MessageSquare },
     { id: "data" as AppView, label: "Dados", icon: Database },
     { id: "analytics" as AppView, label: "Analytics", icon: BarChart3 },
     { id: "settings" as AppView, label: "Configurações", icon: Settings },
@@ -56,7 +56,7 @@ export default function AppPage() {
             <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center">
               <Bot className="h-12 w-12 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Bem-vindo ao KnowYOU App</h1>
+            <h1 className="text-3xl font-bold text-foreground">Bem-vindo ao IconsAI App</h1>
             <p className="text-muted-foreground text-center max-w-md">
               Sua plataforma de análise de dados e inteligência artificial. 
               Use o assistente para analisar seus dados.
@@ -430,9 +430,9 @@ export default function AppPage() {
           {/* Header */}
           <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
-              <img src={knowyouLogo} alt="KnowYOU" className="h-7" />
+              <img src={iconsaiLogo} alt="IconsAI" className="h-7" />
               <h1 className="font-semibold text-foreground">
-                {menuItems.find((m) => m.id === currentView)?.label || "KnowYOU App"}
+                {menuItems.find((m) => m.id === currentView)?.label || "IconsAI App"}
               </h1>
             </div>
             <UserBadge />

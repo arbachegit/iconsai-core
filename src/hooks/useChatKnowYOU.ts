@@ -2,7 +2,7 @@ import { useChat, type UseChatConfig, type Message } from "./useChat";
 
 const HEALTH_CONFIG: UseChatConfig = {
   chatType: "health",
-  storageKey: "knowyou_chat_history",
+  storageKey: "iconsai_chat_history",
   sessionIdPrefix: "chat_",
   defaultSuggestions: [
     "O que é telemedicina?",

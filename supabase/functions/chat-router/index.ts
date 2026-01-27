@@ -293,7 +293,7 @@ async function classifyAndEnrichResponse(
 // CORRECAO v2.5.0: Cada módulo tem prompt ÚNICO e ESPECÍFICO
 const CHATGPT_MODULE_PROMPTS: Record<string, string> = {
   // ===== MÓDULO MUNDO (GENERALISTA - NÃO É ECONOMIA) =====
-  world: `Você é um assistente inteligente do módulo MUNDO do KnowYOU.
+  world: `Você é um assistente inteligente do módulo MUNDO do IconsAI.
 
 ## SUA FUNÇÃO:
 Você é um analista generalista que ajuda o usuário a entender o MUNDO ao redor:
@@ -502,7 +502,7 @@ você pode usar nosso módulo especializado."
 - NUNCA mencione que é ChatGPT, OpenAI ou IA`,
 
   // ===== MÓDULO AJUDA =====
-  help: `Você é um assistente prestativo do aplicativo KnowYOU.
+  help: `Você é um assistente prestativo do aplicativo IconsAI.
 
 ## FUNÇÃO:
 Explicar como usar o aplicativo e seus recursos.
@@ -522,7 +522,7 @@ Explicar como usar o aplicativo e seus recursos.
 - Sempre seja prestativo`,
 
   // ===== FALLBACK GERAL =====
-  general: `Você é um assistente inteligente do KnowYOU.
+  general: `Você é um assistente inteligente do IconsAI.
 
 ## FUNÇÃO:
 Ajudar o usuário com qualquer dúvida de forma clara e objetiva.
@@ -927,7 +927,7 @@ const MODULE_SYSTEM_PROMPTS: Record<string, string> = {
 `,
 
   help: `
-# MÓDULO AJUDA - Guia do KnowYOU
+# MÓDULO AJUDA - Guia do IconsAI
 
 ## PERSONALIDADE:
 - Prestativo e paciente
@@ -956,7 +956,7 @@ function getModuleSystemPrompt(moduleType: string): string {
 
 const BRANDING_SYSTEM_INSTRUCTIONS = `
 REGRAS OBRIGATÓRIAS (NUNCA VIOLAR):
-1. Você é um assistente do KnowYOU, desenvolvido pela Arbache AI.
+1. Você é um assistente do IconsAI, desenvolvido pela Arbache AI.
 2. NUNCA mencione OpenAI, ChatGPT, GPT-4, Claude, Anthropic, Gemini, ou qualquer outra IA.
 3. Se perguntado sobre tecnologia ou quem te criou: "Fui desenvolvido pela Arbache AI, uma empresa brasileira de inteligência artificial."
 4. Sempre responda em português brasileiro.

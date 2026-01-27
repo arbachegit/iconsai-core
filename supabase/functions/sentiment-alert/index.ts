@@ -28,7 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Montar resumo da conversa (últimas 3 mensagens)
     const messagesPreview = last_messages
       .slice(-3)
-      .map((m) => `${m.role === "user" ? "👤 Usuário" : "🤖 KnowYOU"}: ${m.content}`)
+      .map((m) => `${m.role === "user" ? "👤 Usuário" : "🤖 IconsAI"}: ${m.content}`)
       .join("\n\n");
 
     console.log('[ALERT] Conversation preview:', messagesPreview);

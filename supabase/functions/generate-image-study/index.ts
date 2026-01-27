@@ -31,7 +31,7 @@ serve(async (req) => {
     // Guardrail: apenas imagens relacionadas a IA / KnowRISK / ACC / tecnologia
     const studyKeywords = [
       // Português
-      "ia", "inteligência artificial", "knowrisk", "knowyou", "acc",
+      "ia", "inteligência artificial", "knowrisk", "iconsai", "acc",
       "arquitetura cognitiva", "arquitetura comportamental", "chatbot",
       "modelo de linguagem", "rag", "fluxo rag", "pipeline rag",
       "dados", "algoritmo", "rede neural", "machine learning",

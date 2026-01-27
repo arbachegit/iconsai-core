@@ -167,7 +167,7 @@ serve(async (req) => {
       console.log("📱 Falling back to direct SMS...");
       sendChannel = "sms";
       
-      const smsMessage = `KnowYOU: Seu código de verificação é ${verificationCode}. Válido por 10 minutos.`;
+      const smsMessage = `IconsAI: Seu código de verificação é ${verificationCode}. Válido por 10 minutos.`;
       
       try {
         const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {

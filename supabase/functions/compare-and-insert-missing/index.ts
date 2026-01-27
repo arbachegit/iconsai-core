@@ -227,7 +227,7 @@ serve(async (req) => {
 
     // 6. Log the operation
     await supabase.from('user_activity_logs').insert({
-      user_email: 'system@knowyou.app',
+      user_email: 'system@iconsai.app',
       action_category: 'MANDATORY_INSERT',
       action: `Inserted ${totalInserted} missing records for ${indicator.name}`,
       details: { 

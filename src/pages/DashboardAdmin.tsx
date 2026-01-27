@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
+import iconsaiAdminLogo from "@/assets/knowyou-admin-logo.png";
 import { DashboardSidebar, type DashboardTabType } from "@/components/dashboard/DashboardSidebar";
 import { UserBadge } from "@/components/UserBadge";
 import { DashboardAnalyticsProvider } from "@/contexts/DashboardAnalyticsContext";
@@ -164,7 +164,7 @@ const DashboardAdmin = () => {
             {/* Logo */}
             <div className="flex items-center gap-3">
               <img
-                src={knowyouAdminLogo}
+                src={iconsaiAdminLogo}
                 alt="IconsAI Admin"
                 className="h-8 w-auto"
               />

@@ -50,39 +50,39 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[Resend] Domains found:", data);
 
-    // Check if knowyou.app domain exists and its status
+    // Check if iconsai.app domain exists and its status
     const domains = data.data || [];
-    const knowyouDomain = domains.find((d: any) => 
-      d.name === "knowyou.app" || d.name?.includes("knowyou")
+    const iconsaiDomain = domains.find((d: any) => 
+      d.name === "iconsai.app" || d.name?.includes("iconsai")
     );
 
-    if (!knowyouDomain) {
+    if (!iconsaiDomain) {
       return new Response(
         JSON.stringify({ 
           configured: true,
           verified: false,
           domains: domains.map((d: any) => ({ name: d.name, status: d.status })),
-          error: "Domínio knowyou.app não encontrado no Resend. Adicione em resend.com/domains"
+          error: "Domínio iconsai.app não encontrado no Resend. Adicione em resend.com/domains"
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const isVerified = knowyouDomain.status === "verified";
+    const isVerified = iconsaiDomain.status === "verified";
     
     return new Response(
       JSON.stringify({ 
         configured: true,
         verified: isVerified,
         domain: {
-          name: knowyouDomain.name,
-          status: knowyouDomain.status,
-          created_at: knowyouDomain.created_at,
-          region: knowyouDomain.region
+          name: iconsaiDomain.name,
+          status: iconsaiDomain.status,
+          created_at: iconsaiDomain.created_at,
+          region: iconsaiDomain.region
         },
         message: isVerified 
           ? "Domínio verificado e pronto para envio" 
-          : `Domínio com status "${knowyouDomain.status}". Verifique os registros DNS em resend.com/domains`
+          : `Domínio com status "${iconsaiDomain.status}". Verifique os registros DNS em resend.com/domains`
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

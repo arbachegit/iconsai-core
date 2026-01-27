@@ -76,7 +76,7 @@ serve(async (req) => {
         .single();
       
       let neutralGreeting = configData?.config_value || 
-        "Olá, eu sou o KnowYOU, seu assistente de voz. Escolha um dos módulos abaixo para começarmos.";
+        "Olá, eu sou o IconsAI, seu assistente de voz. Escolha um dos módulos abaixo para começarmos.";
       
       // Substituir [name] pelo nome do usuário se existir
       const displayName = userName || userContext?.user_name;

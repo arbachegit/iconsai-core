@@ -436,7 +436,7 @@ serve(async (req) => {
             threat_type: `${summary.critical} críticos, ${summary.warning} avisos`,
             affected_asset: 'Sistema completo',
             timestamp,
-            platform_name: 'Plataforma KnowYOU',
+            platform_name: 'Plataforma IconsAI',
             critical_count: String(summary.critical),
             warning_count: String(summary.warning),
             passed_count: String(summary.passed)
@@ -511,7 +511,7 @@ Scan concluído em: ${timestamp}`;
             // SMS allows freeform messages without pre-approval
             const smsMessage = template?.whatsapp_message
               ? injectVars(template.whatsapp_message).slice(0, 160) // SMS limit
-              : `KnowYOU: ${severityIcon} Alerta Seguranca - ${summary.critical} criticos, ${summary.warning} avisos`;
+              : `IconsAI: ${severityIcon} Alerta Seguranca - ${summary.critical} criticos, ${summary.warning} avisos`;
 
             try {
               const { data: smsData, error: smsError } = await supabase.functions.invoke('send-sms', {

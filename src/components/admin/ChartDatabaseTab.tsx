@@ -943,7 +943,7 @@ export function ChartDatabaseTab() {
     );
   }
 
-  // Render indicator card with knowyou-indicator-card class
+  // Render indicator card with iconsai-indicator-card class
   const renderIndicatorCard = (indicator: Indicator) => {
     const stats = indicatorStats[indicator.id];
     if (!stats) return null;
@@ -957,7 +957,7 @@ export function ChartDatabaseTab() {
     return (
       <div
         key={indicator.id}
-        className="knowyou-indicator-card"
+        className="iconsai-indicator-card"
         onClick={() => setSelectedIndicator(indicator)}
       >
         {/* Provider badge + R$ disponível/parcial badge */}
@@ -1060,7 +1060,7 @@ export function ChartDatabaseTab() {
       </div>
 
       {/* Header Card */}
-      <div className="knowyou-header-card">
+      <div className="iconsai-header-card">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Database className="h-6 w-6 text-primary" />
@@ -1077,7 +1077,7 @@ export function ChartDatabaseTab() {
                 {lastUpdate.count.toLocaleString()} registros • {format(lastUpdate.date, "dd/MM/yyyy HH:mm")}
               </span>
             )}
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2 knowyou-badge">
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2 iconsai-badge">
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               {isRefreshing ? 'Atualizando...' : 'Atualizar'}
             </Button>
@@ -1087,7 +1087,7 @@ export function ChartDatabaseTab() {
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* Period Metric */}
-          <div className="knowyou-metric-card">
+          <div className="iconsai-metric-card">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Calendar className="h-4 w-4 text-primary" />
               <span className="text-sm">Período</span>
@@ -1105,7 +1105,7 @@ export function ChartDatabaseTab() {
           </div>
 
           {/* Frequency Metric */}
-          <div className="knowyou-metric-card">
+          <div className="iconsai-metric-card">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <RefreshCw className="h-4 w-4 text-primary" />
               <span className="text-sm">Frequência</span>
@@ -1125,7 +1125,7 @@ export function ChartDatabaseTab() {
           </div>
 
           {/* Total Series Metric */}
-          <div className="knowyou-metric-card">
+          <div className="iconsai-metric-card">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <TrendingUp className="h-4 w-4 text-primary" />
               <span className="text-sm">Total de Séries</span>
@@ -1140,19 +1140,19 @@ export function ChartDatabaseTab() {
         <div>
           <p className="text-sm text-muted-foreground mb-3">Séries Disponíveis:</p>
           <div className="flex flex-wrap gap-3">
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Mensal</span>
               <span className="ml-2 font-bold">{seriesCounts.monthly}</span>
             </Badge>
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Trimestral</span>
               <span className="ml-2 font-bold">{seriesCounts.quarterly}</span>
             </Badge>
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Anual</span>
               <span className="ml-2 font-bold">{seriesCounts.yearly}</span>
             </Badge>
-            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+            <Badge variant="outline" className="iconsai-badge px-4 py-2">
               <span className="text-primary">Diário</span>
               <span className="ml-2 font-bold">{seriesCounts.daily}</span>
             </Badge>
@@ -1232,7 +1232,7 @@ export function ChartDatabaseTab() {
                   return (
                     <div
                       key={indicator.id}
-                      className="knowyou-indicator-card"
+                      className="iconsai-indicator-card"
                       onClick={() => {
                         setShowMonetaryValues(currentToggleMode);
                         setSelectedIndicator(indicator);

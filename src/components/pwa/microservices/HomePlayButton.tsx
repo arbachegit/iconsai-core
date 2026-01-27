@@ -6,7 +6,7 @@
  * Data: 2026-01-16
  *
  * Descrição: Botão de play/pause exclusivo para a tela HOME do PWA.
- * Design baseado no VoicePlayerBox.tsx do knowyou-nexus.
+ * Design baseado no VoicePlayerBox.tsx do iconsai-nexus.
  * Inclui efeito de luminosidade girando, anel externo escuro,
  * glow quando animando, pulso quando waiting e ondas (ripple).
  *

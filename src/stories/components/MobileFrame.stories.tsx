@@ -59,7 +59,7 @@ export const WithSplash: Story = {
         <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center">
           <span className="text-4xl">🎤</span>
         </div>
-        <h1 className="text-white text-3xl font-bold">KnowYOU</h1>
+        <h1 className="text-white text-3xl font-bold">IconsAI</h1>
         <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     ),
@@ -170,7 +170,7 @@ export const Comparison: Story = {
             <div style={{ transform: 'scale(0.5)', transformOrigin: 'top' }}>
               <MobileFrame>
                 <div className="w-full h-full bg-gradient-to-b from-purple-900 to-purple-800 flex items-center justify-center">
-                  <p className="text-white">KnowYOU</p>
+                  <p className="text-white">IconsAI</p>
                 </div>
               </MobileFrame>
             </div>

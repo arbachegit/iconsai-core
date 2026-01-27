@@ -123,7 +123,7 @@ serve(async (req) => {
         user_email: registration.email,
         rejection_reason: rejectionReason || "Sem motivo especificado",
         timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-        platform_name: "Plataforma KnowYOU",
+        platform_name: "Plataforma IconsAI",
       };
 
       for (const [key, value] of Object.entries(variables)) {

@@ -103,7 +103,7 @@ export default function APIsUsedTable() {
 
       const doc = new jsPDF();
       doc.setFontSize(18);
-      doc.text("APIs de Dados Econômicos - KnowYOU", 14, 22);
+      doc.text("APIs de Dados Econômicos - IconsAI", 14, 22);
       doc.setFontSize(10);
       doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}`, 14, 30);
 
@@ -121,7 +121,7 @@ export default function APIsUsedTable() {
         headStyles: { fillColor: [99, 102, 241] }
       });
 
-      doc.save("apis-dados-economicos-knowyou.pdf");
+      doc.save("apis-dados-economicos-iconsai.pdf");
       toast.success("PDF exportado com sucesso!");
     } catch (error) {
       console.error("Erro ao exportar PDF:", error);
@@ -149,7 +149,7 @@ export default function APIsUsedTable() {
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "APIs Econômicas");
-      XLSX.writeFile(wb, "apis-dados-economicos-knowyou.xlsx");
+      XLSX.writeFile(wb, "apis-dados-economicos-iconsai.xlsx");
 
       toast.success("Excel exportado com sucesso!");
     } catch (error) {

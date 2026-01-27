@@ -122,7 +122,7 @@ serve(async (req) => {
         
         const response = await fetch(feed.url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU/1.0; +https://knowyou.app)',
+            'User-Agent': 'Mozilla/5.0 (compatible; IconsAI/1.0; +https://iconsai.app)',
             'Accept': 'application/rss+xml, application/xml, text/xml',
           },
         });
@@ -164,7 +164,7 @@ serve(async (req) => {
 
     // Log to audit
     await supabase.from('user_activity_logs').insert({
-      user_email: 'system@knowyou.app',
+      user_email: 'system@iconsai.app',
       action_category: 'NEWS_SCRAPE',
       action: `Scraped retail news | Total: ${allNews.length} items from ${RSS_FEEDS.length} sources`,
       details: { 

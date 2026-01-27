@@ -49,7 +49,7 @@ export interface DolarPTAXStats {
 const IPEADATA_CONFIG = {
   baseUrl: 'http://www.ipeadata.gov.br/api/odata4',
   serieCode: 'GM366_ERC366',  // Taxa de câmbio R$/US$ comercial compra média
-  indicatorCode: 'DOLAR',     // Código no sistema KnowYOU
+  indicatorCode: 'DOLAR',     // Código no sistema IconsAI
 };
 
 // Cache do UUID do indicador

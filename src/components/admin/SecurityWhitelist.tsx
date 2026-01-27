@@ -335,7 +335,7 @@ export function SecurityWhitelist() {
                   <Input
                     id="user_email"
                     type="email"
-                    placeholder="Ex: admin@knowyou.app"
+                    placeholder="Ex: admin@iconsai.app"
                     value={formData.user_email}
                     onChange={(e) => setFormData({ ...formData, user_email: e.target.value })}
                   />

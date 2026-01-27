@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Smartphone, LayoutDashboard, Shield } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { UserBadge } from "@/components/UserBadge";
-import knowyouLogo from "@/assets/knowyou-admin-logo.png";
+import iconsaiLogo from "@/assets/knowyou-admin-logo.png";
 
 interface HubCardProps {
   title: string;
@@ -75,7 +75,7 @@ export default function Hub() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6">
-        <img src={knowyouLogo} alt="KnowYOU" className="h-8" />
+        <img src={iconsaiLogo} alt="IconsAI" className="h-8" />
         <div /> {/* Spacer central */}
         <UserBadge />
       </header>

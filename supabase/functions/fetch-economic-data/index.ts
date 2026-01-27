@@ -139,7 +139,7 @@ const HEADER_STRATEGIES = {
   },
   minimal: {
     'Accept': 'application/json',
-    'User-Agent': 'KnowYOU-DataCollector/1.0'
+    'User-Agent': 'IconsAI-DataCollector/1.0'
   },
   compatible: {
     'Accept': 'application/json, text/plain, */*',
@@ -749,7 +749,7 @@ async function fetchIPEADATA(
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU-DataCollector/1.0)'
+          'User-Agent': 'Mozilla/5.0 (compatible; IconsAI-DataCollector/1.0)'
         },
         signal: controller.signal
       });
@@ -950,7 +950,7 @@ async function fetchSidraFlatDirect(
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU-DataCollector/1.0)'
+          'User-Agent': 'Mozilla/5.0 (compatible; IconsAI-DataCollector/1.0)'
         },
         signal: controller.signal
       });
@@ -1158,7 +1158,7 @@ async function fetchIBGEWithChunking(
       const response = await fetch(baseUrl, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU-Bot/1.0)'
+          'User-Agent': 'Mozilla/5.0 (compatible; IconsAI-Bot/1.0)'
         }
       });
       
@@ -2397,7 +2397,7 @@ serve(async (req) => {
                 
                 // Log governance alert
                 await supabase.from('user_activity_logs').insert({
-                  user_email: 'system@knowyou.app',
+                  user_email: 'system@iconsai.app',
                   action_category: 'GOVERNANCE_ALERT',
                   action: `Data gap detected for ${indicator.name}`,
                   details: { 
@@ -2503,7 +2503,7 @@ serve(async (req) => {
 
     // Audit log
     await supabase.from('user_activity_logs').insert({
-      user_email: 'system@knowyou.app',
+      user_email: 'system@iconsai.app',
       action_category: 'ECONOMIC_DATA_FETCH',
       action: `Fetched economic data | Total: ${totalRecordsInserted} | New: ${newRecordsCount}`,
       details: { results, totalRecordsInserted, newRecordsCount }

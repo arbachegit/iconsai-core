@@ -23,7 +23,7 @@ export function CollapsibleGroup({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="knowyou-card overflow-hidden">
+    <div className="iconsai-card overflow-hidden">
       {/* Header do Grupo */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -42,7 +42,7 @@ export function CollapsibleGroup({
           {/* Badge com contagem */}
           <Badge 
             variant="outline" 
-            className="knowyou-badge px-3 py-1 font-bold"
+            className="iconsai-badge px-3 py-1 font-bold"
           >
             {count}
           </Badge>

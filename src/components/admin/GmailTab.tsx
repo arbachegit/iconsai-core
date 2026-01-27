@@ -91,7 +91,7 @@ export const GmailTab = () => {
               )}
             </div>
             <p className="text-muted-foreground text-sm">
-              Receba alertas quando houver novas conversas no chat KnowYOU.
+              Receba alertas quando houver novas conversas no chat IconsAI.
             </p>
           </div>
         </div>

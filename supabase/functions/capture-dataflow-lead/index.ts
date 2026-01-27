@@ -90,7 +90,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             to: leadEmail,
-            subject: `[KnowYOU] Resumo da apresentação: ${script?.title || presentationTopic}`,
+            subject: `[IconsAI] Resumo da apresentação: ${script?.title || presentationTopic}`,
             html: `
               <h1>Olá ${leadName}!</h1>
               <p>Obrigado por assistir à nossa apresentação.</p>
@@ -101,7 +101,7 @@ serve(async (req) => {
               <p>${script?.audio_script || "Conteúdo não disponível"}</p>
               <hr />
               <p>Ficou com dúvidas? Entre em contato conosco!</p>
-              <p>Equipe KnowYOU</p>
+              <p>Equipe IconsAI</p>
             `,
           }),
         });
@@ -133,7 +133,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             to: leadPhone,
-            message: `Olá ${leadName}! 👋\n\nObrigado por assistir à apresentação "${script?.title || presentationTopic}" do KnowYOU!\n\n${script?.description || ""}\n\nFicou com dúvidas? Responda esta mensagem!\n\n- Equipe KnowYOU`,
+            message: `Olá ${leadName}! 👋\n\nObrigado por assistir à apresentação "${script?.title || presentationTopic}" do IconsAI!\n\n${script?.description || ""}\n\nFicou com dúvidas? Responda esta mensagem!\n\n- Equipe IconsAI`,
           }),
         });
 

@@ -157,19 +157,19 @@ serve(async (req) => {
             switch (templateName) {
               case "otp":
               case "resend_code":
-                smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos.`;
+                smsText = `IconsAI: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos.`;
                 break;
               case "welcome":
-                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: ${buildUrl(variables["2"] || "login")}`;
+                smsText = `IconsAI: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao IconsAI. Acesse: ${buildUrl(variables["2"] || "login")}`;
                 break;
               case "resend_welcome":
-                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Notamos que voce ainda nao acessou. Entre em: ${buildUrl(variables["2"] || "login")}`;
+                smsText = `IconsAI: Ola ${variables["1"] || "Usuario"}! Notamos que voce ainda nao acessou. Entre em: ${buildUrl(variables["2"] || "login")}`;
                 break;
               case "invitation":
-                smsText = `KnowYOU: ${variables["1"] || "Voce"} foi convidado por ${variables["2"] || "Equipe KnowYOU"}! Acesse: ${buildUrl(variables["3"] || "")}`;
+                smsText = `IconsAI: ${variables["1"] || "Voce"} foi convidado por ${variables["2"] || "Equipe IconsAI"}! Acesse: ${buildUrl(variables["3"] || "")}`;
                 break;
               default:
-                smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
+                smsText = `IconsAI: ${Object.values(variables).join(" ")}`;
             }
 
             // Enviar SMS via Infobip

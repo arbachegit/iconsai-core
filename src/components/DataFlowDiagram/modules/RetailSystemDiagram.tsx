@@ -112,7 +112,7 @@ const nodes: DiagramNode[] = [
   { id: "robot-4", label: "Transferência", type: "robot", icon: ArrowRightLeft, x: 320, y: 540, column: 3, description: "Transferência segura de dados" },
 
   // Column 4 - SERVIDOR - x: 480
-  { id: "server-1", label: "Servidor KnowYOU AI", type: "server", icon: Server, x: 480, y: 290, column: 4, description: "Servidor central de processamento com IA avançada" },
+  { id: "server-1", label: "Servidor IconsAI AI", type: "server", icon: Server, x: 480, y: 290, column: 4, description: "Servidor central de processamento com IA avançada" },
 
   // Column 5 - OUTPUTS - x: 640
   { id: "out-1", label: "Informação", type: "output", icon: BookOpen, x: 640, y: 130, column: 5, description: "Informações estruturadas e validadas" },
@@ -221,7 +221,7 @@ export const RetailSystemDiagram: React.FC = () => {
   }, []);
 
   const shareWhatsApp = useCallback(() => {
-    const text = encodeURIComponent("Confira o fluxo de dados do sistema KnowYOU AI para varejo brasileiro!");
+    const text = encodeURIComponent("Confira o fluxo de dados do sistema IconsAI AI para varejo brasileiro!");
     window.open(`https://wa.me/?text=${text}`, "_blank");
   }, []);
 

@@ -14,7 +14,7 @@ export const BRAND = {
   // Nome do aplicativo
   appName: "IconsAI Business",
   appFullName: "IconsAI Business by Arbache AI",
-  appNameLegacy: "KnowYOU", // Nome anterior para compatibilidade
+  appNameLegacy: "IconsAI", // Nome anterior para compatibilidade
 
   // Descrições
   appDescription: "Assistente de voz inteligente desenvolvido pela Arbache AI",

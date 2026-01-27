@@ -195,7 +195,7 @@ serve(async (req) => {
       title: "Frontend Components",
       generated_at: new Date().toISOString(),
       components: [
-        { name: "ChatKnowYOU", category: "Chat", description: "Health assistant chat with RAG" },
+        { name: "ChatIconsAI", category: "Chat", description: "Health assistant chat with RAG" },
         { name: "ChatStudy", category: "Chat", description: "Study assistant for company knowledge" },
         { name: "DocumentsTab", category: "Admin", description: "RAG documents management with bulk operations" },
         { name: "VersionControlTab", category: "Admin", description: "Version control and changelog" },
@@ -217,7 +217,7 @@ serve(async (req) => {
       .limit(20);
     
     if (versionHistory && versionHistory.length > 0) {
-      changelogContent = `# 📋 Changelog KnowYOU\n\n`;
+      changelogContent = `# 📋 Changelog IconsAI\n\n`;
       changelogContent += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`;
       changelogContent += `---\n\n`;
       

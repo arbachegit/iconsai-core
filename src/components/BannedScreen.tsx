@@ -81,7 +81,7 @@ export const BannedScreen = ({ reason, deviceId, bannedAt }: BannedScreenProps) 
 
         {/* Contact Button */}
         <a 
-          href="mailto:suporte@knowyou.app?subject=Solicitação de Revisão de Banimento&body=ID do Dispositivo: ${deviceId}"
+          href="mailto:suporte@iconsai.app?subject=Solicitação de Revisão de Banimento&body=ID do Dispositivo: ${deviceId}"
           className="inline-flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg transition-colors mb-6"
         >
           <Mail className="w-4 h-4" />
@@ -90,7 +90,7 @@ export const BannedScreen = ({ reason, deviceId, bannedAt }: BannedScreenProps) 
 
         {/* Footer */}
         <p className="text-red-400/50 text-xs">
-          Sistema de Segurança KnowYOU v3 • Tolerância Zero
+          Sistema de Segurança IconsAI v3 • Tolerância Zero
         </p>
       </div>
     </div>

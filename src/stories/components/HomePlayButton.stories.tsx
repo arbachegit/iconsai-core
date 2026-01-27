@@ -324,7 +324,7 @@ export const InHomeContext: Story = {
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-900 flex flex-col items-center justify-center gap-8 p-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-white text-4xl font-bold mb-2">KnowYOU</h1>
+          <h1 className="text-white text-4xl font-bold mb-2">IconsAI</h1>
           <p className="text-white/70 text-lg">Seu assistente pessoal de voz</p>
         </div>
 

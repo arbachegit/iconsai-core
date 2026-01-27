@@ -51,7 +51,7 @@ const healthGenericKeywords = [
 // Keywords genéricas para o chat study (IA, KnowRISK, ACC)
 const studyGenericKeywords = [
   "ia", "inteligência artificial", "machine learning", "aprendizado de máquina",
-  "knowrisk", "knowyou", "acc", "arquitetura cognitiva", "comportamental",
+  "knowrisk", "iconsai", "acc", "arquitetura cognitiva", "comportamental",
   "turing", "chatgpt", "gpt", "llm", "modelo de linguagem",
   "rede neural", "deep learning", "algoritmo", "automação",
   "cognição", "cognitivo", "comportamento", "metodologia"

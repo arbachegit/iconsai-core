@@ -377,7 +377,7 @@ export const ContactMessagesTab = () => {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
               <!-- Header -->
               <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">KnowYOU AI</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">IconsAI AI</h1>
               </div>
               
               <!-- Corpo -->
@@ -403,7 +403,7 @@ export const ContactMessagesTab = () => {
               <!-- Footer -->
               <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} KnowYOU AI
+                  © ${new Date().getFullYear()} IconsAI AI
                 </p>
               </div>
             </div>

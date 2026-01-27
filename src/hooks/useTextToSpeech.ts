@@ -54,7 +54,7 @@ interface UseTextToSpeechReturn {
 }
 
 // v5.4.0: Chave para config de voz no localStorage
-const VOICE_CONFIG_KEY = 'knowyou_voice_config';
+const VOICE_CONFIG_KEY = 'iconsai_voice_config';
 
 // v5.4.0: Função para obter voz do localStorage
 function getSavedVoice(): string {

@@ -221,7 +221,7 @@ serve(async (req) => {
         headers: {
           'Accept': 'application/json, text/plain, */*',
           'Accept-Encoding': 'identity',
-          'User-Agent': 'KnowYOU-Admin/1.0'
+          'User-Agent': 'IconsAI-Admin/1.0'
         },
         signal: controller.signal
       });

@@ -88,7 +88,7 @@ const AdminLogin = () => {
       // Default user - redirect to app
       toast({
         title: "Login realizado",
-        description: "Bem-vindo ao KnowYOU App.",
+        description: "Bem-vindo ao IconsAI App.",
       });
       navigate("/app");
     } catch (error: any) {

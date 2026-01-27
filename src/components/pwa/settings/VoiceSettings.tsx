@@ -208,7 +208,7 @@ const VOICE_PRESETS: VoicePreset[] = [
 ];
 
 // Chave para localStorage
-const VOICE_CONFIG_KEY = 'knowyou_voice_config';
+const VOICE_CONFIG_KEY = 'iconsai_voice_config';
 
 interface VoiceConfig {
   voice: OpenAIVoice;

@@ -114,7 +114,7 @@ export function useMessageActions({ moduleType }: UseMessageActionsOptions): Use
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = `knowyou-${moduleType}-${message.id.slice(0, 8)}.mp3`;
+        a.download = `iconsai-${moduleType}-${message.id.slice(0, 8)}.mp3`;
         a.style.display = "none";
         document.body.appendChild(a);
         a.click();
@@ -172,7 +172,7 @@ export function useMessageActions({ moduleType }: UseMessageActionsOptions): Use
         // Download
         const a = document.createElement("a");
         a.href = url;
-        a.download = `knowyou-${moduleType}-${message.id.slice(0, 8)}.mp3`;
+        a.download = `iconsai-${moduleType}-${message.id.slice(0, 8)}.mp3`;
         a.style.display = "none";
         document.body.appendChild(a);
         a.click();

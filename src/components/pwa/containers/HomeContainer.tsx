@@ -15,7 +15,7 @@
  * - NEW: Botão de configurações de voz (Settings)
  * - NEW: Modal de VoiceSettings para escolher voz
  * CHANGELOG v8.0.0:
- * - NEW: HomePlayButton exclusivo com design do knowyou-nexus
+ * - NEW: HomePlayButton exclusivo com design do iconsai-nexus
  * - NEW: Efeito de luminosidade girando (conic-gradient)
  * - NEW: Anel externo escuro com borda ciano
  * - NEW: Glow quando animando, pulse quando waiting

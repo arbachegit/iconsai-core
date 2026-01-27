@@ -138,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
       current_accuracy: (accuracyRate * 100).toFixed(1),
       drop_percentage: ((threshold - accuracyRate) * 100).toFixed(1),
       timestamp,
-      platform_name: 'Plataforma KnowYOU',
+      platform_name: 'Plataforma IconsAI',
       total_suggestions: String(totalML),
       accepted_count: String(accepted),
       rejected_count: String(totalML - accepted)
@@ -180,7 +180,7 @@ Revise as regras de roteamento ML no painel de administração.`;
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Plataforma KnowYOU <noreply@knowyou.app>",
+            from: "Plataforma IconsAI <noreply@iconsai.app>",
             to: [adminEmail],
             subject: emailSubject,
             html: `<pre style="font-family: sans-serif; white-space: pre-wrap;">${emailBody}</pre>`,
@@ -216,7 +216,7 @@ Revise as regras de roteamento ML no painel de administração.`;
       try {
         const whatsappMessage = template?.whatsapp_message
           ? injectVars(template.whatsapp_message)
-          : `⚠️ ${timestamp} - Plataforma KnowYOU: Taxa de Acerto ML caiu para ${(accuracyRate * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%).`;
+          : `⚠️ ${timestamp} - Plataforma IconsAI: Taxa de Acerto ML caiu para ${(accuracyRate * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%).`;
 
         const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
           body: {

@@ -272,7 +272,7 @@ export function VoiceAgentModal({ isOpen, onClose, topic, salesmanId }: VoiceAge
             </div>
             <div>
               <DialogTitle className="text-lg font-semibold">
-                🎤 Alex - Seu Guia KnowYOU
+                🎤 Alex - Seu Guia IconsAI
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
                 {isLoading ? 'Carregando...' : script?.title || 'Apresentação'}

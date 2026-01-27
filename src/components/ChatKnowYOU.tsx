@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useChatKnowYOU, type Message } from "@/hooks/useChatKnowYOU";
+import { useChatIconsAI, type Message } from "@/hooks/useChatIconsAI";
 import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, BarChart3, ArrowDown, Paperclip, Upload } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
@@ -51,7 +51,7 @@ const SentimentIndicator = memo(({
       <span className="text-xs font-medium">{(sentiment.score * 100).toFixed(0)}%</span>
     </div>;
 });
-export default function ChatKnowYOU() {
+export default function ChatIconsAI() {
   const {
     t
   } = useTranslation();
@@ -86,7 +86,7 @@ export default function ChatKnowYOU() {
     attachDocument,
     detachDocument,
     addMessage
-  } = useChatKnowYOU({ userRegion });
+  } = useChatIconsAI({ userRegion });
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
@@ -621,7 +621,7 @@ export default function ChatKnowYOU() {
   const handleDownloadAudio = (audioUrl: string, messageIndex: number) => {
     const link = document.createElement("a");
     link.href = audioUrl;
-    link.download = `knowyou-saude-audio-${messageIndex}.mp3`;
+    link.download = `iconsai-saude-audio-${messageIndex}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -630,7 +630,7 @@ export default function ChatKnowYOU() {
   const handleDownloadImage = (imageUrl: string, messageIndex: number) => {
     const link = document.createElement("a");
     link.href = imageUrl;
-    link.download = `knowyou-saude-imagem-${messageIndex}.png`;
+    link.download = `iconsai-saude-imagem-${messageIndex}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

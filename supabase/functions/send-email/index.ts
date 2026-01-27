@@ -75,7 +75,7 @@ serve(async (req) => {
 
     // Preparar payload
     const emailPayload: any = {
-      from: "KnowYOU <noreply@knowyou.app>",
+      from: "IconsAI <noreply@iconsai.app>",
       to: [to],
       subject: subject,
       html: body,
@@ -110,7 +110,7 @@ serve(async (req) => {
       let friendlyError = data.message || `Erro Resend: ${response.status}`;
       
       if (data.message?.includes("domain")) {
-        friendlyError = "Domínio não verificado no Resend. Verifique knowyou.app no painel do Resend.";
+        friendlyError = "Domínio não verificado no Resend. Verifique iconsai.app no painel do Resend.";
       } else if (data.message?.includes("API key")) {
         friendlyError = "API Key do Resend inválida ou expirada.";
       } else if (data.message?.includes("rate limit")) {

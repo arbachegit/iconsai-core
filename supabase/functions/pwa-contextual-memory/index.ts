@@ -48,7 +48,7 @@ function generateContextualGreeting(
       health: `${namePrefix}olá! Sou sua assistente de saúde. Posso te ajudar a entender sintomas e orientar sobre quando procurar um médico. Como posso ajudar?`,
       ideas: `${namePrefix}bem-vindo ao módulo de ideias! Sou seu consultor usando a técnica do Advogado do Diabo. Vou te ajudar a fortalecer suas ideias através de questionamentos duros. O que você está planejando?`,
       world: `${namePrefix}olá! Sou seu analista de economia. Posso te atualizar sobre indicadores, mercado e notícias econômicas do Brasil e do mundo. O que gostaria de saber?`,
-      help: `${namePrefix}oi! Posso te explicar como usar cada módulo do KnowYOU. O que você precisa de ajuda?`,
+      help: `${namePrefix}oi! Posso te explicar como usar cada módulo do IconsAI. O que você precisa de ajuda?`,
     };
     
     return {

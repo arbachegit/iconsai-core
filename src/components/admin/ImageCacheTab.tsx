@@ -17,7 +17,7 @@ const SECTIONS = [
   { id: 'watson', name: 'Watson - A Era da Cognição' },
   { id: 'ia-nova-era', name: 'Nova Era da IA' },
   { id: 'bom-prompt', name: 'Bom Prompt - A Arte da Comunicação' },
-  { id: 'knowyou', name: 'KnowYOU - Assistente de Saúde' },
+  { id: 'iconsai', name: 'IconsAI - Assistente de Saúde' },
   { id: 'digital-exclusion', name: '5,74 Bilhões - Exclusão Digital' },
 ];
 
@@ -85,7 +85,7 @@ export const ImageCacheTab = () => {
       const { data } = await supabase
         .from('generated_images')
         .select('section_id, image_url, created_at')
-        .in('section_id', ['tooltip-software', 'tooltip-internet', 'tooltip-tech-sem-proposito', 'tooltip-kubrick', 'tooltip-watson', 'tooltip-ia-nova-era', 'tooltip-bom-prompt', 'tooltip-knowyou'])
+        .in('section_id', ['tooltip-software', 'tooltip-internet', 'tooltip-tech-sem-proposito', 'tooltip-kubrick', 'tooltip-watson', 'tooltip-ia-nova-era', 'tooltip-bom-prompt', 'tooltip-iconsai'])
         .order('created_at', { ascending: false });
       return data || [];
     }

@@ -154,13 +154,13 @@ export const AnalyticsTab = () => {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.setFontSize(20);
-      pdf.text("KnowYOU - Relatório de Analytics", 20, 20);
+      pdf.text("IconsAI - Relatório de Analytics", 20, 20);
       pdf.setFontSize(12);
       pdf.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")}`, 20, 30);
       
       pdf.addImage(imgData, "PNG", 10, 40, pdfWidth - 20, pdfHeight);
       
-      pdf.save(`knowyou-analytics-${Date.now()}.pdf`);
+      pdf.save(`iconsai-analytics-${Date.now()}.pdf`);
     } catch (error) {
       console.error("Erro ao exportar PDF:", error);
     }

@@ -99,11 +99,11 @@ serve(async (req) => {
             
             <p>Se você não esperava este reset, entre em contato imediatamente com o suporte.</p>
             
-            <p style="margin-top: 30px;">Atenciosamente,<br><strong>Equipe KnowYOU</strong></p>
+            <p style="margin-top: 30px;">Atenciosamente,<br><strong>Equipe IconsAI</strong></p>
           </div>
           <div class="footer">
             <p>Este é um email automático. Por favor, não responda.</p>
-            <p>© ${new Date().getFullYear()} KnowYOU. Todos os direitos reservados.</p>
+            <p>© ${new Date().getFullYear()} IconsAI. Todos os direitos reservados.</p>
           </div>
         </body>
         </html>
@@ -116,7 +116,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'KnowYOU <noreply@knowyou.com.br>',
+          from: 'IconsAI <noreply@iconsai.com.br>',
           to: [userEmail],
           subject: '🔐 Sua senha foi resetada pelo Administrador',
           html: emailHtml,

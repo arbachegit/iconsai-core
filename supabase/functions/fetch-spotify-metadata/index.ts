@@ -29,7 +29,7 @@ serve(async (req) => {
 
     const response = await fetch(oembedUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; IconsAI/1.0)',
         'Accept': 'application/json',
       },
     });

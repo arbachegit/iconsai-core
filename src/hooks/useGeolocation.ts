@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const LOCATION_STORAGE_KEY = "knowyou_user_location";
+const LOCATION_STORAGE_KEY = "iconsai_user_location";
 
 export function useGeolocation() {
   const [location, setLocation] = useState<string | null>(() => {

@@ -14,7 +14,7 @@ const SECTION_PROMPTS: Record<string, string> = {
   'watson': 'IBM Watson vencendo no Jeopardy 2011: computador azul IBM em palco de game show, luzes brilhantes, inteligência artificial cognitiva processando linguagem natural. Ultra high resolution. Sem texto.',
   'ia-nova-era': 'Era moderna da IA generativa 2022-presente: interface de chat com IA, assistentes virtuais conversacionais, ChatGPT, comunicação natural humano-máquina, democratização da inteligência artificial. Ultra high resolution. Sem texto.',
   'bom-prompt': 'Arte conceitual de comunicação efetiva: pessoa digitando prompt perfeito, palavras formando conexão com IA, clareza e especificidade visual, a arte de fazer boas perguntas. Ultra high resolution. Sem texto.',
-  'knowyou': 'Representação visual do KnowYOU AI: assistente de saúde digital inteligente, interface conversacional moderna com elementos médicos e tecnológicos, tons de azul médico e roxo tecnológico, símbolo de cruz médica integrado com inteligência artificial, cuidado personalizado ao paciente. Ultra high resolution. Sem texto.',
+  'iconsai': 'Representação visual do IconsAI AI: assistente de saúde digital inteligente, interface conversacional moderna com elementos médicos e tecnológicos, tons de azul médico e roxo tecnológico, símbolo de cruz médica integrado com inteligência artificial, cuidado personalizado ao paciente. Ultra high resolution. Sem texto.',
   'digital-exclusion': 'Visualização artística da exclusão digital global: 5.74 bilhões de pessoas sem acesso à internet representadas como silhuetas em tons escuros, contraste entre mundo conectado iluminado e desconectado nas sombras, mapa mundial mostrando divisão digital, barreiras linguísticas e cognitivas representadas visualmente, esperança de inclusão através de pontes de luz tecnológica. Ultra high resolution. Sem texto.',
   
   // Tooltips
@@ -25,7 +25,7 @@ const SECTION_PROMPTS: Record<string, string> = {
   'tooltip-watson': 'Ícone do IBM Watson: representação minimalista do supercomputador azul IBM, símbolo de IA cognitiva. Ultra high resolution. Sem texto.',
   'tooltip-ia-nova-era': 'Ícone da IA generativa moderna: interface de chat minimalista, balão de diálogo com símbolo de IA, tons modernos em azul e roxo. Ultra high resolution. Sem texto.',
   'tooltip-bom-prompt': 'Ícone da arte do prompt: teclado estilizado com palavras fluindo para símbolo de IA, comunicação visual clara. Ultra high resolution. Sem texto.',
-  'tooltip-knowyou': 'Ícone do KnowYOU AI: representação minimalista de assistente de saúde digital, cruz médica integrada com símbolo de IA, tons de verde e azul saúde. Ultra high resolution. Sem texto.',
+  'tooltip-iconsai': 'Ícone do IconsAI AI: representação minimalista de assistente de saúde digital, cruz médica integrada com símbolo de IA, tons de verde e azul saúde. Ultra high resolution. Sem texto.',
 };
 
 serve(async (req) => {

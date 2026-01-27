@@ -39,7 +39,7 @@ const KEYWORD_TAXONOMY_HINTS: Record<string, string[]> = {
   'diagnóstico': ['saude.procedimentos'],
   
   // Conhecimento
-  'knowyou': ['conhecimento.knowyou'],
+  'iconsai': ['conhecimento.iconsai'],
   'knowrisk': ['conhecimento.knowrisk'],
   'acc': ['conhecimento.acc'],
   'tutorial': ['conhecimento'],

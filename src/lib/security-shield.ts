@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * SECURITY SHIELD - KnowYOU v5.0.0
+ * SECURITY SHIELD - IconsAI v5.0.0
  * ============================================================
  * Sistema de Proteção com RESPEITO TOTAL às configurações do banco
  *
@@ -57,7 +57,7 @@ const SAFE_DEFAULTS: SecurityShieldConfig = {
   console_clear_enabled: false,
   console_clear_interval_ms: 1000,
   console_warning_title: "⛔ ACESSO RESTRITO",
-  console_warning_subtitle: "Sistema de Segurança KnowYOU",
+  console_warning_subtitle: "Sistema de Segurança IconsAI",
   console_warning_body: "Qualquer tentativa de inspeção resultará em banimento.",
   monitoring_interval_ms: 500,
   max_violation_attempts: 3,
@@ -284,7 +284,7 @@ function generateCanvasFingerprint(): string {
     ctx.fillStyle = "#f60";
     ctx.fillRect(10, 0, 100, 30);
     ctx.fillStyle = "#069";
-    ctx.fillText("KnowYOU Security v5", 10, 20);
+    ctx.fillText("IconsAI Security v5", 10, 20);
 
     const dataUrl = canvas.toDataURL();
     let hash = 0;
@@ -523,7 +523,7 @@ function showBanScreen(reason: string, deviceId: string, hours: number): void {
       <p style="font-size: 14px; color: #888; margin-bottom: 8px;">Motivo: ${reason}</p>
       <p style="font-size: 12px; color: #666;">ID do Dispositivo: ${deviceId.substring(0, 16)}</p>
     </div>
-    <p style="font-size: 12px; color: #444; margin-top: 24px;">Sistema de Segurança KnowYOU v5</p>
+    <p style="font-size: 12px; color: #444; margin-top: 24px;">Sistema de Segurança IconsAI v5</p>
   `;
 
   document.body.appendChild(overlay);

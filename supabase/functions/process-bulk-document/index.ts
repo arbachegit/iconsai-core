@@ -84,7 +84,7 @@ async function classifyTargetChat(text: string, apiKey: string): Promise<string>
           role: "system",
           content: `Você é um classificador de documentos. Analise o texto e classifique em UMA das categorias:
 - HEALTH: Documentos sobre saúde, medicina, hospitais, tratamentos, Hospital Moinhos de Vento
-- STUDY: Documentos sobre KnowRISK, KnowYOU, ACC, tecnologia da empresa
+- STUDY: Documentos sobre KnowRISK, IconsAI, ACC, tecnologia da empresa
 - BOTH: Documentos relevantes para AMBOS os contextos (saúde E tecnologia/empresa)
 - GENERAL: Outros documentos
 
@@ -557,7 +557,7 @@ serve(async (req) => {
               file_name: doc.title,
               upload_date: timestamp,
               target_chat: targetChat,
-              platform_name: 'Plataforma KnowYOU'
+              platform_name: 'Plataforma IconsAI'
             };
             
             const injectVars = (tpl: string) => {
@@ -583,7 +583,7 @@ serve(async (req) => {
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({
-                    from: "Plataforma KnowYOU <noreply@knowyou.app>",
+                    from: "Plataforma IconsAI <noreply@iconsai.app>",
                     to: [settings.gmail_notification_email],
                     subject: template?.email_subject ? injectVars(template.email_subject) : `📄 Novo Documento: ${doc.title}`,
                     html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,

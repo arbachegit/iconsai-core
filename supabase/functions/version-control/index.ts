@@ -148,7 +148,7 @@ serve(async (req) => {
           output = JSON.stringify(history, null, 2);
         } else {
           // Markdown format
-          output = "# Changelog KnowYOU\n\n";
+          output = "# Changelog IconsAI\n\n";
           output += `Gerado em: ${new Date().toLocaleString("pt-BR")}\n\n`;
           output += "---\n\n";
 
@@ -288,7 +288,7 @@ serve(async (req) => {
                   to: emailTo,
                   subject: `🚀 Nova Versão Major Lançada: ${newVersion}`,
                   html: `
-                    <h1>Nova Versão Major da Plataforma KnowYOU</h1>
+                    <h1>Nova Versão Major da Plataforma IconsAI</h1>
                     <p><strong>Versão:</strong> ${newVersion}</p>
                     <p><strong>Versão Anterior:</strong> ${currentVersion}</p>
                     <p><strong>Data:</strong> ${new Date().toLocaleString("pt-BR")}</p>

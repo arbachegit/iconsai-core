@@ -33,7 +33,7 @@ const meta = {
 - Callback onComplete quando terminar
 
 **Usado por:**
-- PWA Principal (KnowYOU)
+- PWA Principal (IconsAI)
 - PWA City (Chat IA)
 - PWA Health (Saúde)`,
       },
@@ -76,12 +76,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Splash padrão - PWA Principal (KnowYOU)
+ * Splash padrão - PWA Principal (IconsAI)
  * Gradiente roxo, ícone de estrela
  */
 export const PWAPrincipal: Story = {
   args: {
-    appName: 'KnowYOU',
+    appName: 'IconsAI',
     icon: <Sparkles className="w-12 h-12 text-white" />,
     primaryColor: '#7C3AED',
     secondaryColor: '#9333EA',
@@ -125,7 +125,7 @@ export const PWAHealth: Story = {
  */
 export const FastDuration: Story = {
   args: {
-    appName: 'KnowYOU',
+    appName: 'IconsAI',
     icon: <Sparkles className="w-12 h-12 text-white" />,
     primaryColor: '#7C3AED',
     secondaryColor: '#9333EA',
@@ -139,7 +139,7 @@ export const FastDuration: Story = {
  */
 export const LongDuration: Story = {
   args: {
-    appName: 'KnowYOU',
+    appName: 'IconsAI',
     icon: <Sparkles className="w-12 h-12 text-white" />,
     primaryColor: '#7C3AED',
     secondaryColor: '#9333EA',
@@ -167,7 +167,7 @@ export const CustomColors: Story = {
  */
 export const WithEmoji: Story = {
   args: {
-    appName: 'KnowYOU',
+    appName: 'IconsAI',
     icon: '🎙️',
     primaryColor: '#7C3AED',
     secondaryColor: '#9333EA',
@@ -197,7 +197,7 @@ export const Interactive: Story = {
     return (
       <div className="relative min-h-screen">
         <UnifiedSplashScreen
-          appName="KnowYOU"
+          appName="IconsAI"
           icon={<Sparkles className="w-12 h-12 text-white" />}
           primaryColor="#7C3AED"
           secondaryColor="#9333EA"
@@ -252,7 +252,7 @@ export const Comparison: Story = {
               style={{ maxWidth: '300px' }}
             >
               <UnifiedSplashScreen
-                appName="KnowYOU"
+                appName="IconsAI"
                 icon={<Sparkles className="w-8 h-8 text-white" />}
                 primaryColor="#7C3AED"
                 secondaryColor="#9333EA"

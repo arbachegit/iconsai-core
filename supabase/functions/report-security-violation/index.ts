@@ -127,7 +127,7 @@ function generateEmailTemplate(
   <div class="container">
     <div class="header">
       <h1>🚨 ALERTA DE SEGURANÇA</h1>
-      <p style="color: #e94560;">Sistema KnowYOU v3</p>
+      <p style="color: #e94560;">Sistema IconsAI v3</p>
     </div>
     
     <div class="section">
@@ -225,7 +225,7 @@ function generateEmailTemplate(
     ` : ''}
     
     <div class="footer">
-      <p>Sistema de Segurança KnowYOU v3 • Tolerância Zero</p>
+      <p>Sistema de Segurança IconsAI v3 • Tolerância Zero</p>
       <p>Este é um email automático. Não responda.</p>
     </div>
   </div>
@@ -490,7 +490,7 @@ serve(async (req) => {
           );
 
           await resend.emails.send({
-            from: "KnowYOU Security <security@knowyou.app>",
+            from: "IconsAI Security <security@iconsai.app>",
             to: [settings.security_alert_email],
             subject: `🚨 [CRÍTICO] Violação de Segurança - ${violationType}`,
             html: emailHtml,
@@ -511,7 +511,7 @@ serve(async (req) => {
           ? `📍 ${geoData.city}, ${geoData.country}\n🔗 Maps: https://www.google.com/maps?q=${geoData.lat},${geoData.lon}`
           : '📍 Localização não disponível';
 
-        const alertMessage = `🚨 *ALERTA DE SEGURANÇA KnowYOU v3*
+        const alertMessage = `🚨 *ALERTA DE SEGURANÇA IconsAI v3*
 
 ⛔ *BANIMENTO AUTOMÁTICO*
 

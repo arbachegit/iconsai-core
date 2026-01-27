@@ -334,14 +334,14 @@ const documentationContent = {
         content: 'Admin panel gestão RAG documents. Drag-drop upload mandatory target_chat selection study health. Sortable table Name Status Target Chat Date Categories AI-suggested tags badges. Detail panel AI summary hierarchical tag structure text preview metrics pages words chunks. Download original PDF button. Bulk actions reprocess delete change destination. Failed documents error details. Readability indicator readable unreadable AI assessment. Reprocessar button clears data resets status reinvokes process-bulk-document.'
       },
       {
-        id: 'chat-knowyou-component',
-        title: 'Componente ChatKnowYOU',
+        id: 'chat-iconsai-component',
+        title: 'Componente ChatIconsAI',
         content: 'Chat saúde Hospital Moinhos modal interface. KnowRisk circular logo header. Input layout Textarea Mic Send Draw horizontal. Draw button image generation health-only scope. 3D relief aesthetic baixo relevo input/output alto relevo frame. Audio controls Play Stop Download every message progress bar MM:SS. Voice transcription immediate microphone activation. Suggestions rotation 30 health questions 10 segundos. Image generation mode placeholder switch health topics validation. Session tracking chat_type health conversation_history. RAG integration search-documents context retrieval. Sentiment real-time header indicators.'
       },
       {
         id: 'chat-study-component',
         title: 'Componente ChatStudy',
-        content: 'Assistente estudo KnowRISK modal. Logo header unified interface. Scope company-specific KnowRISK KnowYOU ACC landing page navigation. Draw mode AI KnowRISK content only. 3D relief design consistent. Audio controls universal implementation. Voice immediate transcription. Suggestions company topics O que é KnowRisk Como funciona ACC Quais seções site Era Generativa. Session chat_type study. RAG documents KnowRISK ACC retrieval. Educational purpose help users understand offerings locate sections.'
+        content: 'Assistente estudo KnowRISK modal. Logo header unified interface. Scope company-specific KnowRISK IconsAI ACC landing page navigation. Draw mode AI KnowRISK content only. 3D relief design consistent. Audio controls universal implementation. Voice immediate transcription. Suggestions company topics O que é KnowRisk Como funciona ACC Quais seções site Era Generativa. Session chat_type study. RAG documents KnowRISK ACC retrieval. Educational purpose help users understand offerings locate sections.'
       },
       {
         id: 'ai-history-panel-component',
@@ -351,7 +351,7 @@ const documentationContent = {
       {
         id: 'floating-chat-button-component',
         title: 'Componente FloatingChatButton',
-        content: 'Fixed bottom-right corner pulsating green dot indicator. Gradient styling from-primary via-secondary to-accent glow effects. Animated tooltip Fale com KnowYOU. Opens ChatStudy modal primary gateway interactive chat. Prominent visual affordances user interaction. Position conflicts resolved ScrollToTopButton bottom-left prevents z-index overlap.'
+        content: 'Fixed bottom-right corner pulsating green dot indicator. Gradient styling from-primary via-secondary to-accent glow effects. Animated tooltip Fale com IconsAI. Opens ChatStudy modal primary gateway interactive chat. Prominent visual affordances user interaction. Position conflicts resolved ScrollToTopButton bottom-left prevents z-index overlap.'
       },
       {
         id: 'digital-exclusion-section-component',
@@ -361,7 +361,7 @@ const documentationContent = {
       {
         id: 'media-carousel-component',
         title: 'Componente MediaCarousel',
-        content: 'Side-by-side horizontal layout Spotify podcast embed YouTube video carousel. Balanced two-column presentation positioned below KnowYOU chat section. YouTube API optimization hardcoded channelId @KnowRISKio playlistItems endpoint 1 unit vs search 100 units. Database caching youtube_videos_cache 6-hour TTL localStorage quota_exceeded 24-hour. Quota consumption 200 units to 1 unit enables 10000 requests daily vs 50 previous. Reduces API exhaustion improves reliability.'
+        content: 'Side-by-side horizontal layout Spotify podcast embed YouTube video carousel. Balanced two-column presentation positioned below IconsAI chat section. YouTube API optimization hardcoded channelId @KnowRISKio playlistItems endpoint 1 unit vs search 100 units. Database caching youtube_videos_cache 6-hour TTL localStorage quota_exceeded 24-hour. Quota consumption 200 units to 1 unit enables 10000 requests daily vs 50 previous. Reduces API exhaustion improves reliability.'
       },
       {
         id: 'admin-panel-components',
@@ -371,12 +371,12 @@ const documentationContent = {
       {
         id: 'hooks-custom',
         title: 'Custom Hooks',
-        content: 'useAdminSettings fetch admin_settings table real-time updates. useChatAnalytics track metrics session message audio topics timestamps. useChatKnowYOU health chat logic RAG image generation suggestions sentiment. useChatStudy company chat RAG document retrieval scoped content. useTooltipContent fetch tooltip_contents audio generation caching. useYouTubeAutoPreload automatic video refresh configuration management. use-mobile responsive breakpoint detection. use-toast notification system feedback user actions.'
+        content: 'useAdminSettings fetch admin_settings table real-time updates. useChatAnalytics track metrics session message audio topics timestamps. useChatIconsAI health chat logic RAG image generation suggestions sentiment. useChatStudy company chat RAG document retrieval scoped content. useTooltipContent fetch tooltip_contents audio generation caching. useYouTubeAutoPreload automatic video refresh configuration management. use-mobile responsive breakpoint detection. use-toast notification system feedback user actions.'
       },
       {
         id: 'internationalization-system',
         title: 'Sistema i18n react-i18next',
-        content: 'Complete translation system three languages Portuguese pt English en French fr. i18n/config.ts initialization localStorage persistence. Translation files pt.json en.json fr.json comprehensive coverage all 8 landing page sections Digital Exclusion AI History 5 eras both chat assistants UI strings placeholders suggestions messages audio controls footer. All components useTranslation hook t functions Index HeroSection TuringLegacy DigitalExclusionSection AIHistoryPanel ChatKnowYOU ChatStudy FloatingChatButton AudioControls. Language selector header Languages icon Lucide PT EN FR flag emojis dropdown checkmark selected. Desktop navigation between links admin mobile menu bottom section. Integrated existing localStorage preference.'
+        content: 'Complete translation system three languages Portuguese pt English en French fr. i18n/config.ts initialization localStorage persistence. Translation files pt.json en.json fr.json comprehensive coverage all 8 landing page sections Digital Exclusion AI History 5 eras both chat assistants UI strings placeholders suggestions messages audio controls footer. All components useTranslation hook t functions Index HeroSection TuringLegacy DigitalExclusionSection AIHistoryPanel ChatIconsAI ChatStudy FloatingChatButton AudioControls. Language selector header Languages icon Lucide PT EN FR flag emojis dropdown checkmark selected. Desktop navigation between links admin mobile menu bottom section. Integrated existing localStorage preference.'
       }
     ]
   },
@@ -836,7 +836,7 @@ const Documentation = () => {
         edgeFunctions: ["process-bulk-document", "chat-router", "search-documents"],
       },
       frontend: {
-        components: ["DocumentsTab", "ChatKnowYOU", "AIHistoryPanel"],
+        components: ["DocumentsTab", "ChatIconsAI", "AIHistoryPanel"],
       }
     };
     
@@ -1599,12 +1599,12 @@ await supabase.functions.invoke("process-bulk-document", {
                   </div>
                 </div>
 
-                {/* ChatKnowYOU.tsx / ChatStudy.tsx */}
+                {/* ChatIconsAI.tsx / ChatStudy.tsx */}
                 <div className="border rounded-lg p-5 bg-muted/30">
-                  <h4 className="text-xl font-bold mb-3 text-primary">ChatKnowYOU.tsx / ChatStudy.tsx</h4>
+                  <h4 className="text-xl font-bold mb-3 text-primary">ChatIconsAI.tsx / ChatStudy.tsx</h4>
                   <p className="text-sm text-muted-foreground mb-4">
                     <strong>Caminhos:</strong> 
-                    <code className="block mt-1">src/components/ChatKnowYOU.tsx</code>
+                    <code className="block mt-1">src/components/ChatIconsAI.tsx</code>
                     <code className="block mt-1">src/components/ChatStudy.tsx</code>
                   </p>
                   
@@ -1612,8 +1612,8 @@ await supabase.functions.invoke("process-bulk-document", {
                     <div>
                       <p className="text-sm font-semibold mb-2">Descrição:</p>
                       <p className="text-sm text-muted-foreground">
-                        Componentes de chat interativo com RAG. ChatKnowYOU focado em saúde (Hospital Moinhos), 
-                        ChatStudy focado em conteúdo KnowRISK/KnowYOU. Ambos incluem geração de imagens, 
+                        Componentes de chat interativo com RAG. ChatIconsAI focado em saúde (Hospital Moinhos), 
+                        ChatStudy focado em conteúdo KnowRISK/IconsAI. Ambos incluem geração de imagens, 
                         áudio TTS/STT, e análise de sentimento.
                       </p>
                     </div>
@@ -1671,12 +1671,12 @@ await supabase.functions.invoke("process-bulk-document", {
               <h3 className="text-2xl font-semibold mb-4">Hooks Customizados</h3>
               <div className="space-y-3">
                 <div className="border-l-4 border-primary pl-4">
-                  <p className="font-semibold text-sm">useChatKnowYOU.ts</p>
+                  <p className="font-semibold text-sm">useChatIconsAI.ts</p>
                   <p className="text-xs text-muted-foreground">Lógica chat saúde: streaming, histórico, geração imagem, análise sentimento</p>
                 </div>
                 <div className="border-l-4 border-primary pl-4">
                   <p className="font-semibold text-sm">useChatStudy.ts</p>
-                  <p className="text-xs text-muted-foreground">Lógica chat estudos: RAG KnowRISK/KnowYOU, sugestões dinâmicas</p>
+                  <p className="text-xs text-muted-foreground">Lógica chat estudos: RAG KnowRISK/IconsAI, sugestões dinâmicas</p>
                 </div>
                 <div className="border-l-4 border-secondary pl-4">
                   <p className="font-semibold text-sm">useAdminSettings.ts</p>

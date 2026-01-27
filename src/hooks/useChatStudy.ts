@@ -2,7 +2,7 @@ import { useChat, type UseChatConfig, type Message } from "./useChat";
 
 const STUDY_CONFIG: UseChatConfig = {
   chatType: "study",
-  storageKey: "knowyou_study_chat_history",
+  storageKey: "iconsai_study_chat_history",
   sessionIdPrefix: "study_",
   defaultSuggestions: [
     "O que é a KnowRisk?",

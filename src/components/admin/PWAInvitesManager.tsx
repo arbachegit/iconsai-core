@@ -256,7 +256,7 @@ export default function PWAInvitesManager() {
           template: "invitation",
           variables: {
             "1": user.name || "Usuário",
-            "2": "Equipe KnowYOU",
+            "2": "Equipe IconsAI",
             "3": inviteUrl, // URL COMPLETA
           },
           channel: effectiveChannel,

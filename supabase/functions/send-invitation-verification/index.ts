@@ -212,7 +212,7 @@ serve(async (req) => {
         `;
 
         const { error: emailError } = await supabase.functions.invoke("send-email", {
-          body: { to: invitation.email, subject: "🔐 Código de Verificação - KnowYOU", body: emailHtml },
+          body: { to: invitation.email, subject: "🔐 Código de Verificação - IconsAI", body: emailHtml },
         });
 
         sendResult = { success: !emailError, error: emailError?.message || "", method: "email" };
@@ -226,7 +226,7 @@ serve(async (req) => {
 
       try {
         // ✨ MENSAGEM PERSONALIZADA COM NOME ✨
-        const smsMessage = `KnowYOU: Ola ${firstName}! Codigo: ${verificationCode}. Valido 2min.`;
+        const smsMessage = `IconsAI: Ola ${firstName}! Codigo: ${verificationCode}. Valido 2min.`;
         console.log(`[SMS] Mensagem (${smsMessage.length} chars): ${smsMessage}`);
 
         const { data: smsData, error: smsError } = await supabase.functions.invoke("send-sms", {

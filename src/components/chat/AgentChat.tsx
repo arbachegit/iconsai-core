@@ -53,7 +53,7 @@ interface AgentChatProps {
 
 const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   company: [
-    "O que é a KnowYOU?",
+    "O que é a IconsAI?",
     "Quais são os serviços oferecidos?",
     "Como posso entrar em contato?",
   ],
@@ -213,7 +213,7 @@ export const AgentChat = memo(function AgentChat({
   const handleDownloadAudio = useCallback((audioUrl: string, messageIndex: number) => {
     const link = document.createElement("a");
     link.href = audioUrl;
-    link.download = `knowyou-audio-${messageIndex}.mp3`;
+    link.download = `iconsai-audio-${messageIndex}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -222,7 +222,7 @@ export const AgentChat = memo(function AgentChat({
   const handleDownloadImage = useCallback((imageUrl: string, messageIndex: number) => {
     const link = document.createElement("a");
     link.href = imageUrl;
-    link.download = `knowyou-imagem-${messageIndex}.png`;
+    link.download = `iconsai-imagem-${messageIndex}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

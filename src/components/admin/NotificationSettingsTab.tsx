@@ -740,7 +740,7 @@ export default function NotificationSettingsTab() {
       setEditingTemplate({
         id: '',
         event_type: eventType,
-        platform_name: 'KnowYOU Admin',
+        platform_name: 'IconsAI Admin',
         email_subject: defaultForEvent?.email_subject || `Notificação: ${eventLabel}`,
         email_body: defaultForEvent?.email_body || 'Detalhes: {event_details}\n\nHorário: {timestamp}',
         whatsapp_message: defaultForEvent?.whatsapp_message || `📢 ${eventLabel}\n\n{event_details}\n\nHorário: {timestamp}`,
@@ -909,8 +909,8 @@ export default function NotificationSettingsTab() {
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: settings.gmail_notification_email,
-          subject: '[TESTE] Notificação do Sistema KnowYOU',
-          body: 'Esta é uma mensagem de teste do sistema de notificações KnowYOU. Se você recebeu este email, as notificações estão funcionando corretamente.'
+          subject: '[TESTE] Notificação do Sistema IconsAI',
+          body: 'Esta é uma mensagem de teste do sistema de notificações IconsAI. Se você recebeu este email, as notificações estão funcionando corretamente.'
         }
       });
 
@@ -965,7 +965,7 @@ export default function NotificationSettingsTab() {
       const { data, error } = await supabase.functions.invoke('send-sms', {
         body: {
           phoneNumber: targetPhone,
-          message: '🔔 Teste de SMS KnowYOU - SMS configurado corretamente!',
+          message: '🔔 Teste de SMS IconsAI - SMS configurado corretamente!',
           eventType: 'test_sms'
         }
       });
@@ -1942,7 +1942,7 @@ export default function NotificationSettingsTab() {
                   {domainStatus.verified ? 'Domínio Verificado' : `Status: ${domainStatus.domain?.status || 'não verificado'}`}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {domainStatus.domain?.name || 'knowyou.app'} • {domainStatus.message || domainStatus.error}
+                  {domainStatus.domain?.name || 'iconsai.app'} • {domainStatus.message || domainStatus.error}
                 </p>
               </div>
             </div>
@@ -2568,7 +2568,7 @@ export default function NotificationSettingsTab() {
                       ...editingTemplate,
                       platform_name: e.target.value
                     })}
-                    placeholder="KnowYOU Admin"
+                    placeholder="IconsAI Admin"
                     className="border-primary/30"
                   />
                 </div>
@@ -2605,7 +2605,7 @@ export default function NotificationSettingsTab() {
                       ...editingTemplate,
                       email_subject: e.target.value
                     })}
-                    placeholder="[KnowYOU] Notificação: {event_details}"
+                    placeholder="[IconsAI] Notificação: {event_details}"
                     className="border-blue-400/30 focus:border-blue-500"
                   />
                 </div>
@@ -2639,7 +2639,7 @@ export default function NotificationSettingsTab() {
                       ...editingTemplate,
                       whatsapp_message: e.target.value
                     })}
-                    placeholder="📢 Notificação KnowYOU&#10;&#10;{event_details}&#10;&#10;Horário: {timestamp}"
+                    placeholder="📢 Notificação IconsAI&#10;&#10;{event_details}&#10;&#10;Horário: {timestamp}"
                     className="min-h-[120px] border-green-400/30 focus:border-green-500"
                   />
                 </div>

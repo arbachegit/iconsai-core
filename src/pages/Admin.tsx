@@ -7,7 +7,8 @@ import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
+// Logo temporário - usar o existente até criar novo asset IconsAI
+import iconsaiAdminLogo from "@/assets/knowyou-admin-logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -229,7 +230,7 @@ const Admin = () => {
           {/* Left: Logo + Admin Panel title */}
           <div className="flex items-center gap-3">
             <img
-              src={knowyouAdminLogo}
+              src={iconsaiAdminLogo}
               alt="IconsAI"
               className="h-8 w-8 rounded-full object-cover"
             />

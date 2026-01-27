@@ -1,4 +1,4 @@
-// KnowYOU Voice Assistant components
+// IconsAI Voice Assistant components
 export { default as PWAVoiceAssistant } from './voice/PWAVoiceAssistant';
 export { SplashScreen } from './voice/SplashScreen';
 export { VoicePlayerBox } from './voice/VoicePlayerBox';

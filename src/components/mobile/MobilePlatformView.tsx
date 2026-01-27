@@ -15,7 +15,7 @@ interface MobilePlatformViewProps {
 type ViewType = 'chat' | 'api' | 'dataflow-architecture' | 'dataflow-new-domain' |
   'dataflow-talk-app' | 'dataflow-retail-system' | 'dataflow-autocontrol';
 
-const STORAGE_KEY = 'knowyou-mobile-last-view';
+const STORAGE_KEY = 'iconsai-mobile-last-view';
 
 const dataFlowItems: { id: ViewType; label: string }[] = [
   { id: 'dataflow-architecture', label: 'Architecture' },
@@ -127,7 +127,7 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
 
       {/* Header com Hamburger */}
       <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
-        <h1 className="text-lg font-semibold text-foreground">KnowYOU</h1>
+        <h1 className="text-lg font-semibold text-foreground">IconsAI</h1>
         
         <div className="flex items-center gap-2">
           {/* Ícone Brain - Link Admin */}
