@@ -678,5 +678,320 @@ VALUES
 ON CONFLICT (module_slug) DO NOTHING;
 
 -- =============================================
+-- RPC FUNCTIONS - PWA Auth
+-- =============================================
+
+-- Função para normalizar telefone brasileiro
+CREATE OR REPLACE FUNCTION normalize_brazilian_phone(phone_input TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  clean_phone TEXT;
+BEGIN
+  -- Remover tudo que não é número
+  clean_phone := regexp_replace(phone_input, '[^0-9]', '', 'g');
+
+  -- Se começar com 55 e tiver mais de 11 dígitos, remover o 55
+  IF length(clean_phone) > 11 AND clean_phone LIKE '55%' THEN
+    clean_phone := substring(clean_phone from 3);
+  END IF;
+
+  -- Retornar no formato +55XXXXXXXXXXX
+  RETURN '+55' || clean_phone;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- =============================================
+-- check_pwa_access - Verifica se telefone tem acesso
+-- =============================================
+CREATE OR REPLACE FUNCTION check_pwa_access(p_phone TEXT)
+RETURNS JSON AS $$
+DECLARE
+  normalized_phone TEXT;
+  user_record RECORD;
+BEGIN
+  -- Normalizar telefone
+  normalized_phone := normalize_brazilian_phone(p_phone);
+
+  -- Buscar em platform_users (usuários ativos)
+  SELECT pu.first_name, pu.last_name, pu.status
+  INTO user_record
+  FROM platform_users pu
+  WHERE normalize_brazilian_phone(pu.phone) = normalized_phone
+    AND pu.status = 'active'
+    AND pu.phone_verified = true
+  LIMIT 1;
+
+  IF FOUND THEN
+    RETURN json_build_object(
+      'has_access', true,
+      'user_name', COALESCE(user_record.first_name, '') || ' ' || COALESCE(user_record.last_name, ''),
+      'expires_at', (now() + interval '30 days')::text
+    );
+  END IF;
+
+  -- Buscar em user_invites (convites completos)
+  SELECT ui.name, ui.status
+  INTO user_record
+  FROM user_invites ui
+  WHERE normalize_brazilian_phone(ui.phone) = normalized_phone
+    AND ui.status = 'completed'
+    AND ui.has_app_access = true
+  LIMIT 1;
+
+  IF FOUND THEN
+    RETURN json_build_object(
+      'has_access', true,
+      'user_name', user_record.name,
+      'expires_at', (now() + interval '30 days')::text
+    );
+  END IF;
+
+  -- Sem acesso
+  RETURN json_build_object('has_access', false);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =============================================
+-- login_pwa_by_phone_simple - Inicia login e gera código
+-- =============================================
+CREATE OR REPLACE FUNCTION login_pwa_by_phone_simple(p_phone TEXT)
+RETURNS JSON AS $$
+DECLARE
+  normalized_phone TEXT;
+  user_record RECORD;
+  new_code TEXT;
+BEGIN
+  -- Normalizar telefone
+  normalized_phone := normalize_brazilian_phone(p_phone);
+
+  -- Validar formato básico (pelo menos 10 dígitos)
+  IF length(regexp_replace(normalized_phone, '[^0-9]', '', 'g')) < 10 THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'invalid_phone',
+      'message', 'Telefone inválido. Use o formato (DDD) 9XXXX-XXXX'
+    );
+  END IF;
+
+  -- Buscar em platform_users primeiro
+  SELECT pu.id, pu.first_name, pu.last_name, pu.phone, pu.status, pu.phone_verified
+  INTO user_record
+  FROM platform_users pu
+  WHERE normalize_brazilian_phone(pu.phone) = normalized_phone
+  LIMIT 1;
+
+  IF FOUND THEN
+    -- Verificar se já está verificado
+    IF user_record.phone_verified = true AND user_record.status = 'active' THEN
+      RETURN json_build_object(
+        'success', true,
+        'already_verified', true,
+        'user_name', COALESCE(user_record.first_name, '') || ' ' || COALESCE(user_record.last_name, ''),
+        'phone', user_record.phone,
+        'normalized_phone', normalized_phone
+      );
+    END IF;
+
+    -- Gerar código de 6 dígitos
+    new_code := lpad(floor(random() * 1000000)::text, 6, '0');
+
+    -- Salvar código no platform_users
+    UPDATE platform_users
+    SET verification_code = new_code,
+        verification_expires_at = now() + interval '10 minutes',
+        updated_at = now()
+    WHERE id = user_record.id;
+
+    RETURN json_build_object(
+      'success', true,
+      'verification_code', new_code,
+      'user_name', COALESCE(user_record.first_name, '') || ' ' || COALESCE(user_record.last_name, ''),
+      'phone', user_record.phone,
+      'normalized_phone', normalized_phone
+    );
+  END IF;
+
+  -- Buscar em user_invites
+  SELECT ui.id, ui.name, ui.phone, ui.status, ui.has_app_access
+  INTO user_record
+  FROM user_invites ui
+  WHERE normalize_brazilian_phone(ui.phone) = normalized_phone
+    AND ui.has_app_access = true
+    AND ui.status IN ('pending', 'sent', 'opened', 'completed')
+    AND (ui.expires_at IS NULL OR ui.expires_at > now())
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'no_invitation',
+      'message', 'Você precisa de um convite para acessar o PWA.'
+    );
+  END IF;
+
+  -- Se já completou o convite, verificar se está realmente verificado
+  IF user_record.status = 'completed' THEN
+    RETURN json_build_object(
+      'success', true,
+      'already_verified', true,
+      'user_name', user_record.name,
+      'phone', user_record.phone,
+      'normalized_phone', normalized_phone
+    );
+  END IF;
+
+  -- Gerar código de 6 dígitos
+  new_code := lpad(floor(random() * 1000000)::text, 6, '0');
+
+  -- Salvar código no user_invites
+  UPDATE user_invites
+  SET verification_code = new_code,
+      verification_code_expires_at = now() + interval '10 minutes',
+      verification_attempts = 0,
+      verification_sent_at = now(),
+      status = CASE WHEN status = 'pending' THEN 'sent' ELSE status END,
+      updated_at = now()
+  WHERE id = user_record.id;
+
+  RETURN json_build_object(
+    'success', true,
+    'verification_code', new_code,
+    'user_name', user_record.name,
+    'phone', user_record.phone,
+    'normalized_phone', normalized_phone
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =============================================
+-- verify_pwa_code_simple - Verifica código e ativa acesso
+-- =============================================
+CREATE OR REPLACE FUNCTION verify_pwa_code_simple(p_phone TEXT, p_code TEXT)
+RETURNS JSON AS $$
+DECLARE
+  normalized_phone TEXT;
+  user_record RECORD;
+  invite_record RECORD;
+BEGIN
+  -- Normalizar telefone
+  normalized_phone := normalize_brazilian_phone(p_phone);
+
+  -- Tentar verificar em platform_users primeiro
+  SELECT pu.id, pu.first_name, pu.last_name, pu.phone,
+         pu.verification_code, pu.verification_expires_at
+  INTO user_record
+  FROM platform_users pu
+  WHERE normalize_brazilian_phone(pu.phone) = normalized_phone
+    AND pu.verification_code IS NOT NULL
+  LIMIT 1;
+
+  IF FOUND THEN
+    -- Verificar expiração
+    IF user_record.verification_expires_at < now() THEN
+      RETURN json_build_object(
+        'success', false,
+        'error', 'code_expired',
+        'message', 'Código expirado. Solicite um novo código.'
+      );
+    END IF;
+
+    -- Verificar código
+    IF user_record.verification_code != p_code THEN
+      RETURN json_build_object(
+        'success', false,
+        'error', 'invalid_code',
+        'message', 'Código inválido. Tente novamente.'
+      );
+    END IF;
+
+    -- Código correto! Ativar usuário
+    UPDATE platform_users
+    SET phone_verified = true,
+        status = 'active',
+        verification_code = NULL,
+        verification_expires_at = NULL,
+        login_count = login_count + 1,
+        last_login_at = now(),
+        updated_at = now()
+    WHERE id = user_record.id;
+
+    RETURN json_build_object(
+      'success', true,
+      'verified', true,
+      'user_name', COALESCE(user_record.first_name, '') || ' ' || COALESCE(user_record.last_name, ''),
+      'phone', normalized_phone
+    );
+  END IF;
+
+  -- Tentar verificar em user_invites
+  SELECT ui.id, ui.name, ui.phone,
+         ui.verification_code, ui.verification_code_expires_at,
+         ui.verification_attempts
+  INTO invite_record
+  FROM user_invites ui
+  WHERE normalize_brazilian_phone(ui.phone) = normalized_phone
+    AND ui.verification_code IS NOT NULL
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'session_not_found',
+      'message', 'Sessão não encontrada. Faça login novamente.'
+    );
+  END IF;
+
+  -- Verificar tentativas excessivas
+  IF invite_record.verification_attempts >= 5 THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'too_many_attempts',
+      'message', 'Bloqueado por excesso de tentativas.'
+    );
+  END IF;
+
+  -- Verificar expiração
+  IF invite_record.verification_code_expires_at < now() THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'code_expired',
+      'message', 'Código expirado. Solicite um novo código.'
+    );
+  END IF;
+
+  -- Verificar código
+  IF invite_record.verification_code != p_code THEN
+    -- Incrementar tentativas
+    UPDATE user_invites
+    SET verification_attempts = verification_attempts + 1,
+        updated_at = now()
+    WHERE id = invite_record.id;
+
+    RETURN json_build_object(
+      'success', false,
+      'error', 'invalid_code',
+      'message', 'Código inválido. Tente novamente.'
+    );
+  END IF;
+
+  -- Código correto! Marcar convite como completo
+  UPDATE user_invites
+  SET status = 'completed',
+      verification_code = NULL,
+      verification_code_expires_at = NULL,
+      completed_at = now(),
+      updated_at = now()
+  WHERE id = invite_record.id;
+
+  RETURN json_build_object(
+    'success', true,
+    'verified', true,
+    'user_name', invite_record.name,
+    'phone', normalized_phone
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =============================================
 -- FIM DO SCHEMA
 -- =============================================

@@ -1,9 +1,9 @@
 // =============================================
-// PWA Auth Hook v9.0 - Com Cookie Backup
-// Build: 2026-01-22
-// Funções: login_pwa_by_phone_simple, verify_pwa_code_simple, check_pwa_access
-// Tabelas: user_invitations, pwa_user_devices
-// v9.0: Adicionado cookie de backup para persistência cross-browser
+// PWA Auth Hook v10.0 - Schema Limpo
+// Build: 2026-01-27
+// Funções RPC: login_pwa_by_phone_simple, verify_pwa_code_simple, check_pwa_access
+// Tabelas: user_invites, platform_users (schema limpo v1.0)
+// v10.0: Atualizado para usar novo schema com tabelas limpas
 // src/hooks/usePWAAuth.ts
 // =============================================
 
