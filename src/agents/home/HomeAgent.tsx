@@ -23,6 +23,7 @@ import { SpectrumAnalyzer } from '@/core/components/SpectrumAnalyzer';
 import { ModuleHeader } from '@/core/components/ModuleHeader';
 import { VoiceButton } from '@/core/components/VoiceButton';
 import { useVoiceService } from '@/core/services/VoiceService';
+import { useSession } from '@/core/services/SessionService';
 import { useAgentConfig } from '@/core/hooks/useAgentConfig';
 import { warmupAudioSync } from '@/utils/audio-warmup';
 import { getOrchestrator } from '@/lib/mcp/orchestrator';
@@ -118,14 +119,32 @@ export const HomeAgent: React.FC<AgentProps> = ({
   sessionId,
   config,
 }) => {
+  // Session management
+  const session = useSession({
+    deviceId,
+    moduleSlug: config.slug,
+    autoInit: true,
+  });
+
   // Fetch agent configuration from database (with fallback to hardcoded)
   const agentConfig = useAgentConfig({
     slug: config.slug,
     deviceId,
   });
 
-  // Use welcome message from database if available, otherwise fallback to hardcoded
-  const welcomeMessage = agentConfig.config?.welcome_message || HOME_WELCOME_MESSAGE.text;
+  // Determine welcome message based on session state
+  const welcomeMessage = (() => {
+    // If user is returning from a different module, show personalized message
+    if (session.isReturningFromDifferentModule && session.lastModule) {
+      const returningMsg = agentConfig.config?.welcome_message_returning;
+      if (returningMsg) {
+        return returningMsg.replace('{module}', session.lastModule);
+      }
+      return `Bem-vindo de volta! Você estava no módulo ${session.lastModule}. Como posso ajudar agora?`;
+    }
+    // Otherwise use standard welcome message
+    return agentConfig.config?.welcome_message || HOME_WELCOME_MESSAGE.text;
+  })();
 
   // Use VoiceService hook
   const voice = useVoiceService({
