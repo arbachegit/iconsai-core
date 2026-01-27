@@ -73,6 +73,9 @@ export function useTemplateConversation({
 
   /**
    * Get welcome audio URL
+   *
+   * NOTE: The text-to-speech edge function returns raw audio bytes (audio/mpeg),
+   * NOT JSON. We need to handle this binary response correctly.
    */
   const getWelcomeAudio = useCallback(async (): Promise<string | null> => {
     try {
@@ -83,7 +86,8 @@ export function useTemplateConversation({
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: TEMPLATE_SETTINGS.welcomeMessage,
-          voice_id: 'default', // or your preferred voice
+          voice: 'nova',
+          chatType: 'template', // For voice configuration
         },
       });
 
@@ -92,7 +96,35 @@ export function useTemplateConversation({
         return null;
       }
 
-      return data?.audio_url || null;
+      // Handle binary audio response (edge function returns raw bytes)
+
+      // Case 1: data is already a Blob
+      if (data instanceof Blob) {
+        console.log('[useTemplateConversation] TTS received Blob:', data.size, 'bytes');
+        return URL.createObjectURL(data);
+      }
+
+      // Case 2: data is an ArrayBuffer
+      if (data instanceof ArrayBuffer) {
+        console.log('[useTemplateConversation] TTS received ArrayBuffer:', data.byteLength, 'bytes');
+        const audioBlob = new Blob([data], { type: 'audio/mpeg' });
+        return URL.createObjectURL(audioBlob);
+      }
+
+      // Case 3: data has a raw array (Uint8Array-like structure)
+      if (data && typeof data === 'object' && 'length' in data) {
+        console.log('[useTemplateConversation] TTS received array-like:', data.length, 'bytes');
+        const audioBlob = new Blob([new Uint8Array(data)], { type: 'audio/mpeg' });
+        return URL.createObjectURL(audioBlob);
+      }
+
+      // Case 4: JSON response with audioUrl (legacy support)
+      if (data?.audio_url || data?.audioUrl) {
+        return data.audio_url || data.audioUrl;
+      }
+
+      console.error('[useTemplateConversation] Unexpected TTS response type:', typeof data);
+      return null;
     } catch (err) {
       console.error('[useTemplateConversation] Welcome audio error:', err);
       return null;

@@ -109,6 +109,9 @@ export async function getAIResponse(
 
 /**
  * Convert text to speech
+ *
+ * NOTE: The text-to-speech edge function returns raw audio bytes (audio/mpeg),
+ * NOT JSON. We need to handle this binary response correctly.
  */
 export async function textToSpeech(
   text: string,
@@ -118,11 +121,14 @@ export async function textToSpeech(
   }
 ): Promise<{ success: boolean; audioUrl?: string; error?: string }> {
   try {
+    console.log('[HomeAgentService] TTS request:', { textLength: text.length, voice: options?.voice });
+
     const { data, error } = await supabase.functions.invoke('text-to-speech', {
       body: {
         text,
         voice: options?.voice || 'nova',
         speed: options?.rate || 1.0,
+        chatType: 'home', // For voice configuration
       },
     });
 
@@ -131,19 +137,54 @@ export async function textToSpeech(
       return { success: false, error: error.message };
     }
 
-    // Handle different response formats
+    // The edge function returns raw audio bytes, not JSON
+    // Supabase functions.invoke returns this as ArrayBuffer or Blob
+
+    // Case 1: data is already a Blob
+    if (data instanceof Blob) {
+      console.log('[HomeAgentService] TTS received Blob:', data.size, 'bytes');
+      const audioUrl = URL.createObjectURL(data);
+      return { success: true, audioUrl };
+    }
+
+    // Case 2: data is an ArrayBuffer
+    if (data instanceof ArrayBuffer) {
+      console.log('[HomeAgentService] TTS received ArrayBuffer:', data.byteLength, 'bytes');
+      const audioBlob = new Blob([data], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      return { success: true, audioUrl };
+    }
+
+    // Case 3: data has a raw array (Uint8Array-like structure from JSON)
+    if (data && typeof data === 'object' && 'length' in data) {
+      console.log('[HomeAgentService] TTS received array-like:', data.length, 'bytes');
+      const audioBlob = new Blob([new Uint8Array(data)], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      return { success: true, audioUrl };
+    }
+
+    // Case 4: JSON response with audioUrl (legacy support)
     if (data?.audioUrl) {
+      console.log('[HomeAgentService] TTS received audioUrl');
       return { success: true, audioUrl: data.audioUrl };
     }
 
+    // Case 5: JSON response with base64 audio (legacy support)
     if (data?.audio) {
-      // If we get base64 audio, convert to URL
+      console.log('[HomeAgentService] TTS received base64 audio');
       const audioBlob = base64ToBlob(data.audio, 'audio/mp3');
       const audioUrl = URL.createObjectURL(audioBlob);
       return { success: true, audioUrl };
     }
 
-    return { success: false, error: 'No audio in response' };
+    // If none of the above, log what we received for debugging
+    console.error('[HomeAgentService] TTS unexpected response type:', {
+      type: typeof data,
+      constructor: data?.constructor?.name,
+      keys: data ? Object.keys(data).slice(0, 5) : null,
+    });
+
+    return { success: false, error: 'Unexpected audio response format' };
   } catch (err) {
     console.error('[HomeAgentService] TTS failed:', err);
     return {
