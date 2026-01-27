@@ -52,7 +52,7 @@ export {
   initializeMCPDatabases,
   getBrasilDataHubClient,
   getFiscalMunicipalClient,
-  // Population data
+  // Population data (municipalities)
   fetchPopMunicipio,
   fetchPopulacaoHistorico,
   fetchIndicadoresDemograficos,
@@ -61,8 +61,16 @@ export {
   fetchMunicipioCompleto,
   fetchMunicipiosPorRegiao,
   fetchCapitais,
-  // State data
+  // State data (pop_estados + geo_estados)
   fetchEstado,
+  fetchPopEstado,
+  fetchPopEstadoHistorico,
+  fetchTodosEstados,
+  fetchRankingEstados,
+  fetchGeoEstado,
+  fetchTodosGeoEstados,
+  fetchEstadoCompleto,
+  fetchEstadosPorRegiao,
   // Config
   DATABASE_CONFIGS,
   // Types
@@ -71,4 +79,26 @@ export {
   type MunicipioResumo,
   type GeoMunicipioData,
   type MunicipioCompleto,
+  type PopEstadoData,
+  type EstadoResumo,
+  type GeoEstadoData,
+  type EstadoCompleto,
 } from './database-client';
+
+// Mock Provider (for development)
+export {
+  MOCK_CONFIG,
+  getDataProvider,
+  // Mock functions (can be used directly)
+  mockFetchPopMunicipio,
+  mockFetchPopulacaoHistorico,
+  mockFetchGeoMunicipio,
+  mockFetchMunicipioCompleto,
+  mockFetchCapitais,
+  mockFetchPopEstado,
+  mockFetchPopEstadoHistorico,
+  mockFetchTodosEstados,
+  mockFetchRankingEstados,
+  mockFetchGeoEstado,
+  mockFetchEstadoCompleto,
+} from './mock-provider';

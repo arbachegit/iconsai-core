@@ -619,17 +619,192 @@ export async function fetchCapitais(): Promise<GeoMunicipioData[] | null> {
 }
 
 // ============================================
-// ESTADOS
+// POP_ESTADOS - State Population Data
 // ============================================
 
 /**
- * Fetch state data from brasil-data-hub
+ * State population data from brasil-data-hub.pop_estados
+ * Time series with demographic breakdown by gender
  */
-export async function fetchEstado(uf: string): Promise<unknown | null> {
+export interface PopEstadoData {
+  id: string;
+  estado_id?: string;
+  codigo_ibge: number;  // 2-digit state code (e.g., 35 for SP)
+  ano: number;
+  populacao?: number;
+  populacao_masculina?: number;
+  populacao_feminina?: number;
+  populacao_urbana?: number;
+  populacao_rural?: number;
+  // Mortality
+  obitos_total?: number;
+  obitos_masculinos?: number;
+  obitos_femininos?: number;
+  taxa_mortalidade?: number;
+  mortalidade_infantil?: number;
+  expectativa_vida?: number;
+  // Births
+  nascimentos?: number;
+  taxa_natalidade?: number;
+  // Metadata
+  fonte?: string;
+  tipo?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * State summary with latest year data
+ */
+export interface EstadoResumo {
+  codigo_ibge: number;
+  uf: string;
+  populacao: number;
+  populacao_masculina?: number;
+  populacao_feminina?: number;
+  populacao_urbana?: number;
+  populacao_rural?: number;
+  expectativa_vida?: number;
+  taxa_mortalidade?: number;
+  mortalidade_infantil?: number;
+  ano_referencia: number;
+  fonte?: string;
+}
+
+// Map state IBGE codes to UF
+const ESTADO_IBGE_TO_UF: Record<number, string> = {
+  11: 'RO', 12: 'AC', 13: 'AM', 14: 'RR', 15: 'PA', 16: 'AP', 17: 'TO',
+  21: 'MA', 22: 'PI', 23: 'CE', 24: 'RN', 25: 'PB', 26: 'PE', 27: 'AL', 28: 'SE', 29: 'BA',
+  31: 'MG', 32: 'ES', 33: 'RJ', 35: 'SP',
+  41: 'PR', 42: 'SC', 43: 'RS',
+  50: 'MS', 51: 'MT', 52: 'GO', 53: 'DF',
+};
+
+const UF_TO_ESTADO_IBGE: Record<string, number> = Object.fromEntries(
+  Object.entries(ESTADO_IBGE_TO_UF).map(([k, v]) => [v, parseInt(k)])
+);
+
+/**
+ * Fetch state population data (latest year)
+ */
+export async function fetchPopEstado(
+  ufOrCodigo: string | number
+): Promise<EstadoResumo | null> {
   const client = getBrasilDataHubClient();
 
   if (!client) {
-    console.warn('[fetchEstado] brasil-data-hub not connected');
+    console.warn('[fetchPopEstado] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    // Convert UF to codigo_ibge if needed
+    let codigoIbge: number;
+    let uf: string;
+
+    if (typeof ufOrCodigo === 'string' && ufOrCodigo.length === 2) {
+      uf = ufOrCodigo.toUpperCase();
+      codigoIbge = UF_TO_ESTADO_IBGE[uf];
+      if (!codigoIbge) {
+        console.error('[fetchPopEstado] Invalid UF:', uf);
+        return null;
+      }
+    } else {
+      codigoIbge = typeof ufOrCodigo === 'string' ? parseInt(ufOrCodigo) : ufOrCodigo;
+      uf = ESTADO_IBGE_TO_UF[codigoIbge] || '';
+    }
+
+    const { data, error } = await client
+      .from('pop_estados')
+      .select('*')
+      .eq('codigo_ibge', codigoIbge)
+      .order('ano', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error('[fetchPopEstado] Error:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      codigo_ibge: data.codigo_ibge,
+      uf,
+      populacao: data.populacao,
+      populacao_masculina: data.populacao_masculina,
+      populacao_feminina: data.populacao_feminina,
+      populacao_urbana: data.populacao_urbana,
+      populacao_rural: data.populacao_rural,
+      expectativa_vida: data.expectativa_vida,
+      taxa_mortalidade: data.taxa_mortalidade,
+      mortalidade_infantil: data.mortalidade_infantil,
+      ano_referencia: data.ano,
+      fonte: data.fonte,
+    };
+  } catch (error) {
+    console.error('[fetchPopEstado] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch state population time series
+ */
+export async function fetchPopEstadoHistorico(
+  ufOrCodigo: string | number,
+  anos?: number[]
+): Promise<PopEstadoData[] | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchPopEstadoHistorico] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    let codigoIbge: number;
+
+    if (typeof ufOrCodigo === 'string' && ufOrCodigo.length === 2) {
+      codigoIbge = UF_TO_ESTADO_IBGE[ufOrCodigo.toUpperCase()];
+      if (!codigoIbge) return null;
+    } else {
+      codigoIbge = typeof ufOrCodigo === 'string' ? parseInt(ufOrCodigo) : ufOrCodigo;
+    }
+
+    let query = client
+      .from('pop_estados')
+      .select('*')
+      .eq('codigo_ibge', codigoIbge)
+      .order('ano', { ascending: false });
+
+    if (anos && anos.length > 0) {
+      query = query.in('ano', anos);
+    }
+
+    const { data, error } = await query.limit(30);
+
+    if (error) {
+      console.error('[fetchPopEstadoHistorico] Error:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[fetchPopEstadoHistorico] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch all states (latest year for each)
+ */
+export async function fetchTodosEstados(): Promise<EstadoResumo[] | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchTodosEstados] brasil-data-hub not connected');
     return null;
   }
 
@@ -637,17 +812,308 @@ export async function fetchEstado(uf: string): Promise<unknown | null> {
     const { data, error } = await client
       .from('pop_estados')
       .select('*')
-      .eq('uf', uf.toUpperCase())
-      .single();
+      .order('ano', { ascending: false });
 
     if (error) {
-      console.error('[fetchEstado] Error:', error);
+      console.error('[fetchTodosEstados] Error:', error);
+      return null;
+    }
+
+    if (!data || data.length === 0) return null;
+
+    // Group by codigo_ibge and take latest year
+    const latestByEstado = new Map<number, EstadoResumo>();
+
+    for (const row of data) {
+      if (!latestByEstado.has(row.codigo_ibge)) {
+        latestByEstado.set(row.codigo_ibge, {
+          codigo_ibge: row.codigo_ibge,
+          uf: ESTADO_IBGE_TO_UF[row.codigo_ibge] || '',
+          populacao: row.populacao,
+          populacao_masculina: row.populacao_masculina,
+          populacao_feminina: row.populacao_feminina,
+          populacao_urbana: row.populacao_urbana,
+          populacao_rural: row.populacao_rural,
+          expectativa_vida: row.expectativa_vida,
+          taxa_mortalidade: row.taxa_mortalidade,
+          mortalidade_infantil: row.mortalidade_infantil,
+          ano_referencia: row.ano,
+          fonte: row.fonte,
+        });
+      }
+    }
+
+    return Array.from(latestByEstado.values()).sort((a, b) => a.uf.localeCompare(b.uf));
+  } catch (error) {
+    console.error('[fetchTodosEstados] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Compare states by a specific indicator
+ */
+export async function fetchRankingEstados(
+  indicador: 'populacao' | 'expectativa_vida' | 'taxa_mortalidade' | 'mortalidade_infantil',
+  ordem: 'asc' | 'desc' = 'desc',
+  ano?: number
+): Promise<EstadoResumo[] | null> {
+  const estados = await fetchTodosEstados();
+
+  if (!estados) return null;
+
+  // Sort by indicator
+  return estados.sort((a, b) => {
+    const valA = a[indicador] ?? 0;
+    const valB = b[indicador] ?? 0;
+    return ordem === 'desc' ? valB - valA : valA - valB;
+  });
+}
+
+// Legacy function for backward compatibility
+export async function fetchEstado(uf: string): Promise<EstadoResumo | null> {
+  return fetchPopEstado(uf);
+}
+
+// ============================================
+// GEO_ESTADOS - State Geographic Data
+// ============================================
+
+/**
+ * Geographic data from brasil-data-hub.geo_estados
+ */
+export interface GeoEstadoData {
+  id: string;
+  codigo_ibge: number;  // 2-digit state code
+  nome: string;         // Full state name (e.g., "São Paulo")
+  sigla: string;        // State abbreviation (e.g., "SP")
+  regiao_id?: string;
+  capital_municipio_id?: string;
+  populacao_estimada?: number;
+  area_km2?: number;
+  gentilico?: string;   // Demonym (e.g., "paulista")
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Combined state data (geo + population)
+ */
+export interface EstadoCompleto {
+  // Identification
+  codigo_ibge: number;
+  sigla: string;
+  nome: string;
+  // Geographic
+  area_km2?: number;
+  gentilico?: string;
+  regiao_id?: string;
+  capital_municipio_id?: string;
+  // Demographic (from pop_estados)
+  populacao?: number;
+  populacao_estimada?: number;
+  populacao_masculina?: number;
+  populacao_feminina?: number;
+  populacao_urbana?: number;
+  populacao_rural?: number;
+  // Health indicators
+  expectativa_vida?: number;
+  taxa_mortalidade?: number;
+  mortalidade_infantil?: number;
+  // Births
+  nascimentos?: number;
+  taxa_natalidade?: number;
+  // Reference
+  ano_referencia?: number;
+}
+
+/**
+ * Fetch geographic data for a state
+ */
+export async function fetchGeoEstado(
+  siglaOrCodigo: string | number
+): Promise<GeoEstadoData | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchGeoEstado] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    let query = client.from('geo_estados').select('*');
+
+    if (typeof siglaOrCodigo === 'string' && siglaOrCodigo.length === 2) {
+      // Search by sigla (UF)
+      query = query.eq('sigla', siglaOrCodigo.toUpperCase());
+    } else {
+      // Search by codigo_ibge
+      const codigo = typeof siglaOrCodigo === 'string' ? parseInt(siglaOrCodigo) : siglaOrCodigo;
+      query = query.eq('codigo_ibge', codigo);
+    }
+
+    const { data, error } = await query.single();
+
+    if (error) {
+      console.error('[fetchGeoEstado] Error:', error);
       return null;
     }
 
     return data;
   } catch (error) {
-    console.error('[fetchEstado] Exception:', error);
+    console.error('[fetchGeoEstado] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch all states geographic data
+ */
+export async function fetchTodosGeoEstados(): Promise<GeoEstadoData[] | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchTodosGeoEstados] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    const { data, error } = await client
+      .from('geo_estados')
+      .select('*')
+      .order('sigla');
+
+    if (error) {
+      console.error('[fetchTodosGeoEstados] Error:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[fetchTodosGeoEstados] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch complete state data combining geo and population
+ */
+export async function fetchEstadoCompleto(
+  siglaOrCodigo: string | number
+): Promise<EstadoCompleto | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchEstadoCompleto] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    // Determine codigo_ibge
+    let codigoIbge: number;
+    let sigla: string;
+
+    if (typeof siglaOrCodigo === 'string' && siglaOrCodigo.length === 2) {
+      sigla = siglaOrCodigo.toUpperCase();
+      codigoIbge = UF_TO_ESTADO_IBGE[sigla];
+      if (!codigoIbge) {
+        console.error('[fetchEstadoCompleto] Invalid UF:', sigla);
+        return null;
+      }
+    } else {
+      codigoIbge = typeof siglaOrCodigo === 'string' ? parseInt(siglaOrCodigo) : siglaOrCodigo;
+      sigla = ESTADO_IBGE_TO_UF[codigoIbge] || '';
+    }
+
+    // Fetch geo data
+    const { data: geo, error: geoError } = await client
+      .from('geo_estados')
+      .select('*')
+      .eq('codigo_ibge', codigoIbge)
+      .single();
+
+    if (geoError) {
+      console.warn('[fetchEstadoCompleto] Geo error:', geoError.message);
+    }
+
+    // Fetch latest population data
+    const { data: pop, error: popError } = await client
+      .from('pop_estados')
+      .select('*')
+      .eq('codigo_ibge', codigoIbge)
+      .order('ano', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (popError) {
+      console.warn('[fetchEstadoCompleto] Pop error:', popError.message);
+    }
+
+    // Combine data
+    if (!geo && !pop) {
+      return null;
+    }
+
+    return {
+      codigo_ibge: codigoIbge,
+      sigla: geo?.sigla || sigla,
+      nome: geo?.nome || '',
+      // Geographic
+      area_km2: geo?.area_km2,
+      gentilico: geo?.gentilico,
+      regiao_id: geo?.regiao_id,
+      capital_municipio_id: geo?.capital_municipio_id,
+      // Demographic
+      populacao: pop?.populacao,
+      populacao_estimada: geo?.populacao_estimada,
+      populacao_masculina: pop?.populacao_masculina,
+      populacao_feminina: pop?.populacao_feminina,
+      populacao_urbana: pop?.populacao_urbana,
+      populacao_rural: pop?.populacao_rural,
+      // Health
+      expectativa_vida: pop?.expectativa_vida,
+      taxa_mortalidade: pop?.taxa_mortalidade,
+      mortalidade_infantil: pop?.mortalidade_infantil,
+      // Births
+      nascimentos: pop?.nascimentos,
+      taxa_natalidade: pop?.taxa_natalidade,
+      // Reference
+      ano_referencia: pop?.ano,
+    };
+  } catch (error) {
+    console.error('[fetchEstadoCompleto] Exception:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch states by region
+ */
+export async function fetchEstadosPorRegiao(
+  regiaoId: string
+): Promise<GeoEstadoData[] | null> {
+  const client = getBrasilDataHubClient();
+
+  if (!client) {
+    console.warn('[fetchEstadosPorRegiao] brasil-data-hub not connected');
+    return null;
+  }
+
+  try {
+    const { data, error } = await client
+      .from('geo_estados')
+      .select('*')
+      .eq('regiao_id', regiaoId)
+      .order('sigla');
+
+    if (error) {
+      console.error('[fetchEstadosPorRegiao] Error:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[fetchEstadosPorRegiao] Exception:', error);
     return null;
   }
 }

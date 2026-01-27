@@ -141,6 +141,50 @@ export const HOME_MCP_CONFIG: MCPServerConfig = {
       },
       handler: 'buscarEscola',
     },
+    {
+      name: 'buscar_estado',
+      description: 'Busca dados completos de estados brasileiros incluindo nome, área, gentílico, população por gênero, urbana/rural, mortalidade e expectativa de vida',
+      source: 'mcp',
+      database: 'brasil-data-hub',
+      table: 'geo_estados,pop_estados',
+      estimatedMs: 120,
+      keywords: ['estado', 'uf', 'populacao', 'expectativa', 'mortalidade', 'demografico', 'ranking', 'area', 'gentilico'],
+      inputSchema: {
+        type: 'object',
+        properties: {
+          uf: {
+            type: 'string',
+            description: 'Sigla do estado (ex: SP, RJ, MG)',
+            pattern: '^[A-Z]{2}$',
+          },
+          codigo_ibge: {
+            type: 'number',
+            description: 'Código IBGE do estado (2 dígitos, ex: 35 para SP)',
+          },
+          completo: {
+            type: 'boolean',
+            description: 'Retornar dados completos (geográficos + demográficos)',
+            default: false,
+          },
+          incluir_historico: {
+            type: 'boolean',
+            description: 'Incluir série histórica de população por ano',
+            default: false,
+          },
+          comparar: {
+            type: 'boolean',
+            description: 'Comparar todos os estados (ranking)',
+            default: false,
+          },
+          indicador: {
+            type: 'string',
+            enum: ['populacao', 'expectativa_vida', 'taxa_mortalidade', 'mortalidade_infantil'],
+            description: 'Indicador para ordenar ranking (apenas se comparar=true)',
+          },
+        },
+      },
+      handler: 'buscarEstado',
+    },
 
     // --- RAG Tools (Busca Semântica) ---
     {
