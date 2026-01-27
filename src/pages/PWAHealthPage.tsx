@@ -1,61 +1,29 @@
 /**
- * ============================================================
- * PWAHealthPage.tsx - Página principal do PWA Health
- * ============================================================
- * Versão: 1.1.0
- * Data: 2026-01-17
- *
- * Descrição: Página principal do PWA Health (microserviço).
- * Integra autenticação, device gate e container principal.
- * Focado exclusivamente em triagem médica por voz.
- * Com MobileFrame para visualização desktop.
- * ============================================================
+ * PWAHealthPage - Página do PWA Health (Em desenvolvimento)
  */
 
 import React from "react";
-import PWAHealthDeviceGate from "@/components/gates/PWAHealthDeviceGate";
-import { PWAHealthAuthGate } from "@/components/gates/PWAHealthAuthGate";
-import { PWAHealthContainer } from "@/components/pwahealth/PWAHealthContainer";
-import { MobileFrame } from "@/components/pwa/MobileFrame";
-import { useDeviceDetection } from "@/hooks/useDeviceDetection";
+import { Heart, Construction } from "lucide-react";
 
 const PWAHealthPage: React.FC = () => {
-  const { isDesktop } = useDeviceDetection();
-
-  // Se for desktop, envolver com MobileFrame
-  if (isDesktop) {
-    return (
-      <MobileFrame>
-        <PWAHealthDeviceGate>
-          <PWAHealthAuthGate>
-            {({ userName, userPhone, sessionId, logout }) => (
-              <PWAHealthContainer
-                userName={userName}
-                userPhone={userPhone}
-                sessionId={sessionId}
-                onLogout={logout}
-              />
-            )}
-          </PWAHealthAuthGate>
-        </PWAHealthDeviceGate>
-      </MobileFrame>
-    );
-  }
-
-  // Mobile: sem MobileFrame
   return (
-    <PWAHealthDeviceGate>
-      <PWAHealthAuthGate>
-        {({ userName, userPhone, sessionId, logout }) => (
-          <PWAHealthContainer
-            userName={userName}
-            userPhone={userPhone}
-            sessionId={sessionId}
-            onLogout={logout}
-          />
-        )}
-      </PWAHealthAuthGate>
-    </PWAHealthDeviceGate>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="text-center max-w-md">
+        <div className="mb-6 flex justify-center">
+          <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center">
+            <Heart className="w-10 h-10 text-red-500" />
+          </div>
+        </div>
+        <h1 className="text-2xl font-bold mb-2">PWA Health</h1>
+        <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
+          <Construction className="w-4 h-4" />
+          <span>Em Desenvolvimento</span>
+        </div>
+        <p className="text-muted-foreground">
+          O assistente de saúde e bem-estar estará disponível em breve.
+        </p>
+      </div>
+    </div>
   );
 };
 
