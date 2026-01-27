@@ -352,6 +352,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       icon: Smartphone,
       items: [
         { id: "pwa" as TabType, label: "Config. PWA", icon: Smartphone },
+        { id: "pwa-home-containers" as TabType, label: "Containers HOME", icon: Home },
         { id: "pwa-conversations" as TabType, label: "Conversas PWA", icon: MessageSquare },
       ]
     },

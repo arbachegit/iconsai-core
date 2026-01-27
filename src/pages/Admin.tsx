@@ -30,6 +30,7 @@ import {
 // Lazy load all tabs
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
 const PWATab = lazy(() => import("@/components/admin/PWATab"));
+const PWAHomeContainersTab = lazy(() => import("@/components/admin/PWAHomeContainersTab"));
 const PWAConversationsTab = lazy(() => import("@/components/admin/PWAConversationsTab"));
 const ContactMessagesTab = lazy(() => import("@/components/admin/ContactMessagesTab").then(m => ({ default: m.ContactMessagesTab })));
 const SecurityDashboard = lazy(() => import("@/components/admin/SecurityDashboard").then(m => ({ default: m.SecurityDashboard })));
@@ -49,6 +50,7 @@ const TabLoadingFallback = () => (
 export type TabType =
   | "dashboard"
   | "pwa"
+  | "pwa-home-containers"
   | "pwa-conversations"
   | "contact-messages"
   | "security-dashboard"
@@ -62,6 +64,7 @@ export type TabType =
 export const TAB_LABELS: Record<TabType, string> = {
   "dashboard": "Dashboard",
   "pwa": "Config. PWA",
+  "pwa-home-containers": "Containers HOME",
   "pwa-conversations": "Conversas PWA",
   "contact-messages": "Mensagens de Contato",
   "security-dashboard": "Dashboard Segurança",
@@ -166,6 +169,7 @@ const Admin = () => {
       switch (activeTab) {
         case "dashboard": return <DashboardTab />;
         case "pwa": return <PWATab />;
+        case "pwa-home-containers": return <PWAHomeContainersTab />;
         case "pwa-conversations": return <PWAConversationsTab />;
         case "contact-messages": return <ContactMessagesTab />;
         case "security-dashboard": return <SecurityDashboard />;
