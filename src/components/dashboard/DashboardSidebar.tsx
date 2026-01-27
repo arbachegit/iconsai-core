@@ -28,11 +28,20 @@ import {
   ShoppingCart,
   Gauge,
   Brain,
-  Heart
+  Heart,
+  Building2,
+  Users,
+  Activity,
+  LayoutGrid
 } from "lucide-react";
 
 export type DashboardTabType =
   | "indicators"
+  | "institutions"
+  | "institution-users"
+  | "activity-logs"
+  | "emotion-analytics"
+  | "pwa-home-config"
   | "api"
   | "ai"
   | "data-analysis"
@@ -54,14 +63,13 @@ interface DashboardSidebarProps {
   onToggleCollapse: () => void;
 }
 
-const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
+const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType; superAdminOnly?: boolean }[] = [
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
-  { id: "api", label: "API", icon: Monitor },
-  { id: "ai", label: "IA", icon: Bot },
-  { id: "data-analysis", label: "Data Analysis", icon: TrendingUp },
-  { id: "analytics-uf", label: "UF DataSet", icon: MapPin },
-  { id: "chart-database", label: "Chart DataSet", icon: Database },
-  { id: "table-database", label: "Table DataSet", icon: Database },
+  { id: "institutions", label: "Instituições", icon: Building2, superAdminOnly: true },
+  { id: "institution-users", label: "Usuários", icon: Users },
+  { id: "activity-logs", label: "Logs de Atividade", icon: Activity },
+  { id: "emotion-analytics", label: "Análise Emocional", icon: Heart },
+  { id: "pwa-home-config", label: "PWA Home Config", icon: LayoutGrid, superAdminOnly: true },
 ];
 
 const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
@@ -118,14 +126,17 @@ export function DashboardSidebar({
     setCanScrollDown(scrollTop + clientHeight < scrollHeight - 10);
   }, []);
 
-  // Filter menu items based on search query
+  // Filter menu items based on search query and role
   const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return menuItems;
+    const visibleItems = menuItems.filter(item =>
+      !item.superAdminOnly || isSuperAdmin
+    );
+    if (!searchQuery.trim()) return visibleItems;
     const query = searchQuery.toLowerCase();
-    return menuItems.filter(item => 
+    return visibleItems.filter(item =>
       item.label.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [searchQuery, isSuperAdmin]);
 
   // Filter dataflow items based on search query
   const filteredDataFlowItems = useMemo(() => {

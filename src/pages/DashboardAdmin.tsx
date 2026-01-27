@@ -17,6 +17,11 @@ import { DashboardAnalyticsProvider } from "@/contexts/DashboardAnalyticsContext
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
 const InfrastructureArchitectureTab = lazy(() => import("@/components/admin/InfrastructureArchitectureTab").then(m => ({ default: m.InfrastructureArchitectureTab })));
 const PWASimulator = lazy(() => import("@/components/admin/PWASimulator"));
+const InstitutionsTab = lazy(() => import("@/components/admin/InstitutionsTab"));
+const InstitutionUsersTab = lazy(() => import("@/components/admin/InstitutionUsersTab"));
+const UserActivityLogsTab = lazy(() => import("@/components/admin/UserActivityLogsTab"));
+const EmotionAnalyticsTab = lazy(() => import("@/components/admin/EmotionAnalyticsTab"));
+const PWAHomeContainersTab = lazy(() => import("@/components/admin/PWAHomeContainersTab"));
 
 // Loading fallback
 const TabLoader = () => (
@@ -79,6 +84,36 @@ const DashboardAdmin = () => {
     switch (activeTab) {
       case "indicators":
         return <DashboardTab />;
+      case "institutions":
+        return (
+          <div className="p-6">
+            <InstitutionsTab />
+          </div>
+        );
+      case "institution-users":
+        return (
+          <div className="p-6">
+            <InstitutionUsersTab />
+          </div>
+        );
+      case "activity-logs":
+        return (
+          <div className="p-6">
+            <UserActivityLogsTab />
+          </div>
+        );
+      case "emotion-analytics":
+        return (
+          <div className="p-6">
+            <EmotionAnalyticsTab />
+          </div>
+        );
+      case "pwa-home-config":
+        return (
+          <div className="p-6">
+            <PWAHomeContainersTab />
+          </div>
+        );
       case "dataflow-architecture":
         return (
           <div className="p-6">
