@@ -1,14 +1,33 @@
 // ============================================
-// VERSAO: 1.0.0 | DEPLOY: 2026-01-28
+// VERSAO: 1.1.0 | DEPLOY: 2026-01-28
 // Sistema de convites para usuários IconsAI
 // Envia Email + WhatsApp (SMS como fallback)
+// FIX: HTML sanitization for XSS prevention
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { getCorsHeaders, corsHeaders } from "../_shared/cors.ts";
 import { getSupabaseAdmin } from "../_shared/supabase.ts";
 
-const FUNCTION_VERSION = "1.0.0";
+const FUNCTION_VERSION = "1.1.0";
+
+/**
+ * Sanitize string for safe HTML insertion
+ * Prevents XSS attacks by escaping HTML special characters
+ */
+function sanitizeHtml(str: string): string {
+  const htmlEscapes: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+    "/": "&#x2F;",
+    "`": "&#x60;",
+    "=": "&#x3D;",
+  };
+  return str.replace(/[&<>"'`=/]/g, (char) => htmlEscapes[char] || char);
+}
 
 // Templates Twilio IconsAI
 const TWILIO_TEMPLATES = {
@@ -51,8 +70,12 @@ async function sendEmail(params: {
     return { success: false, error: "RESEND_API_KEY não configurada" };
   }
 
-  const institutionText = params.institutionName
-    ? `para fazer parte da equipe <strong>${params.institutionName}</strong> na`
+  // Sanitize user input to prevent XSS
+  const safeFirstName = sanitizeHtml(params.firstName);
+  const safeInstitutionName = params.institutionName ? sanitizeHtml(params.institutionName) : null;
+
+  const institutionText = safeInstitutionName
+    ? `para fazer parte da equipe <strong>${safeInstitutionName}</strong> na`
     : "para usar a";
 
   const htmlBody = `
@@ -82,7 +105,7 @@ async function sendEmail(params: {
     </div>
     <div class="card">
       <h1>Bem-vindo(a) ao IconsAI!</h1>
-      <p>Olá <strong>${params.firstName}</strong>,</p>
+      <p>Olá <strong>${safeFirstName}</strong>,</p>
       <p>Você foi convidado(a) ${institutionText} plataforma IconsAI.</p>
       <p>Clique no botão abaixo para criar sua conta e começar a usar:</p>
       <p style="text-align: center;">

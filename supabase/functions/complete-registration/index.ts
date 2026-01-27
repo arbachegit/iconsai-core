@@ -1,14 +1,33 @@
 // ============================================
-// VERSAO: 1.0.0 | DEPLOY: 2026-01-28
+// VERSAO: 1.1.0 | DEPLOY: 2026-01-28
 // Completa cadastro de usuário IconsAI
 // Cria auth.user e platform_users
+// FIX: Removed magic link from response (security)
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getSupabaseAdmin } from "../_shared/supabase.ts";
 
-const FUNCTION_VERSION = "1.0.0";
+const FUNCTION_VERSION = "1.1.0";
+
+/**
+ * Sanitize string for safe HTML insertion
+ * Prevents XSS attacks by escaping HTML special characters
+ */
+function sanitizeHtml(str: string): string {
+  const htmlEscapes: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+    "/": "&#x2F;",
+    "`": "&#x60;",
+    "=": "&#x3D;",
+  };
+  return str.replace(/[&<>"'`=/]/g, (char) => htmlEscapes[char] || char);
+}
 
 // Templates Twilio IconsAI
 const TWILIO_TEMPLATES = {
@@ -120,7 +139,7 @@ async function sendWelcomeEmail(email: string, firstName: string): Promise<void>
     </div>
     <div class="card">
       <h1>Bem-vindo(a) ao IconsAI!</h1>
-      <p>Olá <strong>${firstName}</strong>,</p>
+      <p>Olá <strong>${sanitizeHtml(firstName)}</strong>,</p>
       <p>Sua conta foi criada com sucesso! Agora você tem acesso a todos os recursos da plataforma IconsAI.</p>
       <p>Com o IconsAI você pode:</p>
       <ul>
@@ -361,8 +380,8 @@ serve(async (req) => {
         institutionId: platformUser.institution_id,
       },
       redirectUrl,
-      // Magic link para login automático (se gerado)
-      loginLink: session?.properties?.action_link,
+      // NOTE: loginLink removed for security - magic link should not be exposed in HTTP response
+      // Users should login via the standard login page at redirectUrl
     });
 
   } catch (error) {

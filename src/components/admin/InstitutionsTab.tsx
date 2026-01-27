@@ -121,9 +121,11 @@ export default function InstitutionsTab() {
   const fetchInstitutions = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Exclude soft-deleted institutions
       const { data, error } = await supabase
         .from("institutions")
         .select("*")
+        .or("is_deleted.is.null,is_deleted.eq.false")
         .order("name", { ascending: true });
 
       if (error) throw error;
@@ -274,15 +276,20 @@ export default function InstitutionsTab() {
     }
   };
 
-  // Delete institution
+  // Soft delete institution (set is_deleted = true instead of hard delete)
   const deleteInstitution = async () => {
     if (!editingInstitution) return;
 
     setIsSaving(true);
     try {
+      // Use soft delete - set is_deleted and is_active flags
       const { error } = await supabase
         .from("institutions")
-        .delete()
+        .update({
+          is_deleted: true,
+          is_active: false,
+          deleted_at: new Date().toISOString(),
+        })
         .eq("id", editingInstitution.id);
 
       if (error) throw error;
