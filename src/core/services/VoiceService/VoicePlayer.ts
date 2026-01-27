@@ -308,6 +308,13 @@ export class VoicePlayer {
    * Handles multiple response formats from Supabase edge function
    */
   private convertToAudioUrl(data: unknown): string {
+    console.log('[VoicePlayer] Converting TTS response:', {
+      type: typeof data,
+      constructor: data?.constructor?.name,
+      isBlob: data instanceof Blob,
+      isArrayBuffer: data instanceof ArrayBuffer,
+    });
+
     // Case 1: Blob (direct)
     if (data instanceof Blob) {
       console.log('[VoicePlayer] TTS received Blob:', data.size, 'bytes');
@@ -321,21 +328,40 @@ export class VoicePlayer {
       return URL.createObjectURL(blob);
     }
 
-    // Case 3: Array-like (Uint8Array serialized)
-    if (data && typeof data === 'object' && 'length' in data) {
-      const arrayLike = data as ArrayLike<number>;
-      console.log('[VoicePlayer] TTS received array-like:', arrayLike.length, 'bytes');
-      const blob = new Blob([new Uint8Array(arrayLike)], { type: 'audio/mpeg' });
+    // Case 3: Uint8Array directly
+    if (data instanceof Uint8Array) {
+      console.log('[VoicePlayer] TTS received Uint8Array:', data.length, 'bytes');
+      const blob = new Blob([data], { type: 'audio/mpeg' });
       return URL.createObjectURL(blob);
     }
 
-    // Case 4: JSON with audioUrl
+    // Case 4: Object with numeric keys (serialized Uint8Array from JSON)
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const keys = Object.keys(data as object);
+      // Check if it's a numeric-keyed object (like {0: 255, 1: 128, ...})
+      if (keys.length > 0 && keys.every(k => !isNaN(Number(k)))) {
+        console.log('[VoicePlayer] TTS received numeric-keyed object:', keys.length, 'bytes');
+        const values = keys.map(k => (data as Record<string, number>)[k]);
+        const blob = new Blob([new Uint8Array(values)], { type: 'audio/mpeg' });
+        return URL.createObjectURL(blob);
+      }
+    }
+
+    // Case 5: Array-like (with length property)
+    if (data && typeof data === 'object' && 'length' in data && typeof (data as { length: unknown }).length === 'number') {
+      const arrayLike = data as ArrayLike<number>;
+      console.log('[VoicePlayer] TTS received array-like:', arrayLike.length, 'bytes');
+      const blob = new Blob([new Uint8Array(Array.from(arrayLike))], { type: 'audio/mpeg' });
+      return URL.createObjectURL(blob);
+    }
+
+    // Case 6: JSON with audioUrl
     if (typeof data === 'object' && data !== null && 'audioUrl' in data) {
       console.log('[VoicePlayer] TTS received audioUrl');
       return (data as { audioUrl: string }).audioUrl;
     }
 
-    // Case 5: JSON with base64 audio
+    // Case 7: JSON with base64 audio
     if (typeof data === 'object' && data !== null && 'audio' in data) {
       console.log('[VoicePlayer] TTS received base64 audio');
       const base64 = (data as { audio: string }).audio;
@@ -353,7 +379,8 @@ export class VoicePlayer {
     console.error('[VoicePlayer] TTS unexpected response type:', {
       type: typeof data,
       constructor: data?.constructor?.name,
-      keys: data && typeof data === 'object' ? Object.keys(data as object).slice(0, 5) : null,
+      keys: data && typeof data === 'object' ? Object.keys(data as object).slice(0, 10) : null,
+      sample: data && typeof data === 'object' ? JSON.stringify(data).slice(0, 200) : String(data).slice(0, 200),
     });
 
     throw new Error('Unrecognized audio format');
