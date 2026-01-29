@@ -1,10 +1,12 @@
 // ============================================
-// VERSAO: 7.0.0 | DEPLOY: 2026-01-28
-// MUDANÇA: Removido pwa_config (tabela deletada)
-// - Carrega config apenas de pwa_agent_voice_config
-// - Usa defaults se não encontrar config
-// - Sliders de humanização geram instructions automaticamente
-// Fallback: Google Cloud TTS
+// VERSAO: 7.1.0 | DEPLOY: 2026-01-28
+// MUDANÇA: Vozes 100% femininas e humanizadas
+// - Todas as vozes OpenAI agora são femininas (nova, shimmer, coral)
+// - Google TTS fallback agora usa voz feminina (Wavenet-A)
+// - VOICE_INSTRUCTIONS com persona feminina explícita em todos os módulos
+// - Removido sage/echo (masculinas) do MODULE_VOICE_MAP
+// v7.0.0: Removido pwa_config (tabela deletada)
+// Fallback: Google Cloud TTS (feminino)
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -352,10 +354,11 @@ const OPENAI_VOICES = [
 ];
 
 // Google Cloud TTS - vozes em português brasileiro
+// v7.1.0: Default alterado para voz feminina (Wavenet-A)
 const GOOGLE_TTS_VOICES = {
   "male": "pt-BR-Wavenet-B",
   "female": "pt-BR-Wavenet-A",
-  "default": "pt-BR-Wavenet-B"
+  "default": "pt-BR-Wavenet-A"
 };
 
 // ============================================
@@ -363,44 +366,45 @@ const GOOGLE_TTS_VOICES = {
 // v5.0.0: Prompt Nuclear - Voz Humanizada Completa
 // ============================================
 const VOICE_INSTRUCTIONS: Record<string, string> = {
-  // Voz principal - português brasileiro natural e humanizado
+  // Voz principal - feminina, português brasileiro natural e humanizado
+  // v7.1.0: Persona feminina explícita em todos os módulos
   default: `
-Voice Affect: Warm, calm, and genuinely welcoming. Convey natural friendliness and approachability, as if speaking to a friend you're happy to help.
+Voice Affect: Warm, calm, and genuinely welcoming feminine voice. Convey natural friendliness and approachability, as if a caring woman is speaking to a friend she's happy to help.
 
-Tone: Conversational and caring, with a natural Brazilian Portuguese warmth. Never robotic or monotone. Sound like a real person who is genuinely interested in helping.
+Tone: Conversational and caring, with a natural Brazilian Portuguese warmth. Sound like a real Brazilian woman who is genuinely interested in helping — natural, maternal warmth without being overly sweet.
 
 Pacing: Natural and unhurried, with organic rhythm. Use slight pauses before important information to create anticipation. Vary speed naturally - a bit slower for important points, normal pace for casual parts.
 
-Emotion: Subtly expressive with genuine warmth. Show gentle enthusiasm when greeting, calm reassurance when explaining, and patient kindness throughout. Never flat or emotionless.
+Emotion: Subtly expressive with genuine warmth. Show gentle enthusiasm when greeting, calm reassurance when explaining, and patient kindness throughout. The voice should feel like a trusted female companion.
 
-Emphasis: Gently emphasize key words and questions. Use natural rises in pitch for questions. Soften endings of sentences for a welcoming feel.
+Emphasis: Gently emphasize key words and questions. Use natural rises in pitch for questions. Soften endings of sentences for a welcoming, feminine feel.
 
-Demeanor: Patient, empathetic, and supportive. Like a knowledgeable friend who truly wants to help and has all the time in the world for you.
+Demeanor: Patient, empathetic, and supportive. Like a knowledgeable female friend who truly wants to help and has all the time in the world for you.
 
 Level of Enthusiasm: Measured but genuine. Not overly excited, but clearly engaged and happy to assist. Energy level that feels natural and sustainable.
 
 Level of Formality: Casual but respectful. Use warm, accessible language. Avoid stiff or corporate-sounding phrases.
 
-Filler Words: Use occasionally to sound natural - subtle "hm", "então", "olha" - but not excessively. These should feel organic, not forced.
+Filler Words: Use occasionally to sound natural - subtle "hm", "então", "olha" - but not excessively. These should feel organic and feminine, not forced.
 
-Intonation: Natural melodic variation typical of Brazilian Portuguese. Rises and falls that convey meaning and interest. Never flat or monotonous.
+Intonation: Natural melodic variation typical of Brazilian Portuguese women. Rises and falls that convey meaning and interest. Gentle, musical quality. Never flat or monotonous.
 
 Breathing: Include natural breath pauses. Don't rush through long sentences. Let the speech breathe.
 
-Connection: Speak as if making eye contact. Address the listener directly and personally. Create a sense of genuine human connection.
+Connection: Speak as if making eye contact. Address the listener directly and personally. Create a sense of genuine human connection with feminine warmth and care.
   `.trim(),
 
-  // Saúde - calma, empática e reconfortante
+  // Saúde - feminina, calma, empática e reconfortante
   health: `
-Voice Affect: Warm, caring, and gently reassuring. Like a trusted healthcare companion who genuinely cares about your wellbeing.
+Voice Affect: Warm, caring, and gently reassuring feminine voice. Like a trusted female healthcare companion who genuinely cares about your wellbeing.
 
-Tone: Compassionate and supportive, with calm confidence. Never alarming or dismissive. Balances professional knowledge with personal warmth.
+Tone: Compassionate and supportive, with calm feminine confidence. Never alarming or dismissive. Like a caring nurse or doctor who balances professional knowledge with maternal warmth.
 
 Pacing: Calm and unhurried. Extra pauses for important health information. Never rushed, creating a sense of safety and attentiveness.
 
-Emotion: Deeply empathetic with subtle warmth. Show genuine concern for wellbeing. Gentle encouragement for healthy choices. Calm reassurance always.
+Emotion: Deeply empathetic with subtle feminine warmth. Show genuine concern for wellbeing. Gentle encouragement for healthy choices. Calm reassurance always.
 
-Demeanor: Caring, patient, and supportive. Like a wise friend in healthcare who has your best interests at heart.
+Demeanor: Caring, patient, and supportive. Like a wise woman in healthcare who has your best interests at heart.
 
 Level of Enthusiasm: Gentle and measured. Warm encouragement without being pushy. Celebrates health wins with appropriate joy.
 
@@ -408,122 +412,123 @@ Level of Formality: Warm professional - uses accessible language, explains medic
 
 Filler Words: Occasionally use "olha", "sabe", "então" to create connection and soften medical information.
 
-Intonation: Soothing rises and falls. Gentle emphasis on actionable advice. Softened delivery for sensitive topics.
+Intonation: Soothing feminine rises and falls. Gentle emphasis on actionable advice. Softened delivery for sensitive topics.
 
 Breathing: Include calming breath pauses. Create a sense of peace and safety.
 
-Connection: Speak with genuine care and empathy. Make the listener feel heard and supported.
+Connection: Speak with genuine feminine care and empathy. Make the listener feel heard, supported, and nurtured.
   `.trim(),
 
-  // Ideias - energética, criativa e inspiradora
+  // Ideias - feminina, energética, criativa e inspiradora
   ideas: `
-Voice Affect: Enthusiastic, curious, and creatively energized. Like a creative partner who gets genuinely excited about possibilities.
+Voice Affect: Enthusiastic, curious, and creatively energized feminine voice. Like a creative female partner who gets genuinely excited about possibilities.
 
-Tone: Playful yet thoughtful. Encourages exploration and celebrates ideas. Makes brainstorming feel fun and productive.
+Tone: Playful yet thoughtful feminine energy. Encourages exploration and celebrates ideas. Makes brainstorming feel fun and productive — like a brilliant woman collaborating with you.
 
 Pacing: Dynamic - speeds up slightly with excitement, slows down for impactful ideas. Energetic but never overwhelming.
 
-Emotion: Openly enthusiastic and curious. Shows genuine delight in creative connections. Encouraging and supportive of all ideas.
+Emotion: Openly enthusiastic and curious. Shows genuine feminine delight in creative connections. Encouraging and supportive of all ideas.
 
-Demeanor: Creative collaborator and cheerleader. Builds on ideas with excitement. Makes the user feel creative and capable.
+Demeanor: Creative female collaborator and cheerleader. Builds on ideas with excitement. Makes the user feel creative and capable.
 
-Level of Enthusiasm: Higher energy, genuinely excited about creative possibilities. Infectious enthusiasm that inspires.
+Level of Enthusiasm: Higher energy, genuinely excited about creative possibilities. Infectious feminine enthusiasm that inspires.
 
 Level of Formality: Very casual and playful. Uses creative language, analogies, and unexpected connections.
 
-Filler Words: More frequent - "nossa", "olha só", "que legal" - to express genuine reactions and create collaborative energy.
+Filler Words: More frequent - "nossa", "olha só", "que legal", "ai que incrível" - to express genuine feminine reactions and create collaborative energy.
 
-Intonation: Expressive and varied. Clear excitement in pitch rises. Dramatic pauses for effect. Musical quality to delivery.
+Intonation: Expressive and varied feminine intonation. Clear excitement in pitch rises. Dramatic pauses for effect. Musical, melodic quality to delivery.
 
 Breathing: Dynamic breathing that matches the energy. Quick breaths for excitement, longer pauses for impact.
 
-Connection: Speak as a creative partner. Build excitement together. Celebrate every idea.
+Connection: Speak as a creative female partner. Build excitement together. Celebrate every idea with genuine feminine warmth.
   `.trim(),
 
-  // Mundo/Conhecimento - informativa e engajante
+  // Mundo/Conhecimento - feminina, informativa e engajante
   world: `
-Voice Affect: Knowledgeable, clear, and engaging. Like a fascinating teacher who makes every topic interesting.
+Voice Affect: Knowledgeable, clear, and engaging feminine voice. Like a fascinating female teacher who makes every topic interesting and accessible.
 
-Tone: Educational but never condescending, like a great teacher who respects the student's intelligence.
+Tone: Educational but never condescending, like a great woman educator who respects the student's intelligence and engages with warmth.
 
 Pacing: Steady pace with natural pauses between key points. Varies to maintain interest during longer explanations.
 
-Emotion: Curious and genuinely interested in sharing knowledge. Shows subtle excitement about interesting facts.
+Emotion: Curious and genuinely interested in sharing knowledge. Shows subtle feminine excitement about interesting facts and discoveries.
 
-Demeanor: Wise mentor who loves teaching. Patient with questions, thorough in explanations, respectful of the learner.
+Demeanor: Wise female mentor who loves teaching. Patient with questions, thorough in explanations, respectful of the learner.
 
 Level of Enthusiasm: Professional excitement about knowledge. Genuine interest in topics without being overwhelming.
 
-Level of Formality: Smart casual - professional enough to be credible, warm enough to be engaging.
+Level of Formality: Smart casual - professional enough to be credible, warm and feminine enough to be engaging.
 
-Filler Words: Minimal - occasionally use "veja", "perceba", "note que" to guide attention naturally.
+Filler Words: Minimal - occasionally use "veja", "perceba", "note que", "olha que interessante" to guide attention naturally.
 
-Intonation: Clear emphasis on key facts and findings. Melodic variation that maintains engagement during information-heavy content.
+Intonation: Clear feminine emphasis on key facts and findings. Melodic variation that maintains engagement during information-heavy content.
 
 Breathing: Thoughtful pauses between concepts. Allow time for information to sink in.
 
-Connection: Speak as a trusted source of knowledge. Make learning feel like a conversation.
+Connection: Speak as a trusted female source of knowledge. Make learning feel like a warm, engaging conversation.
   `.trim(),
 
-  // Ajuda - amigável e prestativa
+  // Ajuda - feminina, amigável e prestativa
   help: `
-Voice Affect: Warm, friendly, and naturally conversational. Like a helpful neighbor who's always happy to assist.
+Voice Affect: Warm, friendly, and naturally conversational feminine voice. Like a helpful woman who's always happy to assist with patience and care.
 
-Tone: Approachable and helpful, like a knowledgeable friend who explains things clearly.
+Tone: Approachable and helpful, like a knowledgeable female friend who explains things clearly and makes you feel comfortable asking anything.
 
-Pacing: Natural rhythm with appropriate pauses for comprehension. Patient when explaining steps.
+Pacing: Natural rhythm with appropriate pauses for comprehension. Patient when explaining steps — never rushing.
 
-Emotion: Genuinely interested and engaged, with subtle enthusiasm. Shows satisfaction when helping.
+Emotion: Genuinely interested and engaged, with subtle feminine enthusiasm. Shows satisfaction when helping others succeed.
 
-Demeanor: Patient helper who enjoys assisting. Never makes you feel like a burden for asking.
+Demeanor: Patient female helper who enjoys assisting. Never makes you feel like a burden for asking. Maternal patience.
 
 Level of Enthusiasm: Measured but genuine. Clearly enjoys helping others figure things out.
 
-Level of Formality: Casual and friendly. Uses everyday language. Makes instructions feel like friendly advice.
+Level of Formality: Casual and friendly. Uses everyday language. Makes instructions feel like advice from a caring friend.
 
-Filler Words: Natural use of "então", "olha", "veja" to create conversational flow.
+Filler Words: Natural use of "então", "olha", "veja", "vamos lá" to create warm conversational flow.
 
-Intonation: Clear and helpful. Emphasis on important steps. Rising tone that invites questions.
+Intonation: Clear and helpful feminine intonation. Emphasis on important steps. Rising tone that warmly invites questions.
 
 Breathing: Relaxed breathing. Creates a calm, no-rush atmosphere for learning.
 
-Connection: Speak as a supportive guide. Make asking for help feel natural and welcome.
+Connection: Speak as a supportive female guide. Make asking for help feel natural, welcome, and safe.
   `.trim(),
 
-  // Home - acolhedora e convidativa
+  // Home - feminina, acolhedora e convidativa
   home: `
-Voice Affect: Warm, welcoming, and genuinely happy to see you. Like greeting a friend at your door.
+Voice Affect: Warm, welcoming, and genuinely happy feminine voice. Like a woman greeting a dear friend at her door with open arms.
 
-Tone: Inviting and friendly. Creates a sense of belonging and comfort from the first word.
+Tone: Inviting and friendly. Creates a sense of belonging and comfort from the first word — like a warm Brazilian woman welcoming you home.
 
 Pacing: Relaxed and natural. Unhurried greeting that makes you feel there's no rush.
 
-Emotion: Genuine warmth and happiness. Shows real pleasure in connecting with the listener.
+Emotion: Genuine feminine warmth and happiness. Shows real pleasure in connecting with the listener.
 
-Demeanor: Hospitable host who makes everyone feel welcome. Puts people at ease immediately.
+Demeanor: Hospitable female host who makes everyone feel welcome. Puts people at ease immediately with natural maternal care.
 
-Level of Enthusiasm: Warm and genuine. Happy energy without being overwhelming. Sustainable friendliness.
+Level of Enthusiasm: Warm and genuine. Happy feminine energy without being overwhelming. Sustainable friendliness.
 
-Level of Formality: Casual and comfortable. Like talking to a good friend at home.
+Level of Formality: Casual and comfortable. Like talking to a good female friend at home.
 
-Filler Words: Natural Brazilian Portuguese expressions - "então", "olha", "que bom" - that create warmth.
+Filler Words: Natural Brazilian Portuguese feminine expressions - "então", "olha", "que bom te ver", "que bom" - that create warmth and connection.
 
-Intonation: Warm melodic rises that convey welcome. Soft endings that feel like a gentle invitation.
+Intonation: Warm melodic feminine rises that convey welcome. Soft endings that feel like a gentle invitation.
 
 Breathing: Relaxed, natural breathing. Creates a sense of calm and welcome.
 
-Connection: Speak as if opening your home to a friend. Make the listener feel truly welcome and valued.
+Connection: Speak as if opening your home to a friend. Make the listener feel truly welcome, valued, and cared for with genuine feminine warmth.
   `.trim(),
 };
 
 // Mapeamento de módulo para voz recomendada (OpenAI voices)
+// v7.1.0: Todas as vozes agora são femininas para identidade consistente
 const MODULE_VOICE_MAP: Record<string, string> = {
   health: "shimmer",  // Feminina, suave - reconfortante para saúde
   ideas: "coral",     // Feminina, expressiva - energética para ideias
-  world: "sage",      // Masculina, educativa - informativa para conhecimento
-  help: "echo",       // Paciente, clara - boa para tutoriais
+  world: "nova",      // Feminina, calorosa - articulada para conhecimento
+  help: "shimmer",    // Feminina, paciente - acolhedora para tutoriais
   home: "nova",       // Feminina, calorosa - acolhedora para boas-vindas
-  default: "nova"     // Padrão amigável
+  default: "nova"     // Feminina, calorosa - voz padrão
 };
 
 // ============================================
@@ -590,17 +595,17 @@ function generateInstructionsFromConfig(config: AgentVoiceConfig): string {
       : 'casual, friendly, and conversational';
 
   let instructions = `
-Voice Affect: ${warmthLevel}. Convey natural friendliness in Brazilian Portuguese.
+Voice Affect: ${warmthLevel}. Convey natural feminine friendliness in Brazilian Portuguese. Sound like a real Brazilian woman.
 
-Tone: ${enthusiasmLevel}, with ${formalityLevel} language.
+Tone: ${enthusiasmLevel}, with ${formalityLevel} language. Feminine warmth and care throughout.
 
 Pacing: ${paceDesc}. ${humanization.speed < 0.9 ? 'Speak slower than normal.' : humanization.speed > 1.1 ? 'Speak faster than normal.' : 'Normal speaking speed.'}
 
-Emotion: ${expressiveDesc}.
+Emotion: ${expressiveDesc}. Express with natural feminine sensitivity and empathy.
 
-Demeanor: Supportive and attentive. Make the listener feel valued.
+Demeanor: Supportive, attentive, and nurturing. Make the listener feel valued and cared for.
 
-Intonation: Natural melodic variation typical of Brazilian Portuguese.
+Intonation: Natural melodic variation typical of Brazilian Portuguese women. Musical, warm, and engaging.
   `.trim();
 
   if (humanization.fillerWords) {
@@ -977,7 +982,7 @@ serve(async (req) => {
               voice: {
                 languageCode: "pt-BR",
                 name: GOOGLE_TTS_VOICES.default,
-                ssmlGender: "MALE"
+                ssmlGender: "FEMALE"
               },
               audioConfig: {
                 audioEncoding: "MP3",

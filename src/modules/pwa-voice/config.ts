@@ -86,8 +86,8 @@ export const AUDIO_RECORDING_CONFIG = {
  * Configuração de TTS
  */
 export const TTS_CONFIG = {
-  /** Voz padrão */
-  defaultVoice: "fernando",
+  /** Voz padrão — OpenAI "nova" (feminina, calorosa, PT-BR natural) */
+  defaultVoice: "nova",
   /** Velocidade padrão */
   defaultRate: 1.0,
   /** Volume padrão */
