@@ -36,6 +36,7 @@ const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
 const PWACityPage = lazy(() => import("./pages/PWACityPage"));
 const PWAHealthPage = lazy(() => import("./pages/PWAHealthPage"));
 const CoreApp = lazy(() => import("./core/App"));
+const VoiceAssistantPage = lazy(() => import("./components/voice-assistant/VoiceAssistantPage"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -253,6 +254,13 @@ const App = () => (
                       <DeviceGate allowDesktop={false}>
                         <CoreApp />
                       </DeviceGate>
+                    } />
+
+                    {/* Voice Assistant Route - Desktop */}
+                    <Route path="/voice-assistant" element={
+                      <ProtectedRoute>
+                        <VoiceAssistantPage />
+                      </ProtectedRoute>
                     } />
 
                     {/* Temporary test route */}

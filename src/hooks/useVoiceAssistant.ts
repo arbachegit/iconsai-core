@@ -1,0 +1,438 @@
+/**
+ * ============================================================
+ * useVoiceAssistant Hook - v1.0.0
+ * ============================================================
+ * Hook principal para orquestrar o assistente de voz
+ * - Máquina de estados criteriosa
+ * - Integração com Whisper (STT) e Nova (TTS)
+ * - LLM: Perplexity → Gemini → ChatGPT
+ * ============================================================
+ */
+
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { VoicePlayer } from '@/core/services/VoiceService/VoicePlayer';
+import { VoiceRecorder } from '@/core/services/VoiceService/VoiceRecorder';
+import {
+  VoiceButtonState,
+  VoiceAssistantState,
+  VoiceAssistantConfig,
+  ChatMessage,
+  VALID_TRANSITIONS,
+  DEFAULT_CONFIG,
+} from '@/components/voice-assistant/types';
+
+// Gerar ID único para mensagens
+const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
+  // Extrair valores individuais para dependências estáveis
+  const welcomeMessage = config?.welcomeMessage ?? DEFAULT_CONFIG.welcomeMessage;
+  const voice = config?.voice ?? DEFAULT_CONFIG.voice;
+  const speed = config?.speed ?? DEFAULT_CONFIG.speed;
+  const maxRecordingDuration = config?.maxRecordingDuration ?? DEFAULT_CONFIG.maxRecordingDuration;
+
+  const finalConfig = useMemo(
+    () => ({ welcomeMessage, voice, speed, maxRecordingDuration }),
+    [welcomeMessage, voice, speed, maxRecordingDuration]
+  );
+
+  // State
+  const [state, setState] = useState<VoiceAssistantState>({
+    buttonState: 'idle',
+    messages: [],
+    frequencyData: [],
+    frequencySource: 'none',
+    error: null,
+    isInitialized: false,
+  });
+
+  // Refs para serviços
+  const playerRef = useRef<VoicePlayer | null>(null);
+  const recorderRef = useRef<VoiceRecorder | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const currentStateRef = useRef<VoiceButtonState>('idle');
+
+  // Manter ref sincronizada com state
+  useEffect(() => {
+    currentStateRef.current = state.buttonState;
+  }, [state.buttonState]);
+
+  // ============================================================
+  // MÁQUINA DE ESTADOS - Transição segura
+  // ============================================================
+  const transitionTo = useCallback((newState: VoiceButtonState) => {
+    const currentState = currentStateRef.current;
+    const validTransitions = VALID_TRANSITIONS[currentState];
+
+    if (!validTransitions.includes(newState)) {
+      console.warn(
+        `[VoiceAssistant] Invalid transition: ${currentState} → ${newState}. Valid: ${validTransitions.join(', ')}`
+      );
+      return false;
+    }
+
+    console.log(`[VoiceAssistant] State: ${currentState} → ${newState}`);
+    currentStateRef.current = newState;
+    setState((prev) => ({ ...prev, buttonState: newState, error: null }));
+    return true;
+  }, []);
+
+  // Reset para idle (força transição)
+  const forceReset = useCallback(() => {
+    console.log('[VoiceAssistant] Force reset to idle');
+    currentStateRef.current = 'idle';
+    setState((prev) => ({
+      ...prev,
+      buttonState: 'idle',
+      frequencyData: [],
+      frequencySource: 'none',
+      error: null,
+    }));
+
+    // Limpar recursos
+    playerRef.current?.stop();
+    recorderRef.current?.cancel();
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  }, []);
+
+  // ============================================================
+  // INICIALIZAÇÃO
+  // ============================================================
+  const initialize = useCallback(() => {
+    if (state.isInitialized) return;
+
+    // Criar player e recorder
+    playerRef.current = new VoicePlayer();
+    recorderRef.current = new VoiceRecorder();
+
+    // Configurar callbacks do player
+    playerRef.current.setCallbacks({
+      onEnded: () => {
+        console.log('[VoiceAssistant] Audio ended');
+        stopFrequencyAnalysis();
+
+        // Se estava no greeting, vai para ready
+        // Se estava no speaking, vai para ready
+        if (currentStateRef.current === 'greeting' || currentStateRef.current === 'speaking') {
+          transitionTo('ready');
+        }
+      },
+      onFrequencyData: (data) => {
+        setState((prev) => ({
+          ...prev,
+          frequencyData: data,
+          frequencySource: 'robot',
+        }));
+      },
+      onError: (err) => {
+        console.error('[VoiceAssistant] Player error:', err);
+        setState((prev) => ({ ...prev, error: err.message }));
+        forceReset();
+      },
+    });
+
+    // Configurar callbacks do recorder
+    recorderRef.current.setCallbacks({
+      onFrequencyData: (data) => {
+        if (currentStateRef.current === 'recording') {
+          setState((prev) => ({
+            ...prev,
+            frequencyData: data,
+            frequencySource: 'user',
+          }));
+        }
+      },
+      onError: (err) => {
+        console.error('[VoiceAssistant] Recorder error:', err);
+        setState((prev) => ({ ...prev, error: err.message }));
+        forceReset();
+      },
+    });
+
+    setState((prev) => ({ ...prev, isInitialized: true }));
+    console.log('[VoiceAssistant] Initialized');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isInitialized, transitionTo, forceReset]);
+
+  // ============================================================
+  // ANÁLISE DE FREQUÊNCIA
+  // ============================================================
+  const startFrequencyAnalysis = useCallback((source: 'robot' | 'user') => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    const analyze = () => {
+      let data: number[] = [];
+
+      if (source === 'robot' && playerRef.current) {
+        data = playerRef.current.getFrequencyData();
+      } else if (source === 'user' && recorderRef.current) {
+        data = recorderRef.current.getFrequencyData();
+      }
+
+      setState((prev) => ({
+        ...prev,
+        frequencyData: data,
+        frequencySource: data.length > 0 ? source : 'none',
+      }));
+
+      animationFrameRef.current = requestAnimationFrame(analyze);
+    };
+
+    analyze();
+  }, []);
+
+  const stopFrequencyAnalysis = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    setState((prev) => ({
+      ...prev,
+      frequencyData: [],
+      frequencySource: 'none',
+    }));
+  }, []);
+
+  // ============================================================
+  // ADICIONAR MENSAGEM AO CHAT
+  // ============================================================
+  const addMessage = useCallback((role: 'user' | 'assistant', content: string, audioUrl?: string) => {
+    const message: ChatMessage = {
+      id: generateId(),
+      role,
+      content,
+      timestamp: new Date(),
+      audioUrl,
+    };
+
+    setState((prev) => ({
+      ...prev,
+      messages: [...prev.messages, message],
+    }));
+
+    return message;
+  }, []);
+
+  // ============================================================
+  // PLAY WELCOME (Estado: idle → greeting → ready)
+  // ============================================================
+  const playWelcome = useCallback(async () => {
+    if (currentStateRef.current !== 'idle') {
+      console.warn('[VoiceAssistant] Cannot play welcome, state is:', currentStateRef.current);
+      return;
+    }
+
+    // Warmup audio (crítico para Safari/iOS)
+    playerRef.current?.warmup();
+
+    if (!transitionTo('greeting')) return;
+
+    try {
+      // Adicionar mensagem de boas-vindas ao chat
+      addMessage('assistant', finalConfig.welcomeMessage);
+
+      // Tocar TTS
+      startFrequencyAnalysis('robot');
+      await playerRef.current?.playFromTTS(
+        finalConfig.welcomeMessage,
+        'home',
+        finalConfig.voice
+      );
+
+      // onEnded callback vai transicionar para 'ready'
+    } catch (err) {
+      console.error('[VoiceAssistant] Welcome failed:', err);
+      setState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Erro ao reproduzir boas-vindas',
+      }));
+      forceReset();
+    }
+  }, [transitionTo, addMessage, startFrequencyAnalysis, forceReset, finalConfig]);
+
+  // ============================================================
+  // START RECORDING (Estado: ready → recording)
+  // ============================================================
+  const startRecording = useCallback(async () => {
+    if (currentStateRef.current !== 'ready') {
+      console.warn('[VoiceAssistant] Cannot start recording, state is:', currentStateRef.current);
+      return;
+    }
+
+    if (!transitionTo('recording')) return;
+
+    try {
+      await recorderRef.current?.start();
+      startFrequencyAnalysis('user');
+    } catch (err) {
+      console.error('[VoiceAssistant] Start recording failed:', err);
+      setState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Erro ao iniciar gravação',
+      }));
+      // Voltar para ready
+      currentStateRef.current = 'ready';
+      setState((prev) => ({ ...prev, buttonState: 'ready' }));
+    }
+  }, [transitionTo, startFrequencyAnalysis]);
+
+  // ============================================================
+  // STOP RECORDING E PROCESSAR (Estado: recording → processing → speaking → ready)
+  // ============================================================
+  const stopRecordingAndProcess = useCallback(async () => {
+    if (currentStateRef.current !== 'recording') {
+      console.warn('[VoiceAssistant] Cannot stop recording, state is:', currentStateRef.current);
+      return;
+    }
+
+    stopFrequencyAnalysis();
+    if (!transitionTo('processing')) return;
+
+    try {
+      // 1. Parar gravação e obter áudio
+      const recordingResult = await recorderRef.current?.stop();
+      if (!recordingResult?.base64) {
+        throw new Error('Gravação vazia');
+      }
+
+      console.log('[VoiceAssistant] Recording stopped, processing...');
+
+      // 2. Transcrever com Whisper
+      const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke(
+        'voice-to-text',
+        {
+          body: {
+            audio: recordingResult.base64,
+            mimeType: recordingResult.mimeType,
+          },
+        }
+      );
+
+      if (transcriptionError) {
+        throw new Error(transcriptionError.message || 'Erro na transcrição');
+      }
+
+      const userText = transcriptionData?.text;
+      if (!userText || userText.trim() === '') {
+        throw new Error('Não foi possível entender o áudio');
+      }
+
+      console.log('[VoiceAssistant] Transcribed:', userText.substring(0, 50));
+
+      // Adicionar mensagem do usuário
+      addMessage('user', userText);
+
+      // 3. Chamar chat-router (Perplexity → Gemini → ChatGPT)
+      const { data: chatData, error: chatError } = await supabase.functions.invoke('chat-router', {
+        body: {
+          pwaMode: true,
+          message: userText,
+          agentSlug: 'home',
+          deviceId: `voice-assistant-${Date.now()}`,
+        },
+      });
+
+      if (chatError) {
+        throw new Error(chatError.message || 'Erro ao processar resposta');
+      }
+
+      const assistantText = chatData?.response;
+      if (!assistantText) {
+        throw new Error('Resposta vazia do assistente');
+      }
+
+      console.log('[VoiceAssistant] Response:', assistantText.substring(0, 50));
+
+      // 4. Transicionar para speaking e reproduzir TTS
+      if (!transitionTo('speaking')) return;
+
+      // Adicionar mensagem do assistente
+      addMessage('assistant', assistantText);
+
+      // Reproduzir resposta
+      startFrequencyAnalysis('robot');
+      await playerRef.current?.playFromTTS(assistantText, 'home', finalConfig.voice);
+
+      // onEnded callback vai transicionar para 'ready'
+    } catch (err) {
+      console.error('[VoiceAssistant] Processing failed:', err);
+      setState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Erro ao processar',
+      }));
+
+      // Tentar voltar para ready
+      stopFrequencyAnalysis();
+      currentStateRef.current = 'ready';
+      setState((prev) => ({ ...prev, buttonState: 'ready' }));
+    }
+  }, [transitionTo, stopFrequencyAnalysis, addMessage, startFrequencyAnalysis, finalConfig]);
+
+  // ============================================================
+  // HANDLER PRINCIPAL DO BOTÃO
+  // ============================================================
+  const handleButtonClick = useCallback(() => {
+    const currentState = currentStateRef.current;
+
+    switch (currentState) {
+      case 'idle':
+        playWelcome();
+        break;
+
+      case 'ready':
+        startRecording();
+        break;
+
+      case 'recording':
+        stopRecordingAndProcess();
+        break;
+
+      case 'greeting':
+      case 'processing':
+      case 'speaking':
+        // Não fazer nada durante esses estados
+        console.log('[VoiceAssistant] Button click ignored in state:', currentState);
+        break;
+
+      default:
+        console.warn('[VoiceAssistant] Unknown state:', currentState);
+    }
+  }, [playWelcome, startRecording, stopRecordingAndProcess]);
+
+  // ============================================================
+  // CLEANUP
+  // ============================================================
+  useEffect(() => {
+    return () => {
+      console.log('[VoiceAssistant] Cleanup');
+      playerRef.current?.destroy();
+      recorderRef.current?.destroy();
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    // State
+    buttonState: state.buttonState,
+    messages: state.messages,
+    frequencyData: state.frequencyData,
+    frequencySource: state.frequencySource,
+    error: state.error,
+    isInitialized: state.isInitialized,
+
+    // Actions
+    initialize,
+    handleButtonClick,
+    forceReset,
+  };
+}
+
+export default useVoiceAssistant;
