@@ -5,7 +5,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeaders, handleCors, getCorsHeaders } from "../_shared/cors.ts";
 
 // ============================================
 // HELPER: Detectar mimeType pelo magic number
@@ -102,9 +102,14 @@ function validateAndNormalizeMimeType(
 }
 
 serve(async (req) => {
+  // v2.4.0: Usar CORS dinâmico baseado na origem da request
+  const origin = req.headers.get("origin");
+  const dynamicCorsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
-  const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: dynamicCorsHeaders });
+  }
 
   try {
     const body = await req.json();
@@ -117,7 +122,7 @@ serve(async (req) => {
       console.error('[VOICE-TO-TEXT] ❌ Áudio não fornecido');
       return new Response(
         JSON.stringify({ error: 'Áudio não fornecido' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -126,7 +131,7 @@ serve(async (req) => {
       console.error('[VOICE-TO-TEXT] ❌ OPENAI_API_KEY não configurada');
       return new Response(
         JSON.stringify({ error: 'Serviço de transcrição não configurado' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -151,7 +156,7 @@ serve(async (req) => {
       console.error('[VOICE-TO-TEXT] ❌ Base64 muito curto:', base64Data?.length);
       return new Response(
         JSON.stringify({ error: 'Áudio muito curto. Grave por mais tempo.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -169,7 +174,7 @@ serve(async (req) => {
       console.error('[VOICE-TO-TEXT] ❌ Erro ao decodificar base64:', decodeError);
       return new Response(
         JSON.stringify({ error: 'Formato de áudio inválido' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -179,7 +184,7 @@ serve(async (req) => {
       console.error('[VOICE-TO-TEXT] ❌ Arquivo muito pequeno:', bytes.length);
       return new Response(
         JSON.stringify({ error: 'Áudio muito curto. Grave por mais tempo.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -237,7 +242,7 @@ serve(async (req) => {
         ) {
           return new Response(
             JSON.stringify({ error: 'Áudio muito curto. Grave por mais tempo.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -271,7 +276,7 @@ serve(async (req) => {
             console.log(`[VOICE-TO-TEXT] ✅ Fallback para ${format.ext} bem-sucedido!`);
             return new Response(
               JSON.stringify({ text: fallbackResult.text }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              { headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
             );
           } else {
             // CORREÇÃO: Verificar se fallback também retorna audio_too_short
@@ -281,7 +286,7 @@ serve(async (req) => {
             if (fallbackErrorText.includes('audio_too_short') || fallbackErrorText.includes('too short')) {
               return new Response(
                 JSON.stringify({ error: 'Áudio muito curto. Grave por mais tempo.' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
               );
             }
           }
@@ -289,27 +294,27 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ error: 'Formato de áudio não suportado. Tente gravar novamente.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       if (response.status === 401) {
         return new Response(
           JSON.stringify({ error: 'Erro de autenticação no serviço de transcrição' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Muitas requisições. Aguarde um momento.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 429, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       return new Response(
         JSON.stringify({ error: `Erro na transcrição: ${response.status}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -319,7 +324,7 @@ serve(async (req) => {
       console.warn('[VOICE-TO-TEXT] ⚠️ Transcrição vazia');
       return new Response(
         JSON.stringify({ error: 'Não foi possível entender o áudio. Fale mais claramente.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -327,14 +332,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ text: result.text }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
     console.error('[VOICE-TO-TEXT] ❌ Exceção:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Erro interno no servidor' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

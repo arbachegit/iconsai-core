@@ -14,7 +14,7 @@
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeaders, handleCors, getCorsHeaders } from "../_shared/cors.ts";
 import { errorResponse } from "../_shared/response.ts";
 import { getSupabaseAdmin } from "../_shared/supabase.ts";
 import { sanitizeString } from "../_shared/validators.ts";
@@ -1243,8 +1243,12 @@ async function detectAndSaveName(
 serve(async (req: Request) => {
   const logger = createLogger("chat-router");
 
+  // v3.1.0: Usar CORS dinâmico baseado na origem da request
+  const origin = req.headers.get("origin");
+  const dynamicCorsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: dynamicCorsHeaders });
   }
 
   try {
@@ -1298,7 +1302,7 @@ serve(async (req: Request) => {
         if (accessCheck && !accessCheck.has_access) {
           return new Response(
             JSON.stringify({ error: "Acesso não autorizado", response: accessCheck.message || "Sem permissão." }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            { status: 403, headers: { ...dynamicCorsHeaders, "Content-Type": "application/json" } },
           );
         }
       }
@@ -1382,7 +1386,7 @@ serve(async (req: Request) => {
               disclaimer: null,
             },
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          { headers: { ...dynamicCorsHeaders, "Content-Type": "application/json" } },
         );
       }
 
@@ -1523,7 +1527,7 @@ serve(async (req: Request) => {
         if (status === 429) {
           return new Response(JSON.stringify({ error: "Rate limit", response: "Aguarde um momento." }), {
             status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...dynamicCorsHeaders, "Content-Type": "application/json" },
           });
         }
         throw new Error(`Gemini API error: ${status} - ${errorBody}`);
@@ -1595,7 +1599,7 @@ serve(async (req: Request) => {
                 : null,
           },
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { ...dynamicCorsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -1710,7 +1714,7 @@ serve(async (req: Request) => {
     );
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: { ...dynamicCorsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
     logger.error("Error", { error: error instanceof Error ? error.message : "Unknown" });

@@ -9,7 +9,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeaders, handleCors, getCorsHeaders } from "../_shared/cors.ts";
 
 // ============================================
 // FUNÇÕES DE NORMALIZAÇÃO DE NÚMEROS
@@ -619,8 +619,12 @@ Intonation: Natural melodic variation typical of Brazilian Portuguese.
 }
 
 serve(async (req) => {
+  // v7.0.1: Usar CORS dinâmico baseado na origem da request
+  const origin = req.headers.get("origin");
+  const dynamicCorsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: dynamicCorsHeaders });
   }
 
   try {
@@ -911,7 +915,7 @@ serve(async (req) => {
           console.log("[TTS v7.0] ✅ OpenAI gpt-4o-mini-tts sucesso!");
           return new Response(openaiResponse.body, {
             headers: {
-              ...corsHeaders,
+              ...dynamicCorsHeaders,
               "Content-Type": "audio/mpeg",
               "Transfer-Encoding": "chunked",
             },
@@ -941,7 +945,7 @@ serve(async (req) => {
           console.log("[TTS v7.0] ✅ OpenAI tts-1 fallback sucesso!");
           return new Response(fallbackResponse.body, {
             headers: {
-              ...corsHeaders,
+              ...dynamicCorsHeaders,
               "Content-Type": "audio/mpeg",
               "Transfer-Encoding": "chunked",
             },
@@ -1000,7 +1004,7 @@ serve(async (req) => {
 
             return new Response(audioBytes, {
               headers: {
-                ...corsHeaders,
+                ...dynamicCorsHeaders,
                 "Content-Type": "audio/mpeg",
               },
             });
@@ -1025,7 +1029,7 @@ serve(async (req) => {
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...dynamicCorsHeaders, "Content-Type": "application/json" },
       }
     );
   }
