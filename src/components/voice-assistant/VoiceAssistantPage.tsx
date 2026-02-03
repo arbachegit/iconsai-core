@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * VoiceAssistantPage.tsx - v5.6.0
+ * VoiceAssistantPage.tsx - v5.6.1
  * ============================================================
  * Layout em 3 colunas (1/3 cada):
  * - ESQUERDA: Container com falas do USUÁRIO (real-time STT)
@@ -21,6 +21,7 @@
  * v5.4.0: Karaoke apenas para assistente - usuário mostra texto estático
  * v5.5.0: Karaoke em TEMPO REAL para usuário via WebSocket STT
  * v5.6.0: Hook ISOLADO para karaoke do assistente (useAssistantKaraoke)
+ * v5.6.1: Revert to useKaraokeSync (original tested hook)
  * ============================================================
  */
 
@@ -29,7 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, RefreshCw, User, Bot, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceAssistant } from '@/hooks/useVoiceAssistant';
-import { useAssistantKaraoke } from '@/hooks/useAssistantKaraoke';
+import { useKaraokeSync } from '@/hooks/useKaraokeSync';
 import { VoiceButton } from './VoiceButton';
 import { VoiceAnalyzer } from './VoiceAnalyzer';
 import { KaraokeText } from './KaraokeText';
@@ -466,17 +467,18 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
   // v5.5.0: Stable empty words reference
   const EMPTY_WORDS: WordTiming[] = useMemo(() => [], []);
 
-  // v5.6.0: Words para assistente (TTS)
+  // v5.6.1: Words para assistente (TTS)
   const assistantWords = useMemo(
     () => lastAssistantMessage?.words || EMPTY_WORDS,
     [lastAssistantMessage?.words, EMPTY_WORDS]
   );
 
-  // v5.6.0: Karaoke ISOLADO para ASSISTENTE (hook dedicado)
-  const assistantKaraoke = useAssistantKaraoke({
+  // v5.6.1: Karaoke para ASSISTENTE (hook original testado)
+  const assistantKaraoke = useKaraokeSync({
     words: assistantWords,
     getAudioElement,
     enabled: assistantWords.length > 0,
+    simulatePlayback: false,
   });
 
   // Track de mensagens anteriores para detectar novas
