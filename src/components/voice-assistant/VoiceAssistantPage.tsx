@@ -17,12 +17,14 @@
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, RefreshCw, User, Bot } from 'lucide-react';
+import { AlertCircle, RefreshCw, User, Bot, LayoutDashboard, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useVoiceAssistant } from '@/hooks/useVoiceAssistant';
 import { VoiceButton } from './VoiceButton';
 import { VoiceAnalyzer } from './VoiceAnalyzer';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import iconsaiLogo from '@/assets/knowyou-admin-logo.png';
 
 interface VoiceAssistantPageProps {
   welcomeMessage?: string;
@@ -257,12 +259,87 @@ const TranscriptionContainer: React.FC<{
 };
 
 // ============================================================
+// COMPONENTE: HistoryModal
+// Modal para exibir histórico completo da conversa
+// ============================================================
+const HistoryModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  messages: Array<{ role: string; content: string }>;
+}> = ({ isOpen, onClose, messages }) => {
+  if (!isOpen) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-background border border-border rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <MessageSquare className="w-5 h-5 text-cyan-400" />
+            <h2 className="text-lg font-semibold text-foreground">Histórico da Conversa</h2>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            Fechar
+          </Button>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="p-4 overflow-y-auto max-h-[60vh] space-y-3">
+          {messages.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhuma mensagem ainda</p>
+          ) : (
+            messages.map((msg, index) => (
+              <div
+                key={index}
+                className={cn(
+                  'p-3 rounded-lg',
+                  msg.role === 'user'
+                    ? 'bg-emerald-500/10 border border-emerald-500/30 ml-8'
+                    : 'bg-cyan-500/10 border border-cyan-500/30 mr-8'
+                )}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {msg.role === 'user' ? (
+                    <User className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <Bot className="w-4 h-4 text-cyan-400" />
+                  )}
+                  <span className={cn('text-xs font-medium', msg.role === 'user' ? 'text-emerald-400' : 'text-cyan-400')}>
+                    {msg.role === 'user' ? 'Você' : 'Assistente'}
+                  </span>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed">{msg.content}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ============================================================
 // COMPONENTE PRINCIPAL
 // ============================================================
 export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
   welcomeMessage = 'Olá! Sou o assistente de voz do IconsAI. Como posso ajudar você hoje?',
   voice = 'nova',
 }) => {
+  const navigate = useNavigate();
+  const [showHistory, setShowHistory] = useState(false);
+
   const {
     buttonState,
     messages,
@@ -340,6 +417,16 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
 
         {/* COLUNA CENTRAL (1/3) - Controles */}
         <div className="w-1/3 flex flex-col items-center justify-center p-4">
+          {/* Logo IconsAI */}
+          <motion.img
+            src={iconsaiLogo}
+            alt="IconsAI"
+            className="h-12 mb-4"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          />
+
           {/* Título dinâmico */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -349,7 +436,7 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             <h2 className="text-2xl font-bold text-foreground mb-2">
               {buttonState === 'idle' && 'Bem-vindo!'}
               {buttonState === 'greeting' && 'Olá!'}
-              {buttonState === 'ready' && 'Fale sua pergunta'}
+              {buttonState === 'ready' && 'Converse com o IconsAI'}
               {buttonState === 'recording' && 'Estou ouvindo...'}
               {buttonState === 'processing' && 'Analisando...'}
               {buttonState === 'speaking' && 'Respondendo...'}
@@ -416,6 +503,54 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
               <span>Assistente (direita)</span>
             </div>
           </motion.div>
+
+          {/* Badges com glow */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="flex gap-4 mt-6"
+          >
+            {/* Badge Dashboard */}
+            <motion.button
+              onClick={() => navigate('/dashboard')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium',
+                'bg-gradient-to-r from-purple-500/20 to-indigo-500/20',
+                'border border-purple-500/40 text-purple-300',
+                'hover:from-purple-500/30 hover:to-indigo-500/30',
+                'transition-all duration-300'
+              )}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              style={{
+                boxShadow: '0 0 15px rgba(139, 92, 246, 0.3)',
+              }}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Dashboard</span>
+            </motion.button>
+
+            {/* Badge Histórico */}
+            <motion.button
+              onClick={() => setShowHistory(true)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium',
+                'bg-gradient-to-r from-cyan-500/20 to-blue-500/20',
+                'border border-cyan-500/40 text-cyan-300',
+                'hover:from-cyan-500/30 hover:to-blue-500/30',
+                'transition-all duration-300'
+              )}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              style={{
+                boxShadow: '0 0 15px rgba(0, 212, 255, 0.3)',
+              }}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Histórico</span>
+            </motion.button>
+          </motion.div>
         </div>
 
         {/* COLUNA DIREITA (1/3) - Transcrição do Robô */}
@@ -432,6 +567,15 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
           />
         </div>
       </main>
+
+      {/* Modal de Histórico */}
+      <AnimatePresence>
+        <HistoryModal
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+          messages={messages}
+        />
+      </AnimatePresence>
     </div>
   );
 };
