@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (role === "admin") {
       return <Navigate to="/dashboard" replace />;
     }
-    return <Navigate to="/app" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

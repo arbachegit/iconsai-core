@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Smartphone, LayoutDashboard, Shield } from "lucide-react";
+import { Mic, LayoutDashboard, Shield } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { UserBadge } from "@/components/UserBadge";
 import iconsaiLogo from "@/assets/knowyou-admin-logo.png";
@@ -49,10 +49,10 @@ export default function Hub() {
 
   const cards = [
     {
-      title: "App",
-      description: "Acesse o aplicativo principal com assistente IA e análises",
-      icon: Smartphone,
-      path: "/app",
+      title: "Assistente de Voz",
+      description: "Acesse o assistente de voz com IA",
+      icon: Mic,
+      path: "/pwa",
       gradient: "from-cyan-500 to-blue-600",
     },
     {
