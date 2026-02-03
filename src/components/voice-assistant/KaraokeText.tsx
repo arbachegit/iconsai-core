@@ -56,6 +56,15 @@ export const KaraokeText: React.FC<KaraokeTextProps> = ({
   className,
   variant = 'assistant',
 }) => {
+  // DEBUG
+  console.log('[KaraokeText] Render:', {
+    wordsCount: words?.length || 0,
+    currentWordIndex,
+    currentTime: currentTime?.toFixed(2),
+    isPlaying,
+    variant,
+  });
+
   if (!words || words.length === 0) {
     return null;
   }

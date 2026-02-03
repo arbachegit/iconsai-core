@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * useKaraokeSync Hook - v2.0.0
+ * useKaraokeSync Hook - v3.0.0
  * ============================================================
  * Sincroniza a reprodução de áudio com o índice de palavras
  * para efeito karaokê em tempo real.
@@ -10,6 +10,7 @@
  * - Calcula currentWordIndex baseado no currentTime do áudio
  * - Compatível com Safari/iOS
  * - v2.0.0: Aceita getter function para audioElement (reativo)
+ * - v3.0.0: Modo simulado para quando não há áudio (ex: transcrição do usuário)
  * ============================================================
  */
 
@@ -25,14 +26,17 @@ export interface KaraokeSyncState {
 
 export interface UseKaraokeSyncOptions {
   words: WordTiming[];
-  getAudioElement: () => HTMLAudioElement | null;
+  getAudioElement?: () => HTMLAudioElement | null;
   enabled?: boolean;
+  // v3.0.0: Modo simulado - simula playback baseado nos timestamps das palavras
+  simulatePlayback?: boolean;
 }
 
 export function useKaraokeSync({
   words,
   getAudioElement,
   enabled = true,
+  simulatePlayback = false,
 }: UseKaraokeSyncOptions): KaraokeSyncState {
   const [state, setState] = useState<KaraokeSyncState>({
     currentWordIndex: -1,
@@ -45,6 +49,7 @@ export function useKaraokeSync({
   const lastWordIndexRef = useRef<number>(-1);
   const wordsRef = useRef<WordTiming[]>(words);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const simulationStartRef = useRef<number | null>(null);
 
   // Manter wordsRef atualizado
   useEffect(() => {
@@ -73,8 +78,20 @@ export function useKaraokeSync({
     return currentWords.length - 1;
   }, []);
 
-  // Loop de animação para sincronização suave
-  const updateLoop = useCallback(() => {
+  // Calcular duração total das palavras
+  const getTotalDuration = useCallback((): number => {
+    const currentWords = wordsRef.current;
+    if (!currentWords || currentWords.length === 0) return 0;
+    return currentWords[currentWords.length - 1].end;
+  }, []);
+
+  // Loop de animação para áudio real
+  const updateLoopAudio = useCallback(() => {
+    if (!getAudioElement) {
+      animationFrameRef.current = null;
+      return;
+    }
+
     const audioElement = getAudioElement();
     if (!audioElement || !enabled) {
       animationFrameRef.current = null;
@@ -90,10 +107,9 @@ export function useKaraokeSync({
 
     // Atualiza state
     setState((prev) => {
-      // Só atualiza se houve mudança significativa
       if (
         wordIndex !== prev.currentWordIndex ||
-        Math.abs(currentTime - prev.currentTime) > 0.03 || // 30ms threshold
+        Math.abs(currentTime - prev.currentTime) > 0.03 ||
         isPlaying !== prev.isPlaying
       ) {
         return {
@@ -108,27 +124,56 @@ export function useKaraokeSync({
 
     lastWordIndexRef.current = wordIndex;
 
-    // Continuar loop se estiver tocando
     if (isPlaying) {
-      animationFrameRef.current = requestAnimationFrame(updateLoop);
+      animationFrameRef.current = requestAnimationFrame(updateLoopAudio);
     } else {
       animationFrameRef.current = null;
     }
   }, [getAudioElement, enabled, findCurrentWordIndex]);
 
-  // Iniciar/parar loop baseado no estado do áudio
-  useEffect(() => {
-    if (!enabled || !words || words.length === 0) {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+  // Loop de animação para simulação (sem áudio)
+  const updateLoopSimulation = useCallback(() => {
+    if (!simulationStartRef.current || !enabled) {
+      animationFrameRef.current = null;
+      return;
+    }
+
+    const elapsed = (performance.now() - simulationStartRef.current) / 1000;
+    const totalDuration = getTotalDuration();
+    const progress = totalDuration > 0 ? Math.min(elapsed / totalDuration, 1) : 0;
+    const isPlaying = elapsed < totalDuration;
+
+    const wordIndex = findCurrentWordIndex(elapsed);
+
+    setState((prev) => {
+      if (
+        wordIndex !== prev.currentWordIndex ||
+        Math.abs(elapsed - prev.currentTime) > 0.03 ||
+        isPlaying !== prev.isPlaying
+      ) {
+        return {
+          currentWordIndex: wordIndex,
+          currentTime: elapsed,
+          isPlaying,
+          progress,
+        };
       }
-      setState({
-        currentWordIndex: -1,
-        currentTime: 0,
-        isPlaying: false,
-        progress: 0,
-      });
+      return prev;
+    });
+
+    lastWordIndexRef.current = wordIndex;
+
+    if (isPlaying) {
+      animationFrameRef.current = requestAnimationFrame(updateLoopSimulation);
+    } else {
+      animationFrameRef.current = null;
+      simulationStartRef.current = null;
+    }
+  }, [enabled, findCurrentWordIndex, getTotalDuration]);
+
+  // Efeito para modo ÁUDIO REAL
+  useEffect(() => {
+    if (simulatePlayback || !enabled || !words || words.length === 0 || !getAudioElement) {
       return;
     }
 
@@ -136,20 +181,18 @@ export function useKaraokeSync({
     const checkInterval = setInterval(() => {
       const audioElement = getAudioElement();
 
-      // Se o elemento mudou, atualizar ref e listeners
       if (audioElement !== audioElementRef.current) {
         console.log('[KaraokeSync] Audio element changed:', !!audioElement);
         audioElementRef.current = audioElement;
       }
 
       if (audioElement && !audioElement.paused && !audioElement.ended) {
-        // Está tocando, iniciar loop se não estiver rodando
         if (!animationFrameRef.current) {
-          console.log('[KaraokeSync] Starting sync loop, words:', wordsRef.current?.length);
-          animationFrameRef.current = requestAnimationFrame(updateLoop);
+          console.log('[KaraokeSync] Starting audio sync loop, words:', wordsRef.current?.length);
+          animationFrameRef.current = requestAnimationFrame(updateLoopAudio);
         }
       }
-    }, 100);
+    }, 50);
 
     return () => {
       clearInterval(checkInterval);
@@ -158,15 +201,52 @@ export function useKaraokeSync({
         animationFrameRef.current = null;
       }
     };
-  }, [enabled, words, getAudioElement, updateLoop]);
+  }, [simulatePlayback, enabled, words, getAudioElement, updateLoopAudio]);
 
-  // Reset quando words mudam significativamente
+  // Efeito para modo SIMULADO
+  useEffect(() => {
+    if (!simulatePlayback || !enabled || !words || words.length === 0) {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      simulationStartRef.current = null;
+      return;
+    }
+
+    // Iniciar simulação imediatamente
+    console.log('[KaraokeSync] Starting SIMULATION mode, words:', words.length);
+    simulationStartRef.current = performance.now();
+    animationFrameRef.current = requestAnimationFrame(updateLoopSimulation);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      simulationStartRef.current = null;
+    };
+  }, [simulatePlayback, enabled, words, updateLoopSimulation]);
+
+  // Reset quando words mudam
   useEffect(() => {
     lastWordIndexRef.current = -1;
-    if (words && words.length > 0) {
-      console.log('[KaraokeSync] Words ready for sync:', words.length, 'words');
+    setState({
+      currentWordIndex: -1,
+      currentTime: 0,
+      isPlaying: false,
+      progress: 0,
+    });
+
+    // Se em modo simulado e palavras mudaram, reiniciar simulação
+    if (simulatePlayback && words && words.length > 0 && enabled) {
+      console.log('[KaraokeSync] Words changed, restarting simulation');
+      simulationStartRef.current = performance.now();
+      if (!animationFrameRef.current) {
+        animationFrameRef.current = requestAnimationFrame(updateLoopSimulation);
+      }
     }
-  }, [words]);
+  }, [words, simulatePlayback, enabled, updateLoopSimulation]);
 
   return state;
 }

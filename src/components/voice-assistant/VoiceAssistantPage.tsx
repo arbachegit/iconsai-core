@@ -251,6 +251,16 @@ const TranscriptionContainer: React.FC<{
                 karaokeState &&
                 karaokeState.isPlaying;
 
+              // DEBUG
+              if (isLastMessage && msg.words && msg.words.length > 0) {
+                console.log('[TranscriptionContainer] Last message with words:', {
+                  variant,
+                  wordsCount: msg.words.length,
+                  useKaraoke,
+                  karaokeState,
+                });
+              }
+
               return (
                 <motion.div
                   key={index}
@@ -391,17 +401,68 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
   const isRobotSpeaking = buttonState === 'greeting' || buttonState === 'speaking';
   const isUserSpeaking = buttonState === 'recording';
 
-  // v5.0.0: Karaoke sync para mensagens do robô
+  // v5.0.0: Última mensagem do robô (para karaoke com áudio)
   const lastAssistantMessage = useMemo(() => {
     const assistantMsgs = messages.filter((m) => m.role === 'assistant');
     return assistantMsgs[assistantMsgs.length - 1];
   }, [messages]);
 
-  const karaokeSync = useKaraokeSync({
+  // v5.0.0: Última mensagem do usuário (para karaoke simulado)
+  const lastUserMessage = useMemo(() => {
+    const userMsgs = messages.filter((m) => m.role === 'user');
+    return userMsgs[userMsgs.length - 1];
+  }, [messages]);
+
+  // Karaoke sync para ROBÔ (usa áudio real)
+  const karaokeSyncRobot = useKaraokeSync({
     words: lastAssistantMessage?.words || [],
-    getAudioElement, // v5.0.0: Passa função getter, não o elemento
+    getAudioElement,
     enabled: isRobotSpeaking && !!lastAssistantMessage?.words,
+    simulatePlayback: false,
   });
+
+  // Karaoke sync para USUÁRIO (simula baseado nos timestamps)
+  // Ativa quando uma nova mensagem do usuário é adicionada com words
+  const [userKaraokeEnabled, setUserKaraokeEnabled] = useState(false);
+  const lastUserWordsRef = useRef<WordTiming[] | undefined>(undefined);
+
+  // Detectar quando uma nova mensagem do usuário com words chega
+  useEffect(() => {
+    const hasNewUserWords =
+      lastUserMessage?.words &&
+      lastUserMessage.words.length > 0 &&
+      lastUserMessage.words !== lastUserWordsRef.current;
+
+    if (hasNewUserWords) {
+      console.log('[VoiceAssistantPage] New user message with words, starting simulation');
+      lastUserWordsRef.current = lastUserMessage.words;
+      setUserKaraokeEnabled(true);
+
+      // Desabilitar após a duração das palavras
+      const duration = lastUserMessage.words[lastUserMessage.words.length - 1].end * 1000;
+      setTimeout(() => {
+        setUserKaraokeEnabled(false);
+      }, duration + 500);
+    }
+  }, [lastUserMessage?.words]);
+
+  const karaokeSyncUser = useKaraokeSync({
+    words: lastUserMessage?.words || [],
+    enabled: userKaraokeEnabled && !!lastUserMessage?.words,
+    simulatePlayback: true,
+  });
+
+  // DEBUG: Log karaoke state
+  useEffect(() => {
+    console.log('[VoiceAssistantPage] Karaoke Debug:', {
+      isRobotSpeaking,
+      robotWords: lastAssistantMessage?.words?.length || 0,
+      robotKaraoke: karaokeSyncRobot,
+      userWords: lastUserMessage?.words?.length || 0,
+      userKaraokeEnabled,
+      userKaraoke: karaokeSyncUser,
+    });
+  }, [isRobotSpeaking, lastAssistantMessage?.words, karaokeSyncRobot, lastUserMessage?.words, userKaraokeEnabled, karaokeSyncUser]);
 
   // Track de mensagens anteriores para detectar novas
   const prevMessagesCountRef = useRef({ user: 0, assistant: 0 });
@@ -462,6 +523,11 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             emptyText="Suas perguntas aparecerão aqui"
             isTyping={false}
             variant="user"
+            karaokeState={{
+              currentWordIndex: karaokeSyncUser.currentWordIndex,
+              currentTime: karaokeSyncUser.currentTime,
+              isPlaying: karaokeSyncUser.isPlaying,
+            }}
           />
         </div>
 
@@ -616,9 +682,9 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             isTyping={isRobotSpeaking}
             variant="assistant"
             karaokeState={{
-              currentWordIndex: karaokeSync.currentWordIndex,
-              currentTime: karaokeSync.currentTime,
-              isPlaying: karaokeSync.isPlaying,
+              currentWordIndex: karaokeSyncRobot.currentWordIndex,
+              currentTime: karaokeSyncRobot.currentTime,
+              isPlaying: karaokeSyncRobot.isPlaying,
             }}
           />
         </div>
