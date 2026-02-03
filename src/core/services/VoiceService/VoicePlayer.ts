@@ -1,16 +1,25 @@
 /**
  * VoicePlayer - Audio Playback Manager
- * @version 1.0.0
- * @date 2026-01-27
+ * @version 2.0.0
+ * @date 2026-02-03
  *
  * Handles audio playback with:
  * - Safari/iOS warmup compatibility
  * - TTS response format conversion
  * - Real-time frequency analysis for visualization
  * - Progress tracking
+ * - v2.0.0: Karaoke TTS with word timestamps
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { WordTiming } from '@/components/voice-assistant/types';
+
+export interface KaraokeTTSResult {
+  audioUrl: string;
+  words: WordTiming[];
+  duration: number | null;
+  text: string;
+}
 
 export interface VoicePlayerCallbacks {
   onPlay?: () => void;
@@ -143,6 +152,74 @@ export class VoicePlayer {
 
     const audioUrl = URL.createObjectURL(blob);
     await this.play(audioUrl);
+  }
+
+  /**
+   * v2.0.0: Play audio from Karaoke TTS edge function
+   * Returns word timestamps for synchronized display
+   */
+  async playFromKaraokeTTS(
+    text: string,
+    chatType: string = 'home',
+    voice: string = 'nova'
+  ): Promise<KaraokeTTSResult> {
+    console.log('[VoicePlayer] Karaoke TTS request:', { textLength: text.length, voice });
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech-karaoke`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey,
+      },
+      body: JSON.stringify({ text, chatType, voice, speed: 1.0 }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[VoicePlayer] Karaoke TTS error:', response.status, errorText);
+      throw new Error(`Karaoke TTS failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[VoicePlayer] Karaoke TTS received:', {
+      wordsCount: data.words?.length || 0,
+      duration: data.duration,
+      hasAudio: !!data.audioBase64,
+    });
+
+    if (!data.audioBase64) {
+      throw new Error('Karaoke TTS returned no audio');
+    }
+
+    // Converter base64 para blob e URL
+    const binaryString = atob(data.audioBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: data.audioMimeType || 'audio/mpeg' });
+    const audioUrl = URL.createObjectURL(blob);
+
+    // Reproduzir áudio
+    await this.play(audioUrl);
+
+    return {
+      audioUrl,
+      words: data.words || [],
+      duration: data.duration,
+      text: data.text || text,
+    };
+  }
+
+  /**
+   * v2.0.0: Get the audio element for external synchronization
+   */
+  getAudioElement(): HTMLAudioElement | null {
+    return this.audioElement;
   }
 
   /**

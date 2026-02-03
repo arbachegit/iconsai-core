@@ -1,6 +1,8 @@
 // ============================================
-// VERSAO: 2.3.0 | DEPLOY: 2026-01-08
-// CORREÇÃO: Tratamento específico para audio_too_short
+// VERSAO: 3.0.0 | DEPLOY: 2026-02-03
+// FEATURE: Suporte a word-level timestamps (karaoke)
+// - Novo parâmetro: includeWordTimestamps
+// - Quando true, retorna words[] com start/end de cada palavra
 // ============================================
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -113,10 +115,11 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { audio, mimeType: providedMimeType } = body;
+    const { audio, mimeType: providedMimeType, includeWordTimestamps = false } = body;
     
     console.log('[VOICE-TO-TEXT] ========== NOVA REQUISIÇÃO ==========');
     console.log('[VOICE-TO-TEXT] mimeType recebido:', providedMimeType || '(vazio)');
+    console.log('[VOICE-TO-TEXT] includeWordTimestamps:', includeWordTimestamps);
     
     if (!audio) {
       console.error('[VOICE-TO-TEXT] ❌ Áudio não fornecido');
@@ -204,6 +207,13 @@ serve(async (req) => {
     formData.append('language', 'pt');
     // Adicionar prompt para melhorar precisão em português
     formData.append('prompt', 'Transcrição em português brasileiro.');
+
+    // v3.0.0: Suporte a word-level timestamps para karaoke
+    if (includeWordTimestamps) {
+      formData.append('response_format', 'verbose_json');
+      formData.append('timestamp_granularities[]', 'word');
+      console.log('[VOICE-TO-TEXT] Solicitando word-level timestamps');
+    }
 
     console.log('[VOICE-TO-TEXT] Enviando para OpenAI Whisper...');
     console.log('[VOICE-TO-TEXT] Arquivo:', `audio.${extension}`, 'Tipo:', mimeType);
@@ -319,7 +329,7 @@ serve(async (req) => {
     }
 
     const result = await response.json();
-    
+
     if (!result.text || result.text.trim() === '') {
       console.warn('[VOICE-TO-TEXT] ⚠️ Transcrição vazia');
       return new Response(
@@ -327,8 +337,25 @@ serve(async (req) => {
         { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
+
     console.log('[VOICE-TO-TEXT] ✅ Transcrição bem-sucedida:', result.text.substring(0, 50) + '...');
+
+    // v3.0.0: Retornar word timestamps se solicitado
+    if (includeWordTimestamps && result.words) {
+      console.log('[VOICE-TO-TEXT] Retornando', result.words.length, 'words com timestamps');
+      return new Response(
+        JSON.stringify({
+          text: result.text,
+          words: result.words.map((w: { word: string; start: number; end: number }) => ({
+            word: w.word,
+            start: w.start,
+            end: w.end,
+          })),
+          duration: result.duration || null,
+        }),
+        { headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ text: result.text }),

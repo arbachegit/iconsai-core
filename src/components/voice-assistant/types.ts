@@ -1,11 +1,20 @@
 /**
  * ============================================================
- * Voice Assistant Types - v1.0.0
+ * Voice Assistant Types - v2.0.0
  * ============================================================
  * Tipos e interfaces para o assistente de voz
  * Máquina de estados criteriosa para evitar bugs
+ *
+ * v2.0.0: Adicionado WordTiming para sincronização karaokê
  * ============================================================
  */
+
+// Word timing para sincronização karaokê
+export interface WordTiming {
+  word: string;
+  start: number;  // segundos
+  end: number;    // segundos
+}
 
 // Estados do botão principal - MÁQUINA DE ESTADOS EXPLÍCITA
 export type VoiceButtonState =
@@ -33,6 +42,8 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   audioUrl?: string;
+  words?: WordTiming[];  // v2.0.0: Word timestamps para karaokê
+  duration?: number;     // v2.0.0: Duração do áudio em segundos
 }
 
 // Configuração do assistente

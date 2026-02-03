@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * VoiceAssistantPage.tsx - v4.1.0
+ * VoiceAssistantPage.tsx - v5.0.0
  * ============================================================
  * Layout em 3 colunas (1/3 cada):
  * - ESQUERDA: Container com falas do USUÁRIO
@@ -12,6 +12,10 @@
  * - Scroll interno nos containers
  * - Texto SINCRONIZADO com a fala (velocidade calculada)
  * - Voice Analyzer bidirecional
+ *
+ * v5.0.0: Karaoke Text
+ * - Palavras destacadas em sincronia com o áudio TTS
+ * - Usa word timestamps do Whisper
  * ============================================================
  */
 
@@ -20,8 +24,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, RefreshCw, User, Bot, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceAssistant } from '@/hooks/useVoiceAssistant';
+import { useKaraokeSync } from '@/hooks/useKaraokeSync';
 import { VoiceButton } from './VoiceButton';
 import { VoiceAnalyzer } from './VoiceAnalyzer';
+import { KaraokeText } from './KaraokeText';
+import { WordTiming } from './types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import iconsaiLogo from '@/assets/iconsai-logo.png';
@@ -134,17 +141,25 @@ const SyncedTypewriterText: React.FC<{
 // ============================================================
 // COMPONENTE: TranscriptionContainer
 // Container de transcrição com altura total e scroll interno
+// v5.0.0: Suporte a Karaoke Text
 // ============================================================
 const TranscriptionContainer: React.FC<{
   title: string;
   icon: React.ReactNode;
-  messages: Array<{ content: string; isNew?: boolean }>;
+  messages: Array<{ content: string; isNew?: boolean; words?: WordTiming[] }>;
   borderColor: string;
   iconBgColor: string;
   isActive?: boolean;
   emptyText: string;
   isTyping?: boolean;
-}> = ({ title, icon, messages, borderColor, iconBgColor, isActive, emptyText, isTyping }) => {
+  variant?: 'user' | 'assistant';
+  // v5.0.0: Props para Karaoke
+  karaokeState?: {
+    currentWordIndex: number;
+    currentTime: number;
+    isPlaying: boolean;
+  };
+}> = ({ title, icon, messages, borderColor, iconBgColor, isActive, emptyText, isTyping, variant = 'assistant', karaokeState }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll para baixo quando novas mensagens chegam ou texto é atualizado
@@ -228,6 +243,14 @@ const TranscriptionContainer: React.FC<{
               const isLastMessage = index === messages.length - 1;
               const shouldType = isLastMessage && isTyping && msg.isNew;
 
+              // v5.0.0: Usar Karaoke quando há words e está tocando
+              const useKaraoke =
+                isLastMessage &&
+                msg.words &&
+                msg.words.length > 0 &&
+                karaokeState &&
+                karaokeState.isPlaying;
+
               return (
                 <motion.div
                   key={index}
@@ -241,13 +264,24 @@ const TranscriptionContainer: React.FC<{
                       : 'bg-emerald-500/10 border border-emerald-500/30'
                   )}
                 >
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {shouldType ? (
+                  {useKaraoke && msg.words ? (
+                    // v5.0.0: Karaoke Text sincronizado com áudio
+                    <KaraokeText
+                      words={msg.words}
+                      currentWordIndex={karaokeState!.currentWordIndex}
+                      currentTime={karaokeState!.currentTime}
+                      isPlaying={karaokeState!.isPlaying}
+                      variant={variant}
+                    />
+                  ) : shouldType ? (
+                    <p className="text-sm text-foreground leading-relaxed">
                       <SyncedTypewriterText text={msg.content} isTyping={true} />
-                    ) : (
-                      msg.content
-                    )}
-                  </p>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {msg.content}
+                    </p>
+                  )}
                 </motion.div>
               );
             })}
@@ -350,7 +384,24 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
     initialize,
     handleButtonClick,
     forceReset,
+    getAudioElement,
   } = useVoiceAssistant({ welcomeMessage, voice });
+
+  // Estados de atividade (movido para cima para uso no karaokeSync)
+  const isRobotSpeaking = buttonState === 'greeting' || buttonState === 'speaking';
+  const isUserSpeaking = buttonState === 'recording';
+
+  // v5.0.0: Karaoke sync para mensagens do robô
+  const lastAssistantMessage = useMemo(() => {
+    const assistantMsgs = messages.filter((m) => m.role === 'assistant');
+    return assistantMsgs[assistantMsgs.length - 1];
+  }, [messages]);
+
+  const karaokeSync = useKaraokeSync({
+    words: lastAssistantMessage?.words || [],
+    audioElement: getAudioElement(),
+    enabled: isRobotSpeaking && !!lastAssistantMessage?.words,
+  });
 
   // Track de mensagens anteriores para detectar novas
   const prevMessagesCountRef = useRef({ user: 0, assistant: 0 });
@@ -360,23 +411,25 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
     initialize();
   }, [initialize]);
 
-  // Preparar mensagens do usuário com flag de nova
+  // Preparar mensagens do usuário com flag de nova e words
   const userMessages = useMemo(() => {
     const filtered = messages.filter((m) => m.role === 'user');
     const prevCount = prevMessagesCountRef.current.user;
     return filtered.map((m, index) => ({
       content: m.content,
       isNew: index === filtered.length - 1 && filtered.length > prevCount,
+      words: m.words,
     }));
   }, [messages]);
 
-  // Preparar mensagens do assistente com flag de nova
+  // Preparar mensagens do assistente com flag de nova e words
   const assistantMessages = useMemo(() => {
     const filtered = messages.filter((m) => m.role === 'assistant');
     const prevCount = prevMessagesCountRef.current.assistant;
     return filtered.map((m, index) => ({
       content: m.content,
       isNew: index === filtered.length - 1 && filtered.length > prevCount,
+      words: m.words,
     }));
   }, [messages]);
 
@@ -393,10 +446,6 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
     return () => clearTimeout(timeout);
   }, [messages]);
 
-  // Estados de atividade
-  const isRobotSpeaking = buttonState === 'greeting' || buttonState === 'speaking';
-  const isUserSpeaking = buttonState === 'recording';
-
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Layout principal em 3 colunas */}
@@ -412,6 +461,7 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             isActive={isUserSpeaking}
             emptyText="Suas perguntas aparecerão aqui"
             isTyping={false}
+            variant="user"
           />
         </div>
 
@@ -564,6 +614,12 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             isActive={isRobotSpeaking}
             emptyText="Respostas do assistente aparecerão aqui"
             isTyping={isRobotSpeaking}
+            variant="assistant"
+            karaokeState={{
+              currentWordIndex: karaokeSync.currentWordIndex,
+              currentTime: karaokeSync.currentTime,
+              isPlaying: karaokeSync.isPlaying,
+            }}
           />
         </div>
       </main>

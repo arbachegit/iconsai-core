@@ -1,12 +1,16 @@
 /**
  * ============================================================
- * useVoiceAssistant Hook - v2.1.0
+ * useVoiceAssistant Hook - v3.0.0
  * ============================================================
  * Hook principal para orquestrar o assistente de voz
  * - Máquina de estados criteriosa
  * - Transcrição com Whisper (mais preciso)
  * - LLM: Perplexity → Gemini → ChatGPT
  * - TTS com Nova
+ *
+ * v3.0.0: Suporte a Karaoke TTS
+ * - Word timestamps para sincronização palavra-por-palavra
+ * - Expõe audioElement para sync externo
  * ============================================================
  */
 
@@ -19,6 +23,7 @@ import {
   VoiceAssistantState,
   VoiceAssistantConfig,
   ChatMessage,
+  WordTiming,
   VALID_TRANSITIONS,
   DEFAULT_CONFIG,
 } from '@/components/voice-assistant/types';
@@ -203,25 +208,59 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
   // ============================================================
   // ADICIONAR MENSAGEM AO CHAT
   // ============================================================
-  const addMessage = useCallback((role: 'user' | 'assistant', content: string, audioUrl?: string) => {
-    const message: ChatMessage = {
-      id: generateId(),
-      role,
-      content,
-      timestamp: new Date(),
-      audioUrl,
-    };
+  const addMessage = useCallback(
+    (
+      role: 'user' | 'assistant',
+      content: string,
+      options?: { audioUrl?: string; words?: WordTiming[]; duration?: number }
+    ) => {
+      const message: ChatMessage = {
+        id: generateId(),
+        role,
+        content,
+        timestamp: new Date(),
+        audioUrl: options?.audioUrl,
+        words: options?.words,
+        duration: options?.duration,
+      };
 
-    setState((prev) => ({
-      ...prev,
-      messages: [...prev.messages, message],
-    }));
+      setState((prev) => ({
+        ...prev,
+        messages: [...prev.messages, message],
+      }));
 
-    return message;
+      return message;
+    },
+    []
+  );
+
+  // ============================================================
+  // v3.0.0: ATUALIZAR ÚLTIMA MENSAGEM (para adicionar words após TTS)
+  // ============================================================
+  const updateLastMessage = useCallback(
+    (updates: Partial<Pick<ChatMessage, 'words' | 'duration' | 'audioUrl'>>) => {
+      setState((prev) => {
+        const messages = [...prev.messages];
+        if (messages.length > 0) {
+          const lastMessage = messages[messages.length - 1];
+          messages[messages.length - 1] = { ...lastMessage, ...updates };
+        }
+        return { ...prev, messages };
+      });
+    },
+    []
+  );
+
+  // ============================================================
+  // v3.0.0: Expor audioElement para sync externo
+  // ============================================================
+  const getAudioElement = useCallback((): HTMLAudioElement | null => {
+    return playerRef.current?.getAudioElement() || null;
   }, []);
 
   // ============================================================
   // PLAY WELCOME (Estado: idle → greeting → ready)
+  // v3.0.0: Usa Karaoke TTS para word timestamps
   // ============================================================
   const playWelcome = useCallback(async () => {
     if (currentStateRef.current !== 'idle') {
@@ -235,16 +274,26 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
     if (!transitionTo('greeting')) return;
 
     try {
-      // Adicionar mensagem de boas-vindas ao chat
+      // Adicionar mensagem de boas-vindas ao chat (sem words ainda)
       addMessage('assistant', finalConfig.welcomeMessage);
 
-      // Tocar TTS
+      // Tocar TTS com Karaoke
       startFrequencyAnalysis('robot');
-      await playerRef.current?.playFromTTS(
+
+      const karaokeResult = await playerRef.current?.playFromKaraokeTTS(
         finalConfig.welcomeMessage,
         'home',
         finalConfig.voice
       );
+
+      // Atualizar mensagem com words se disponíveis
+      if (karaokeResult?.words && karaokeResult.words.length > 0) {
+        updateLastMessage({
+          words: karaokeResult.words,
+          duration: karaokeResult.duration || undefined,
+          audioUrl: karaokeResult.audioUrl,
+        });
+      }
 
       // onEnded callback vai transicionar para 'ready'
     } catch (err) {
@@ -255,7 +304,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       }));
       forceReset();
     }
-  }, [transitionTo, addMessage, startFrequencyAnalysis, forceReset, finalConfig]);
+  }, [transitionTo, addMessage, updateLastMessage, startFrequencyAnalysis, forceReset, finalConfig]);
 
   // ============================================================
   // START RECORDING (Estado: ready → recording)
@@ -285,6 +334,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
 
   // ============================================================
   // STOP RECORDING E PROCESSAR (Estado: recording → processing → speaking → ready)
+  // v3.0.0: Usa word timestamps na transcrição e Karaoke TTS na resposta
   // ============================================================
   const stopRecordingAndProcess = useCallback(async () => {
     if (currentStateRef.current !== 'recording') {
@@ -304,13 +354,14 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
 
       console.log('[VoiceAssistant] Recording stopped, processing with Whisper...');
 
-      // 2. Transcrever com Whisper
+      // 2. Transcrever com Whisper + word timestamps
       const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke(
         'voice-to-text',
         {
           body: {
             audio: recordingResult.base64,
             mimeType: recordingResult.mimeType,
+            includeWordTimestamps: true, // v3.0.0: Solicitar word timestamps
           },
         }
       );
@@ -325,9 +376,13 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       }
 
       console.log('[VoiceAssistant] Transcribed:', userText.substring(0, 50));
+      console.log('[VoiceAssistant] Words received:', transcriptionData?.words?.length || 0);
 
-      // Adicionar mensagem do usuário
-      addMessage('user', userText);
+      // Adicionar mensagem do usuário com word timestamps
+      addMessage('user', userText, {
+        words: transcriptionData?.words,
+        duration: transcriptionData?.duration,
+      });
 
       // 3. Chamar chat-router (Perplexity → Gemini → ChatGPT)
       const { data: chatData, error: chatError } = await supabase.functions.invoke('chat-router', {
@@ -350,15 +405,28 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
 
       console.log('[VoiceAssistant] Response:', assistantText.substring(0, 50));
 
-      // 4. Transicionar para speaking e reproduzir TTS
+      // 4. Transicionar para speaking e reproduzir TTS com Karaoke
       if (!transitionTo('speaking')) return;
 
-      // Adicionar mensagem do assistente
+      // Adicionar mensagem do assistente (sem words ainda)
       addMessage('assistant', assistantText);
 
-      // Reproduzir resposta
+      // Reproduzir resposta com Karaoke TTS
       startFrequencyAnalysis('robot');
-      await playerRef.current?.playFromTTS(assistantText, 'home', finalConfig.voice);
+      const karaokeResult = await playerRef.current?.playFromKaraokeTTS(
+        assistantText,
+        'home',
+        finalConfig.voice
+      );
+
+      // Atualizar mensagem com words se disponíveis
+      if (karaokeResult?.words && karaokeResult.words.length > 0) {
+        updateLastMessage({
+          words: karaokeResult.words,
+          duration: karaokeResult.duration || undefined,
+          audioUrl: karaokeResult.audioUrl,
+        });
+      }
 
       // onEnded callback vai transicionar para 'ready'
     } catch (err) {
@@ -373,7 +441,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       currentStateRef.current = 'ready';
       setState((prev) => ({ ...prev, buttonState: 'ready' }));
     }
-  }, [transitionTo, stopFrequencyAnalysis, addMessage, startFrequencyAnalysis, finalConfig]);
+  }, [transitionTo, stopFrequencyAnalysis, addMessage, updateLastMessage, startFrequencyAnalysis, finalConfig]);
 
   // ============================================================
   // HANDLER PRINCIPAL DO BOTÃO
@@ -433,6 +501,9 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
     initialize,
     handleButtonClick,
     forceReset,
+
+    // v3.0.0: Karaoke support
+    getAudioElement,
   };
 }
 
