@@ -159,10 +159,15 @@ export class VoicePlayer {
     chatType: string = 'home',
     voice: string = 'nova'
   ): Promise<KaraokeTTSResult> {
-    console.log('[VoicePlayer] Karaoke TTS fetch:', { textLength: text.length, voice });
-
     // Use Voice API backend (Python FastAPI with ElevenLabs native timestamps)
     const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+
+    console.log('[VoicePlayer] v3.2.0 Karaoke TTS fetch:', {
+      textLength: text.length,
+      voice,
+      apiUrl: voiceApiUrl,
+      hasVoiceApiUrl: !!import.meta.env.VITE_VOICE_API_URL,
+    });
 
     const response = await fetch(`${voiceApiUrl}/functions/v1/text-to-speech-karaoke`, {
       method: 'POST',

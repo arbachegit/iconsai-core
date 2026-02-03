@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * useVoiceAssistant Hook - v3.1.0
+ * useVoiceAssistant Hook - v3.2.0
  * ============================================================
  * Hook principal para orquestrar o assistente de voz
  * - Máquina de estados criteriosa
@@ -276,7 +276,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
 
     try {
       // 1. Buscar TTS com Karaoke PRIMEIRO (sem tocar ainda)
-      console.log('[VoiceAssistant] Fetching karaoke TTS for welcome...');
+      console.log('[VoiceAssistant] v3.2.0 - Fetching ElevenLabs karaoke TTS for welcome...');
       const karaokeResult = await playerRef.current?.fetchKaraokeTTS(
         finalConfig.welcomeMessage,
         'home',
@@ -355,10 +355,13 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
         throw new Error('Gravação vazia');
       }
 
-      console.log('[VoiceAssistant] Recording stopped, processing with Whisper...');
-
       // 2. Transcrever com Whisper + word timestamps (Python Backend)
       const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+
+      console.log('[VoiceAssistant] v3.2.0 - Recording stopped, processing with Whisper...', {
+        apiUrl: voiceApiUrl,
+        hasVoiceApiUrl: !!import.meta.env.VITE_VOICE_API_URL,
+      });
 
       const transcriptionResponse = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
         method: 'POST',
