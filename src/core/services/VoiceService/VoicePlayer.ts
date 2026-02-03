@@ -1,17 +1,15 @@
 /**
  * VoicePlayer - Audio Playback Manager
- * @version 2.0.0
+ * @version 3.2.0
  * @date 2026-02-03
  *
  * Handles audio playback with:
  * - Safari/iOS warmup compatibility
- * - TTS response format conversion
  * - Real-time frequency analysis for visualization
  * - Progress tracking
- * - v2.0.0: Karaoke TTS with word timestamps
+ * - v3.2.0: ElevenLabs Karaoke TTS ONLY (removed OpenAI TTS)
  */
 
-import { supabase } from '@/integrations/supabase/client';
 import { WordTiming } from '@/components/voice-assistant/types';
 
 export interface KaraokeTTSResult {
@@ -116,42 +114,7 @@ export class VoicePlayer {
   }
 
   /**
-   * Play audio from TTS edge function
-   */
-  async playFromTTS(text: string, chatType: string = 'home', voice: string = 'nova'): Promise<void> {
-    console.log('[VoicePlayer] TTS request:', { textLength: text.length, voice });
-
-    // Use Voice API backend (Python FastAPI with ElevenLabs)
-    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
-
-    const response = await fetch(`${voiceApiUrl}/functions/v1/text-to-speech`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text, chatType, voice, speed: 1.0 }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[VoicePlayer] TTS error:', response.status, errorText);
-      throw new Error(`TTS failed: ${response.status}`);
-    }
-
-    // Get response as blob directly
-    const blob = await response.blob();
-    console.log('[VoicePlayer] TTS received blob:', blob.size, 'bytes, type:', blob.type);
-
-    if (blob.size === 0) {
-      throw new Error('TTS returned empty audio');
-    }
-
-    const audioUrl = URL.createObjectURL(blob);
-    await this.play(audioUrl);
-  }
-
-  /**
-   * v2.0.0: Fetch Karaoke TTS data without playing
+   * v3.2.0: Fetch Karaoke TTS data without playing (ElevenLabs)
    * Returns word timestamps and audio URL for synchronized display
    */
   async fetchKaraokeTTS(
@@ -414,84 +377,6 @@ export class VoicePlayer {
    * Convert TTS response to audio URL
    * Handles multiple response formats from Supabase edge function
    */
-  private convertToAudioUrl(data: unknown): string {
-    console.log('[VoicePlayer] Converting TTS response:', {
-      type: typeof data,
-      constructor: data?.constructor?.name,
-      isBlob: data instanceof Blob,
-      isArrayBuffer: data instanceof ArrayBuffer,
-    });
-
-    // Case 1: Blob (direct)
-    if (data instanceof Blob) {
-      console.log('[VoicePlayer] TTS received Blob:', data.size, 'bytes');
-      return URL.createObjectURL(data);
-    }
-
-    // Case 2: ArrayBuffer
-    if (data instanceof ArrayBuffer) {
-      console.log('[VoicePlayer] TTS received ArrayBuffer:', data.byteLength, 'bytes');
-      const blob = new Blob([data], { type: 'audio/mpeg' });
-      return URL.createObjectURL(blob);
-    }
-
-    // Case 3: Uint8Array directly
-    if (data instanceof Uint8Array) {
-      console.log('[VoicePlayer] TTS received Uint8Array:', data.length, 'bytes');
-      const blob = new Blob([data], { type: 'audio/mpeg' });
-      return URL.createObjectURL(blob);
-    }
-
-    // Case 4: Object with numeric keys (serialized Uint8Array from JSON)
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const keys = Object.keys(data as object);
-      // Check if it's a numeric-keyed object (like {0: 255, 1: 128, ...})
-      if (keys.length > 0 && keys.every(k => !isNaN(Number(k)))) {
-        console.log('[VoicePlayer] TTS received numeric-keyed object:', keys.length, 'bytes');
-        const values = keys.map(k => (data as Record<string, number>)[k]);
-        const blob = new Blob([new Uint8Array(values)], { type: 'audio/mpeg' });
-        return URL.createObjectURL(blob);
-      }
-    }
-
-    // Case 5: Array-like (with length property)
-    if (data && typeof data === 'object' && 'length' in data && typeof (data as { length: unknown }).length === 'number') {
-      const arrayLike = data as ArrayLike<number>;
-      console.log('[VoicePlayer] TTS received array-like:', arrayLike.length, 'bytes');
-      const blob = new Blob([new Uint8Array(Array.from(arrayLike))], { type: 'audio/mpeg' });
-      return URL.createObjectURL(blob);
-    }
-
-    // Case 6: JSON with audioUrl
-    if (typeof data === 'object' && data !== null && 'audioUrl' in data) {
-      console.log('[VoicePlayer] TTS received audioUrl');
-      return (data as { audioUrl: string }).audioUrl;
-    }
-
-    // Case 7: JSON with base64 audio
-    if (typeof data === 'object' && data !== null && 'audio' in data) {
-      console.log('[VoicePlayer] TTS received base64 audio');
-      const base64 = (data as { audio: string }).audio;
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'audio/mpeg' });
-      return URL.createObjectURL(blob);
-    }
-
-    // Log unexpected format for debugging
-    console.error('[VoicePlayer] TTS unexpected response type:', {
-      type: typeof data,
-      constructor: data?.constructor?.name,
-      keys: data && typeof data === 'object' ? Object.keys(data as object).slice(0, 10) : null,
-      sample: data && typeof data === 'object' ? JSON.stringify(data).slice(0, 200) : String(data).slice(0, 200),
-    });
-
-    throw new Error('Unrecognized audio format');
-  }
 }
 
 export default VoicePlayer;
