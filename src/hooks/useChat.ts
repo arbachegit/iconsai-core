@@ -622,17 +622,32 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
         mimeType = (isIOS || isSafari) ? "audio/mp4" : "audio/webm";
       }
       
-      console.log('[useChat] Transcribing audio:', { 
-        size: audioBlob.size, 
+      console.log('[useChat] Transcribing audio:', {
+        size: audioBlob.size,
         mimeType,
-        base64Length: base64Audio.length 
+        base64Length: base64Audio.length
       });
 
-      const { data, error } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64Audio, mimeType }
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audio: base64Audio,
+          mimeType,
+          language: 'pt',
+          includeWordTimestamps: true,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Transcription failed: ${response.status}`);
+      }
+
+      const data = await response.json();
       return data.text || '';
     } catch (error) {
       console.error('Error transcribing audio:', error);

@@ -137,7 +137,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
     analyze();
   }, [onFrequencyData]);
 
-  // Transcrever áudio usando edge function existente
+  // Transcrever áudio usando Python Backend
   const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
     // Converter blob para base64
     const arrayBuffer = await audioBlob.arrayBuffer();
@@ -148,14 +148,26 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
       )
     );
 
-    const { data, error } = await supabase.functions.invoke("voice-to-text", {
-      body: { audio: base64, mimeType: mimeTypeRef.current },
+    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+    const response = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        audio: base64,
+        mimeType: mimeTypeRef.current,
+        language: "pt",
+        includeWordTimestamps: true,
+      }),
     });
 
-    if (error) {
-      throw new Error(error.message || "Falha na transcrição");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Falha na transcrição");
     }
 
+    const data = await response.json();
     return data?.text || "";
   };
 

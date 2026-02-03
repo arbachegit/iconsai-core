@@ -357,22 +357,27 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
 
       console.log('[VoiceAssistant] Recording stopped, processing with Whisper...');
 
-      // 2. Transcrever com Whisper + word timestamps
-      const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke(
-        'voice-to-text',
-        {
-          body: {
-            audio: recordingResult.base64,
-            mimeType: recordingResult.mimeType,
-            includeWordTimestamps: true, // v3.0.0: Solicitar word timestamps
-          },
-        }
-      );
+      // 2. Transcrever com Whisper + word timestamps (Python Backend)
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+      const transcriptionResponse = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audio: recordingResult.base64,
+          mimeType: recordingResult.mimeType,
+          language: 'pt',
+          includeWordTimestamps: true, // v3.0.0: Solicitar word timestamps
+        }),
+      });
 
-      if (transcriptionError) {
-        throw new Error(transcriptionError.message || 'Erro na transcrição');
+      if (!transcriptionResponse.ok) {
+        const errorData = await transcriptionResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erro na transcrição: ${transcriptionResponse.status}`);
       }
 
+      const transcriptionData = await transcriptionResponse.json();
       const userText = transcriptionData?.text;
       if (!userText || userText.trim() === '') {
         throw new Error('Não foi possível entender o áudio');
@@ -387,20 +392,26 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
         duration: transcriptionData?.duration,
       });
 
-      // 3. Chamar chat-router (Perplexity → Gemini → ChatGPT)
-      const { data: chatData, error: chatError } = await supabase.functions.invoke('chat-router', {
-        body: {
+      // 3. Chamar chat-router (Python Backend)
+      const chatResponse = await fetch(`${voiceApiUrl}/functions/v1/chat-router`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           pwaMode: true,
           message: userText,
           agentSlug: 'home',
           deviceId: `voice-assistant-${Date.now()}`,
-        },
+        }),
       });
 
-      if (chatError) {
-        throw new Error(chatError.message || 'Erro ao processar resposta');
+      if (!chatResponse.ok) {
+        const chatError = await chatResponse.json().catch(() => ({}));
+        throw new Error(chatError.error || 'Erro ao processar resposta');
       }
 
+      const chatData = await chatResponse.json();
       const assistantText = chatData?.response;
       if (!assistantText) {
         throw new Error('Resposta vazia do assistente');

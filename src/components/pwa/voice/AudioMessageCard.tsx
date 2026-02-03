@@ -193,12 +193,19 @@ export const AudioMessageCard: React.FC<AudioMessageCardProps> = ({ message, use
         }
       }
 
-      const { data, error } = await supabase.functions.invoke("voice-to-text", {
-        body: { audio: base64Audio, mimeType },
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64Audio, mimeType, language: "pt", includeWordTimestamps: true }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Transcription failed: ${response.status}`);
+      }
 
+      const data = await response.json();
       const text = data?.text || "";
       setTranscription(text);
       setShowTranscription(true);

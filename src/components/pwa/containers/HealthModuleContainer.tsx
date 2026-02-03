@@ -267,12 +267,20 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({ on
       console.log("[HealthContainer] MimeType:", mimeType);
 
       console.log("[HealthContainer] 📡 Chamando voice-to-text...");
-      const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
-        body: { audio: base64, mimeType },
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+      const sttResponse = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64, mimeType, language: "pt", includeWordTimestamps: true }),
       });
-      console.log("[HealthContainer] STT Response:", { data: sttData, error: sttError });
 
-      if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
+      if (!sttResponse.ok) {
+        const errorData = await sttResponse.json().catch(() => ({}));
+        throw new Error(`STT_ERROR: ${errorData.error || sttResponse.status}`);
+      }
+
+      const sttData = await sttResponse.json();
+      console.log("[HealthContainer] STT Response:", sttData);
 
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");

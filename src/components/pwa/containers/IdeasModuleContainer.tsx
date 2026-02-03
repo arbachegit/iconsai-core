@@ -149,11 +149,19 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         mimeType = "audio/mp4";
       }
 
-      const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
-        body: { audio: base64, mimeType },
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+      const sttResponse = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64, mimeType, language: "pt", includeWordTimestamps: true }),
       });
 
-      if (sttError) throw new Error(`STT_ERROR: ${sttError.message}`);
+      if (!sttResponse.ok) {
+        const errorData = await sttResponse.json().catch(() => ({}));
+        throw new Error(`STT_ERROR: ${errorData.error || sttResponse.status}`);
+      }
+
+      const sttData = await sttResponse.json();
 
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
@@ -175,38 +183,30 @@ export const IdeasModuleContainer: React.FC<IdeasModuleContainerProps> = ({ onBa
         deviceId: deviceId?.substring(0, 8) + "...",
       });
 
-      const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
-        body: {
+      const chatResponse = await fetch(`${voiceApiUrl}/functions/v1/chat-router`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           message: userText,
           pwaMode: true,
           chatType: MODULE_CONFIG.type,
           agentSlug: MODULE_CONFIG.type,
           deviceId,
-        },
+        }),
       });
 
-      if (chatError) {
-        // Tentar extrair corpo da resposta de erro
-        let errorBody = "";
-        try {
-          if (chatError.context && typeof chatError.context.text === "function") {
-            errorBody = await chatError.context.text();
-          }
-        } catch (e) {
-          errorBody = "Não foi possível ler corpo do erro";
-        }
-
+      if (!chatResponse.ok) {
+        const chatErrorData = await chatResponse.json().catch(() => ({}));
         console.error("[IdeasContainer] ❌ chat-router erro:", {
-          message: chatError.message,
-          name: chatError.name,
-          status: chatError.context?.status,
-          errorBody: errorBody,
+          status: chatResponse.status,
+          error: chatErrorData,
         });
-        throw new Error(`CHAT_ERROR: ${chatError.message} | Body: ${errorBody}`);
+        throw new Error(`CHAT_ERROR: ${chatErrorData.error || chatResponse.status}`);
       }
 
       console.log("[IdeasContainer] ✅ chat-router resposta recebida");
 
+      const chatData = await chatResponse.json();
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 

@@ -242,32 +242,42 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({ module
         mimeType = isIOS || isSafari ? "audio/mp4" : "audio/webm";
       }
 
-      const { data: sttData, error: sttError } = await supabase.functions.invoke("voice-to-text", {
-        body: { audio: base64, mimeType },
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+      const sttResponse = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64, mimeType, language: "pt", includeWordTimestamps: true }),
       });
 
-      if (sttError) {
-        throw new Error(`STT_ERROR: ${sttError.message}`);
+      if (!sttResponse.ok) {
+        const errorData = await sttResponse.json().catch(() => ({}));
+        throw new Error(`STT_ERROR: ${errorData.error || sttResponse.status}`);
       }
 
+      const sttData = await sttResponse.json();
       const userText = sttData?.text;
       if (!userText?.trim()) {
         throw new Error("STT_EMPTY: Não entendi o áudio");
       }
 
-      const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
-        body: {
+      const chatResponse = await fetch(`${voiceApiUrl}/functions/v1/chat-router`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           message: userText,
           pwaMode: true,
           chatType: moduleType,
           agentSlug: moduleType,
           deviceId: deviceFingerprint || undefined,
-        },
+        }),
       });
 
-      if (chatError) {
-        throw new Error(`CHAT_ERROR: ${chatError.message}`);
+      if (!chatResponse.ok) {
+        const chatError = await chatResponse.json().catch(() => ({}));
+        throw new Error(`CHAT_ERROR: ${chatError.error || chatResponse.status}`);
       }
+
+      const chatData = await chatResponse.json();
 
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) {

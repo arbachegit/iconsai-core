@@ -2,15 +2,13 @@
  * ============================================================
  * PWA Voice Module - Voice to Text Service
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-20
+ * Versão: 2.0.0
+ * Data: 2026-02-03
  *
  * Serviço de transcrição de voz para texto.
- * Utiliza a Edge Function voice-to-text do Supabase.
+ * Utiliza o Python Backend com Whisper.
  * ============================================================
  */
-
-import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Resposta do serviço de transcrição
@@ -19,6 +17,7 @@ export interface VoiceToTextResponse {
   text: string;
   confidence?: number;
   duration?: number;
+  words?: Array<{ word: string; start: number; end: number }>;
 }
 
 /**
@@ -33,6 +32,8 @@ export interface VoiceToTextParams {
   mimeType: string;
   /** Idioma (default: pt-BR) */
   language?: string;
+  /** Incluir timestamps de palavras */
+  includeWordTimestamps?: boolean;
 }
 
 /**
@@ -71,7 +72,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
  * @throws {VoiceToTextError} em caso de erro
  */
 export async function transcribeAudio(params: VoiceToTextParams): Promise<VoiceToTextResponse> {
-  const { audioBlob, audioBase64, mimeType, language = "pt-BR" } = params;
+  const { audioBlob, audioBase64, mimeType, language = "pt", includeWordTimestamps = false } = params;
 
   console.log("[VoiceToText] Iniciando transcrição...");
 
@@ -89,24 +90,34 @@ export async function transcribeAudio(params: VoiceToTextParams): Promise<VoiceT
       );
     }
 
-    console.log("[VoiceToText] Chamando voice-to-text...");
+    console.log("[VoiceToText] Chamando voice-to-text backend...");
 
-    const { data, error } = await supabase.functions.invoke("voice-to-text", {
-      body: {
+    // Usar Python Backend para transcrição
+    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+
+    const response = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         audio: base64Data,
         mimeType,
         language,
-      },
+        includeWordTimestamps,
+      }),
     });
 
-    if (error) {
-      console.error("[VoiceToText] API Error:", error);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("[VoiceToText] API Error:", response.status, errorData);
       throw new VoiceToTextError(
-        error.message || "Erro ao transcrever áudio",
-        "API_ERROR",
-        error
+        errorData.error || `Erro ao transcrever áudio: ${response.status}`,
+        "API_ERROR"
       );
     }
+
+    const data = await response.json();
 
     const text = data?.text;
     if (!text?.trim()) {
@@ -122,6 +133,7 @@ export async function transcribeAudio(params: VoiceToTextParams): Promise<VoiceT
       text: text.trim(),
       confidence: data?.confidence,
       duration: data?.duration,
+      words: data?.words,
     };
   } catch (err) {
     if (err instanceof VoiceToTextError) {

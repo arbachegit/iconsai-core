@@ -354,23 +354,32 @@ export class VoiceService {
     };
   }
 
-  private async transcribeAudio(audioBase64: string): Promise<{ success: boolean; text?: string; error?: string }> {
+  private async transcribeAudio(audioBase64: string): Promise<{ success: boolean; text?: string; words?: Array<{ word: string; start: number; end: number }>; error?: string }> {
     try {
-      const { data, error } = await supabase.functions.invoke('voice-to-text', {
-        body: {
-          audio: audioBase64,
-          deviceId: this.context!.deviceId,
-          sessionId: this.context!.sessionId,
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          audio: audioBase64,
+          mimeType: 'audio/webm',
+          language: 'pt',
+          includeWordTimestamps: true,
+        }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { success: false, error: errorData.error || `Transcription failed: ${response.status}` };
       }
 
+      const data = await response.json();
       return {
         success: true,
-        text: data?.text || data?.transcript || '',
+        text: data?.text || '',
+        words: data?.words,
       };
     } catch (err) {
       return {

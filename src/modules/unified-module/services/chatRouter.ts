@@ -58,25 +58,30 @@ export async function sendToChatRouter(params: ChatRouterParams): Promise<ChatRo
   console.log(`[ChatRouter-${moduleType}] Enviando mensagem...`);
 
   try {
-    const { data, error } = await supabase.functions.invoke("chat-router", {
-      body: {
+    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+    const response = await fetch(`${voiceApiUrl}/functions/v1/chat-router`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         message,
         pwaMode: true,
         chatType: moduleType,
         agentSlug: moduleType,
         deviceId,
         sessionId,
-      },
+      }),
     });
 
-    if (error) {
-      console.error(`[ChatRouter-${moduleType}] API Error:`, error);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`[ChatRouter-${moduleType}] API Error:`, errorData);
       throw new ChatRouterError(
-        error.message || "Erro ao processar resposta",
-        "API_ERROR",
-        error
+        errorData.error || `Erro ao processar resposta: ${response.status}`,
+        "API_ERROR"
       );
     }
+
+    const data = await response.json();
 
     // Extrair resposta (pode vir em diferentes campos)
     const responseText = data?.response || data?.message || data?.text;
