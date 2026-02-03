@@ -24,6 +24,8 @@ export interface VoiceRecorderCallbacks {
   onFrequencyData?: (data: number[]) => void;
   onDuration?: (seconds: number) => void;
   onError?: (error: Error) => void;
+  /** v1.1.0: Callback para streaming de chunks em tempo real */
+  onChunk?: (chunk: Blob) => void;
 }
 
 export interface RecordingResult {
@@ -133,6 +135,8 @@ export class VoiceRecorder {
       this.mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           this.chunks.push(event.data);
+          // v1.1.0: Emit chunk for real-time streaming
+          this.callbacks.onChunk?.(event.data);
         }
       };
 

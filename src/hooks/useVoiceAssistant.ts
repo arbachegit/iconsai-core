@@ -1,16 +1,18 @@
 /**
  * ============================================================
- * useVoiceAssistant Hook - v3.0.0
+ * useVoiceAssistant Hook - v4.0.0
  * ============================================================
  * Hook principal para orquestrar o assistente de voz
  * - Máquina de estados criteriosa
- * - Transcrição com Whisper (mais preciso)
+ * - Transcrição em TEMPO REAL via WebSocket (v4.0.0)
  * - LLM: Perplexity → Gemini → ChatGPT
- * - TTS com Nova
+ * - TTS com Karaoke sync
  *
  * v3.0.0: Suporte a Karaoke TTS
- * - Word timestamps para sincronização palavra-por-palavra
- * - Expõe audioElement para sync externo
+ * v4.0.0: Real-time STT via WebSocket
+ * - Transcrição parcial enquanto usuário fala
+ * - Word timestamps em tempo real para karaoke do usuário
+ * - Fallback para transcrição batch se WebSocket falhar
  * ============================================================
  */
 
@@ -31,6 +33,16 @@ import {
 // Gerar ID único para mensagens
 const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+// Extended state for real-time transcription
+interface ExtendedVoiceAssistantState extends VoiceAssistantState {
+  /** v4.0.0: Transcrição parcial em tempo real */
+  realtimeTranscription: string;
+  /** v4.0.0: Words em tempo real para karaoke do usuário */
+  realtimeWords: WordTiming[];
+  /** v4.0.0: WebSocket conectado */
+  isRealtimeConnected: boolean;
+}
+
 export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
   // Extrair valores individuais para dependências estáveis
   const welcomeMessage = config?.welcomeMessage ?? DEFAULT_CONFIG.welcomeMessage;
@@ -44,13 +56,17 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
   );
 
   // State
-  const [state, setState] = useState<VoiceAssistantState>({
+  const [state, setState] = useState<ExtendedVoiceAssistantState>({
     buttonState: 'idle',
     messages: [],
     frequencyData: [],
     frequencySource: 'none',
     error: null,
     isInitialized: false,
+    // v4.0.0: Real-time state
+    realtimeTranscription: '',
+    realtimeWords: [],
+    isRealtimeConnected: false,
   });
 
   // Refs para serviços
@@ -58,6 +74,11 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const currentStateRef = useRef<VoiceButtonState>('idle');
+
+  // v4.0.0: WebSocket ref for real-time STT
+  const wsRef = useRef<WebSocket | null>(null);
+  const realtimeTranscriptionRef = useRef<string>('');
+  const realtimeWordsRef = useRef<WordTiming[]>([]);
 
   // Manter ref sincronizada com state
   useEffect(() => {
@@ -94,6 +115,8 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       frequencyData: [],
       frequencySource: 'none',
       error: null,
+      realtimeTranscription: '',
+      realtimeWords: [],
     }));
 
     // Limpar recursos
@@ -102,6 +125,122 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
+    }
+
+    // v4.0.0: Fechar WebSocket
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  }, []);
+
+  // ============================================================
+  // v4.0.0: WEBSOCKET REAL-TIME STT
+  // ============================================================
+  const connectRealtimeSTT = useCallback(async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const backendUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+
+      // Converter HTTP(S) para WS(S)
+      let wsUrl = backendUrl
+        .replace(/^https:\/\//, 'wss://')
+        .replace(/^http:\/\//, 'ws://');
+
+      if (!wsUrl.endsWith('/')) {
+        wsUrl += '/';
+      }
+      wsUrl += 'functions/v1/realtime-stt';
+
+      console.log('[VoiceAssistant] Connecting to realtime STT:', wsUrl);
+
+      try {
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          console.log('[VoiceAssistant] Realtime STT connected');
+          setState((prev) => ({ ...prev, isRealtimeConnected: true }));
+
+          // Enviar configuração
+          ws.send(JSON.stringify({
+            type: 'config',
+            language: 'pt',
+            sampleRate: 16000,
+            format: 'webm',
+          }));
+
+          resolve(true);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            if (data.status === 'partial' || data.status === 'final') {
+              if (data.text) {
+                realtimeTranscriptionRef.current = data.text;
+                setState((prev) => ({
+                  ...prev,
+                  realtimeTranscription: data.text,
+                }));
+              }
+              if (data.words && data.words.length > 0) {
+                realtimeWordsRef.current = data.words;
+                setState((prev) => ({
+                  ...prev,
+                  realtimeWords: data.words,
+                }));
+              }
+            }
+          } catch (e) {
+            console.warn('[VoiceAssistant] Failed to parse WebSocket message:', e);
+          }
+        };
+
+        ws.onerror = (event) => {
+          console.error('[VoiceAssistant] WebSocket error:', event);
+        };
+
+        ws.onclose = () => {
+          console.log('[VoiceAssistant] Realtime STT disconnected');
+          setState((prev) => ({ ...prev, isRealtimeConnected: false }));
+          wsRef.current = null;
+        };
+
+        // Timeout para conexão
+        setTimeout(() => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            console.warn('[VoiceAssistant] WebSocket connection timeout');
+            ws.close();
+            resolve(false);
+          }
+        }, 5000);
+
+      } catch (e) {
+        console.error('[VoiceAssistant] WebSocket connection failed:', e);
+        resolve(false);
+      }
+    });
+  }, []);
+
+  const disconnectRealtimeSTT = useCallback(() => {
+    if (wsRef.current) {
+      try {
+        wsRef.current.send(JSON.stringify({ type: 'end' }));
+      } catch (e) {
+        // Ignore
+      }
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setState((prev) => ({ ...prev, isRealtimeConnected: false }));
+  }, []);
+
+  const sendAudioChunk = useCallback((chunk: Blob) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      chunk.arrayBuffer().then((buffer) => {
+        wsRef.current?.send(buffer);
+      });
     }
   }, []);
 
@@ -157,12 +296,16 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
         setState((prev) => ({ ...prev, error: err.message }));
         forceReset();
       },
+      // v4.0.0: Callback para streaming de chunks
+      onChunk: (chunk) => {
+        sendAudioChunk(chunk);
+      },
     });
 
     setState((prev) => ({ ...prev, isInitialized: true }));
     console.log('[VoiceAssistant] Initialized');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isInitialized, transitionTo, forceReset]);
+  }, [state.isInitialized, transitionTo, forceReset, sendAudioChunk]);
 
   // ============================================================
   // ANÁLISE DE FREQUÊNCIA
@@ -311,6 +454,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
 
   // ============================================================
   // START RECORDING (Estado: ready → recording)
+  // v4.0.0: Conecta WebSocket para transcrição em tempo real
   // ============================================================
   const startRecording = useCallback(async () => {
     if (currentStateRef.current !== 'ready') {
@@ -320,8 +464,28 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
 
     if (!transitionTo('recording')) return;
 
+    // v4.0.0: Limpar transcrição anterior
+    realtimeTranscriptionRef.current = '';
+    realtimeWordsRef.current = [];
+    setState((prev) => ({
+      ...prev,
+      realtimeTranscription: '',
+      realtimeWords: [],
+    }));
+
     try {
+      // v4.0.0: Conectar WebSocket para transcrição em tempo real
+      console.log('[VoiceAssistant] Attempting to connect realtime STT...');
+      const connected = await connectRealtimeSTT();
+      if (connected) {
+        console.log('[VoiceAssistant] Realtime STT ready');
+      } else {
+        console.warn('[VoiceAssistant] Realtime STT not available, will use batch transcription');
+      }
+
+      console.log('[VoiceAssistant] Starting recorder...');
       await recorderRef.current?.start();
+      console.log('[VoiceAssistant] Recorder started');
       startFrequencyAnalysis('user');
     } catch (err) {
       console.error('[VoiceAssistant] Start recording failed:', err);
@@ -332,12 +496,13 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       // Voltar para ready
       currentStateRef.current = 'ready';
       setState((prev) => ({ ...prev, buttonState: 'ready' }));
+      disconnectRealtimeSTT();
     }
-  }, [transitionTo, startFrequencyAnalysis]);
+  }, [transitionTo, startFrequencyAnalysis, connectRealtimeSTT, disconnectRealtimeSTT]);
 
   // ============================================================
   // STOP RECORDING E PROCESSAR (Estado: recording → processing → speaking → ready)
-  // v3.0.0: Usa word timestamps na transcrição e Karaoke TTS na resposta
+  // v4.0.0: Usa transcrição em tempo real se disponível
   // ============================================================
   const stopRecordingAndProcess = useCallback(async () => {
     if (currentStateRef.current !== 'recording') {
@@ -346,53 +511,94 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
     }
 
     stopFrequencyAnalysis();
+
+    // v4.0.0: Capturar transcrição em tempo real antes de desconectar
+    const realtimeText = realtimeTranscriptionRef.current;
+    const realtimeUserWords = [...realtimeWordsRef.current];
+    const hasRealtimeTranscription = realtimeText && realtimeText.trim().length > 0;
+
+    // v4.0.0: Desconectar WebSocket
+    disconnectRealtimeSTT();
+
     if (!transitionTo('processing')) return;
 
     try {
       // 1. Parar gravação e obter áudio
       const recordingResult = await recorderRef.current?.stop();
+
+      console.log('[VoiceAssistant] Recording result:', {
+        hasBase64: !!recordingResult?.base64,
+        base64Length: recordingResult?.base64?.length || 0,
+        mimeType: recordingResult?.mimeType,
+        duration: recordingResult?.duration,
+      });
+
       if (!recordingResult?.base64) {
         throw new Error('Gravação vazia');
       }
 
-      console.log('[VoiceAssistant] Recording stopped, processing with Whisper...');
+      console.log('[VoiceAssistant] Recording stopped, size:', recordingResult.base64.length);
 
-      // 2. Transcrever com Whisper + word timestamps (Python Backend)
-      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
-      const transcriptionResponse = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audio: recordingResult.base64,
-          mimeType: recordingResult.mimeType,
-          language: 'pt',
-          includeWordTimestamps: true, // v3.0.0: Solicitar word timestamps
-        }),
+      let userText: string;
+      let userWords: WordTiming[] | undefined;
+
+      // v4.0.0: Usar transcrição em tempo real se disponível
+      console.log('[VoiceAssistant] Realtime status:', {
+        hasRealtimeText: !!realtimeText,
+        realtimeTextLength: realtimeText?.length || 0,
+        hasRealtimeWords: realtimeUserWords.length > 0,
+        hasRealtimeTranscription,
       });
 
-      if (!transcriptionResponse.ok) {
-        const errorData = await transcriptionResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erro na transcrição: ${transcriptionResponse.status}`);
-      }
+      if (hasRealtimeTranscription) {
+        console.log('[VoiceAssistant] Using realtime transcription:', realtimeText.substring(0, 50));
+        userText = realtimeText;
+        userWords = realtimeUserWords.length > 0 ? realtimeUserWords : undefined;
+      } else {
+        // Fallback: Transcrever com Whisper batch
+        const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+        console.log('[VoiceAssistant] Using batch transcription, URL:', voiceApiUrl);
+        const transcriptionResponse = await fetch(`${voiceApiUrl}/functions/v1/voice-to-text`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            audio: recordingResult.base64,
+            mimeType: recordingResult.mimeType,
+            language: 'pt',
+            includeWordTimestamps: true,
+          }),
+        });
 
-      const transcriptionData = await transcriptionResponse.json();
-      const userText = transcriptionData?.text;
-      if (!userText || userText.trim() === '') {
-        throw new Error('Não foi possível entender o áudio');
+        console.log('[VoiceAssistant] Transcription response status:', transcriptionResponse.status);
+
+        if (!transcriptionResponse.ok) {
+          const errorData = await transcriptionResponse.json().catch(() => ({}));
+          console.error('[VoiceAssistant] Transcription error:', errorData);
+          throw new Error(errorData.detail?.error || errorData.error || `Erro na transcrição: ${transcriptionResponse.status}`);
+        }
+
+        const transcriptionData = await transcriptionResponse.json();
+        console.log('[VoiceAssistant] Transcription data:', transcriptionData);
+        userText = transcriptionData?.text;
+        userWords = transcriptionData?.words;
+
+        if (!userText || userText.trim() === '') {
+          throw new Error('Não foi possível entender o áudio');
+        }
       }
 
       console.log('[VoiceAssistant] Transcribed:', userText.substring(0, 50));
-      console.log('[VoiceAssistant] Words received:', transcriptionData?.words?.length || 0);
+      console.log('[VoiceAssistant] Words:', userWords?.length || 0);
 
       // Adicionar mensagem do usuário com word timestamps
       addMessage('user', userText, {
-        words: transcriptionData?.words,
-        duration: transcriptionData?.duration,
+        words: userWords,
       });
 
       // 3. Chamar chat-router (Python Backend)
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
       const chatResponse = await fetch(`${voiceApiUrl}/functions/v1/chat-router`, {
         method: 'POST',
         headers: {
@@ -458,7 +664,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       currentStateRef.current = 'ready';
       setState((prev) => ({ ...prev, buttonState: 'ready' }));
     }
-  }, [transitionTo, stopFrequencyAnalysis, addMessage, startFrequencyAnalysis, finalConfig]);
+  }, [transitionTo, stopFrequencyAnalysis, addMessage, startFrequencyAnalysis, finalConfig, disconnectRealtimeSTT]);
 
   // ============================================================
   // HANDLER PRINCIPAL DO BOTÃO
@@ -502,6 +708,10 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      // v4.0.0: Cleanup WebSocket
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
   }, []);
 
@@ -513,6 +723,11 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
     frequencySource: state.frequencySource,
     error: state.error,
     isInitialized: state.isInitialized,
+
+    // v4.0.0: Real-time transcription state
+    realtimeTranscription: state.realtimeTranscription,
+    realtimeWords: state.realtimeWords,
+    isRealtimeConnected: state.isRealtimeConnected,
 
     // Actions
     initialize,

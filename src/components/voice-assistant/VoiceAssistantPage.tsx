@@ -1,21 +1,26 @@
 /**
  * ============================================================
- * VoiceAssistantPage.tsx - v5.2.0
+ * VoiceAssistantPage.tsx - v5.6.0
  * ============================================================
  * Layout em 3 colunas (1/3 cada):
- * - ESQUERDA: Container com falas do USUÁRIO
+ * - ESQUERDA: Container com falas do USUÁRIO (real-time STT)
  * - CENTRO: Botão + Voice Analyzer BIDIRECIONAL (centralizado)
- * - DIREITA: Container com falas do ROBÔ
+ * - DIREITA: Container com falas do ROBÔ (karaoke sincronizado)
  *
  * Características:
  * - Containers ocupam altura total da tela
  * - Scroll interno nos containers
- * - Texto SINCRONIZADO com a fala (velocidade calculada)
+ * - Karaoke ISOLADO para assistente (useAssistantKaraoke)
+ * - Transcrição em tempo real para usuário (WebSocket STT)
  * - Voice Analyzer bidirecional
  *
  * v5.0.0: Karaoke Text - palavras destacadas em sincronia com áudio TTS
  * v5.1.0: Fix condition para mostrar KaraokeText quando há words
- * v5.2.0: Simplificação - remove estado userKaraokeEnabled, hook detecta novas words
+ * v5.2.0: Simplificação - remove estado userKaraokeEnabled
+ * v5.3.0: Fix render loop - stable empty array references
+ * v5.4.0: Karaoke apenas para assistente - usuário mostra texto estático
+ * v5.5.0: Karaoke em TEMPO REAL para usuário via WebSocket STT
+ * v5.6.0: Hook ISOLADO para karaoke do assistente (useAssistantKaraoke)
  * ============================================================
  */
 
@@ -24,7 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, RefreshCw, User, Bot, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceAssistant } from '@/hooks/useVoiceAssistant';
-import { useKaraokeSync } from '@/hooks/useKaraokeSync';
+import { useAssistantKaraoke } from '@/hooks/useAssistantKaraoke';
 import { VoiceButton } from './VoiceButton';
 import { VoiceAnalyzer } from './VoiceAnalyzer';
 import { KaraokeText } from './KaraokeText';
@@ -142,6 +147,7 @@ const SyncedTypewriterText: React.FC<{
 // COMPONENTE: TranscriptionContainer
 // Container de transcrição com altura total e scroll interno
 // v5.0.0: Suporte a Karaoke Text
+// v5.5.0: Suporte a transcrição em tempo real
 // ============================================================
 const TranscriptionContainer: React.FC<{
   title: string;
@@ -159,7 +165,13 @@ const TranscriptionContainer: React.FC<{
     currentTime: number;
     isPlaying: boolean;
   };
-}> = ({ title, icon, messages, borderColor, iconBgColor, isActive, emptyText, isTyping, variant = 'assistant', karaokeState }) => {
+  // v5.5.0: Props para transcrição em tempo real
+  realtimeContent?: {
+    text: string;
+    words: WordTiming[];
+    isConnected: boolean;
+  };
+}> = ({ title, icon, messages, borderColor, iconBgColor, isActive, emptyText, isTyping, variant = 'assistant', karaokeState, realtimeContent }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll para baixo quando novas mensagens chegam ou texto é atualizado
@@ -167,7 +179,7 @@ const TranscriptionContainer: React.FC<{
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, realtimeContent?.text]);
 
   // Scroll contínuo durante digitação
   useEffect(() => {
@@ -226,7 +238,61 @@ const TranscriptionContainer: React.FC<{
           scrollbarColor: 'rgba(100, 100, 100, 0.3) transparent',
         }}
       >
-        {messages.length === 0 ? (
+        {/* v5.5.0: Mostrar transcrição em tempo real durante gravação */}
+        {realtimeContent && isActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className={cn(
+              'p-3 rounded-lg',
+              borderColor.includes('cyan')
+                ? 'bg-cyan-500/10 border border-cyan-500/30'
+                : 'bg-emerald-500/10 border border-emerald-500/30'
+            )}
+          >
+            {/* Status badge */}
+            <div className="flex items-center gap-2 mb-2">
+              <motion.div
+                className={cn(
+                  'w-2 h-2 rounded-full',
+                  realtimeContent.isConnected ? 'bg-emerald-400' : 'bg-yellow-400'
+                )}
+                animate={{ opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+              <span className="text-xs text-muted-foreground">
+                {realtimeContent.isConnected ? 'Transcrevendo...' : 'Aguardando...'}
+              </span>
+            </div>
+
+            {/* Karaoke ou texto simples */}
+            {/* v5.5.0: Para tempo real, sempre mostra todas as palavras como já faladas */}
+            {realtimeContent.words.length > 0 ? (
+              <KaraokeText
+                words={realtimeContent.words}
+                currentWordIndex={realtimeContent.words.length - 1}
+                currentTime={realtimeContent.words[realtimeContent.words.length - 1]?.end || 0}
+                isPlaying={true}
+                variant={variant}
+              />
+            ) : realtimeContent.text ? (
+              <p className="text-sm text-foreground leading-relaxed">
+                {realtimeContent.text}
+                <motion.span
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.5, repeat: Infinity }}
+                  className="inline-block w-0.5 h-4 bg-current ml-0.5 align-middle"
+                />
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                Fale agora...
+              </p>
+            )}
+          </motion.div>
+        )}
+
+        {messages.length === 0 && !realtimeContent ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <motion.div
               className={cn('w-16 h-16 rounded-full flex items-center justify-center mb-4 opacity-30', iconBgColor)}
@@ -246,16 +312,6 @@ const TranscriptionContainer: React.FC<{
               // v5.1.0: Usar Karaoke quando há words (mesmo após terminar de tocar)
               const hasWords = msg.words && msg.words.length > 0;
               const useKaraoke = isLastMessage && hasWords && karaokeState;
-
-              // DEBUG
-              if (isLastMessage && hasWords) {
-                console.log('[TranscriptionContainer] Last message with words:', {
-                  variant,
-                  wordsCount: msg.words?.length,
-                  useKaraoke,
-                  karaokeState,
-                });
-              }
 
               return (
                 <motion.div
@@ -391,51 +447,37 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
     handleButtonClick,
     forceReset,
     getAudioElement,
+    // v5.5.0: Real-time transcription state
+    realtimeTranscription,
+    realtimeWords,
+    isRealtimeConnected,
   } = useVoiceAssistant({ welcomeMessage, voice });
 
   // Estados de atividade (movido para cima para uso no karaokeSync)
   const isRobotSpeaking = buttonState === 'greeting' || buttonState === 'speaking';
   const isUserSpeaking = buttonState === 'recording';
 
-  // v5.0.0: Última mensagem do robô (para karaoke com áudio)
+  // v5.5.0: Última mensagem do assistente (para karaoke com áudio TTS)
   const lastAssistantMessage = useMemo(() => {
     const assistantMsgs = messages.filter((m) => m.role === 'assistant');
     return assistantMsgs[assistantMsgs.length - 1];
   }, [messages]);
 
-  // v5.0.0: Última mensagem do usuário (para karaoke simulado)
-  const lastUserMessage = useMemo(() => {
-    const userMsgs = messages.filter((m) => m.role === 'user');
-    return userMsgs[userMsgs.length - 1];
-  }, [messages]);
+  // v5.5.0: Stable empty words reference
+  const EMPTY_WORDS: WordTiming[] = useMemo(() => [], []);
 
-  // Karaoke sync para ROBÔ (usa áudio real)
-  // Habilitado sempre que há words - o hook gerencia start/stop baseado no áudio
-  const karaokeSyncRobot = useKaraokeSync({
-    words: lastAssistantMessage?.words || [],
+  // v5.6.0: Words para assistente (TTS)
+  const assistantWords = useMemo(
+    () => lastAssistantMessage?.words || EMPTY_WORDS,
+    [lastAssistantMessage?.words, EMPTY_WORDS]
+  );
+
+  // v5.6.0: Karaoke ISOLADO para ASSISTENTE (hook dedicado)
+  const assistantKaraoke = useAssistantKaraoke({
+    words: assistantWords,
     getAudioElement,
-    enabled: !!lastAssistantMessage?.words && lastAssistantMessage.words.length > 0,
-    simulatePlayback: false,
+    enabled: assistantWords.length > 0,
   });
-
-  // v5.2.0: Karaoke sync para USUÁRIO - simplificado
-  // Habilita automaticamente quando há words - o hook detecta novas words e inicia
-  const karaokeSyncUser = useKaraokeSync({
-    words: lastUserMessage?.words || [],
-    enabled: !!lastUserMessage?.words && lastUserMessage.words.length > 0,
-    simulatePlayback: true,
-  });
-
-  // DEBUG: Log karaoke state
-  useEffect(() => {
-    console.log('[VoiceAssistantPage] Karaoke Debug:', {
-      isRobotSpeaking,
-      robotWords: lastAssistantMessage?.words?.length || 0,
-      robotKaraoke: karaokeSyncRobot,
-      userWords: lastUserMessage?.words?.length || 0,
-      userKaraoke: karaokeSyncUser,
-    });
-  }, [isRobotSpeaking, lastAssistantMessage?.words, karaokeSyncRobot, lastUserMessage?.words, karaokeSyncUser]);
 
   // Track de mensagens anteriores para detectar novas
   const prevMessagesCountRef = useRef({ user: 0, assistant: 0 });
@@ -485,6 +527,7 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
       {/* Layout principal em 3 colunas */}
       <main className="flex-1 flex overflow-hidden">
         {/* COLUNA ESQUERDA (1/3) - Transcrição do Usuário */}
+        {/* v5.5.0: Usuário com karaoke em tempo real via WebSocket STT */}
         <div className="w-1/3 p-4 flex flex-col">
           <TranscriptionContainer
             title="Você"
@@ -496,11 +539,11 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             emptyText="Suas perguntas aparecerão aqui"
             isTyping={false}
             variant="user"
-            karaokeState={{
-              currentWordIndex: karaokeSyncUser.currentWordIndex,
-              currentTime: karaokeSyncUser.currentTime,
-              isPlaying: karaokeSyncUser.isPlaying,
-            }}
+            realtimeContent={isUserSpeaking ? {
+              text: realtimeTranscription,
+              words: realtimeWords,
+              isConnected: isRealtimeConnected,
+            } : undefined}
           />
         </div>
 
@@ -534,7 +577,14 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
               {buttonState === 'idle' && 'Pressione Play para começar'}
               {buttonState === 'greeting' && 'Aguarde a saudação'}
               {buttonState === 'ready' && 'Clique no microfone e fale'}
-              {buttonState === 'recording' && 'Clique em Stop quando terminar'}
+              {buttonState === 'recording' && (
+                <>
+                  Clique em Stop quando terminar
+                  {isRealtimeConnected && (
+                    <span className="ml-2 text-emerald-400">• Tempo real</span>
+                  )}
+                </>
+              )}
               {buttonState === 'processing' && 'Processando sua pergunta'}
               {buttonState === 'speaking' && 'Ouvindo a resposta'}
             </p>
@@ -655,9 +705,9 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             isTyping={isRobotSpeaking}
             variant="assistant"
             karaokeState={{
-              currentWordIndex: karaokeSyncRobot.currentWordIndex,
-              currentTime: karaokeSyncRobot.currentTime,
-              isPlaying: karaokeSyncRobot.isPlaying,
+              currentWordIndex: assistantKaraoke.currentWordIndex,
+              currentTime: assistantKaraoke.currentTime,
+              isPlaying: assistantKaraoke.isPlaying,
             }}
           />
         </div>

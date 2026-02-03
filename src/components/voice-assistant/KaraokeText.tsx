@@ -48,7 +48,7 @@ const getWordState = (
   return 'pending';
 };
 
-export const KaraokeText: React.FC<KaraokeTextProps> = ({
+export const KaraokeText: React.FC<KaraokeTextProps> = React.memo(({
   words,
   currentWordIndex,
   currentTime,
@@ -56,15 +56,6 @@ export const KaraokeText: React.FC<KaraokeTextProps> = ({
   className,
   variant = 'assistant',
 }) => {
-  // DEBUG
-  console.log('[KaraokeText] Render:', {
-    wordsCount: words?.length || 0,
-    currentWordIndex,
-    currentTime: currentTime?.toFixed(2),
-    isPlaying,
-    variant,
-  });
-
   if (!words || words.length === 0) {
     return null;
   }
@@ -120,7 +111,7 @@ export const KaraokeText: React.FC<KaraokeTextProps> = ({
       )}
     </p>
   );
-};
+});
 
 // Versão simplificada para quando não há áudio tocando (mostra tudo)
 export const KaraokeTextStatic: React.FC<{

@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * useKaraokeSync Hook - v3.1.0
+ * useKaraokeSync Hook - v3.2.0
  * ============================================================
  * Sincroniza a reprodução de áudio com o índice de palavras
  * para efeito karaokê em tempo real.
@@ -12,6 +12,7 @@
  * - v2.0.0: Aceita getter function para audioElement (reativo)
  * - v3.0.0: Modo simulado para quando não há áudio (ex: transcrição do usuário)
  * - v3.1.0: Fix race conditions - efeito único para simulação, detecção robusta de novas words
+ * - v3.2.0: Reduce console spam - only log when words.length > 0
  * ============================================================
  */
 
@@ -55,7 +56,10 @@ export function useKaraokeSync({
   // Manter wordsRef atualizado
   useEffect(() => {
     wordsRef.current = words;
-    console.log('[KaraokeSync] Words updated:', words?.length || 0);
+    // Só logar quando há words para evitar spam
+    if (words && words.length > 0) {
+      console.log('[KaraokeSync] Words updated:', words.length);
+    }
   }, [words]);
 
   // Função para encontrar o índice da palavra atual baseado no tempo
