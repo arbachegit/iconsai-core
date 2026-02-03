@@ -296,13 +296,13 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
 
       try {
         if (attachedDocumentId) {
+          const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
           const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-router`,
+            `${voiceApiUrl}/functions/v1/chat-router`,
             {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
               },
               body: JSON.stringify({
                 messages: newMessages.map((m) => ({ role: m.role, content: m.content })),

@@ -121,17 +121,13 @@ export class VoicePlayer {
   async playFromTTS(text: string, chatType: string = 'home', voice: string = 'nova'): Promise<void> {
     console.log('[VoicePlayer] TTS request:', { textLength: text.length, voice });
 
-    // Use fetch directly to get proper binary response
-    // supabase.functions.invoke sometimes doesn't handle binary correctly
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    // Use Voice API backend (Python FastAPI with ElevenLabs)
+    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
 
-    const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
+    const response = await fetch(`${voiceApiUrl}/functions/v1/text-to-speech`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
-        'apikey': supabaseKey,
       },
       body: JSON.stringify({ text, chatType, voice, speed: 1.0 }),
     });
@@ -165,15 +161,13 @@ export class VoicePlayer {
   ): Promise<KaraokeTTSResult> {
     console.log('[VoicePlayer] Karaoke TTS fetch:', { textLength: text.length, voice });
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    // Use Voice API backend (Python FastAPI with ElevenLabs native timestamps)
+    const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
 
-    const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech-karaoke`, {
+    const response = await fetch(`${voiceApiUrl}/functions/v1/text-to-speech-karaoke`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
-        'apikey': supabaseKey,
       },
       body: JSON.stringify({ text, chatType, voice, speed: 1.0 }),
     });

@@ -80,15 +80,14 @@ export function useVoiceNarration(topic: string): UseVoiceNarrationReturn {
 
       console.log(`[VoiceNarration] Script found: ${script.title}`);
 
-      // Step 2: Generate audio via TTS (using fetch for binary data)
+      // Step 2: Generate audio via TTS (using Voice API backend)
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+        `${voiceApiUrl}/functions/v1/text-to-speech`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
             text: script.audio_script,

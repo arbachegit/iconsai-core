@@ -154,13 +154,13 @@ export class AudioStreamPlayer {
 }
 
 export async function generateAudioUrl(text: string, chatType?: "study" | "health"): Promise<string> {
-  const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`;
-  
+  const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+  const TTS_URL = `${voiceApiUrl}/functions/v1/text-to-speech`;
+
   const response = await fetch(TTS_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
     body: JSON.stringify({ text, chatType }),
   });

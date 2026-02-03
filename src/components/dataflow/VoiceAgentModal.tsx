@@ -122,16 +122,15 @@ export function VoiceAgentModal({ isOpen, onClose, topic, salesmanId }: VoiceAge
       setScript(scriptResponse.data);
       startTimeRef.current = Date.now();
 
-      // Gerar áudio via TTS usando fetch direto para receber bytes corretamente
+      // Gerar áudio via Voice API backend
       try {
+        const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+          `${voiceApiUrl}/functions/v1/text-to-speech`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             },
             body: JSON.stringify({
               text: scriptResponse.data.audio_script,

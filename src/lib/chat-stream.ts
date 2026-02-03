@@ -38,15 +38,15 @@ export async function streamChat({
   region,
   agentConfig,
 }: StreamChatOptions) {
-  // Use the new unified chat-router endpoint
-  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-router`;
+  // Use Voice API backend for chat-router
+  const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
+  const CHAT_URL = `${voiceApiUrl}/functions/v1/chat-router`;
 
   try {
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
       body: JSON.stringify({ 
         messages: messages.map(m => ({

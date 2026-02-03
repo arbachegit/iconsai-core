@@ -415,16 +415,13 @@ export class VoiceService {
 
   private async textToSpeech(text: string): Promise<{ success: boolean; audioUrl?: string; error?: string }> {
     try {
-      // Use fetch directly to get proper binary response
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // Use Voice API backend (Python FastAPI with ElevenLabs)
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/text-to-speech`, {
+      const response = await fetch(`${voiceApiUrl}/functions/v1/text-to-speech`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey,
         },
         body: JSON.stringify({
           text,

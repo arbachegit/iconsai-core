@@ -135,15 +135,14 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
         bodyPayload.phoneticMapOverride = overrideOptions.phoneticMapOverride;
       }
 
-      // Use fetch directly because the edge function returns streaming audio
+      // Use Voice API backend for TTS
+      const voiceApiUrl = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_SUPABASE_URL;
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+        `${voiceApiUrl}/functions/v1/text-to-speech`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify(bodyPayload),
         }
