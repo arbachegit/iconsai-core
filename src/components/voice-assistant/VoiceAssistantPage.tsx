@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * VoiceAssistantPage.tsx - v5.0.0
+ * VoiceAssistantPage.tsx - v5.2.0
  * ============================================================
  * Layout em 3 colunas (1/3 cada):
  * - ESQUERDA: Container com falas do USUÁRIO
@@ -13,13 +13,13 @@
  * - Texto SINCRONIZADO com a fala (velocidade calculada)
  * - Voice Analyzer bidirecional
  *
- * v5.0.0: Karaoke Text
- * - Palavras destacadas em sincronia com o áudio TTS
- * - Usa word timestamps do Whisper
+ * v5.0.0: Karaoke Text - palavras destacadas em sincronia com áudio TTS
+ * v5.1.0: Fix condition para mostrar KaraokeText quando há words
+ * v5.2.0: Simplificação - remove estado userKaraokeEnabled, hook detecta novas words
  * ============================================================
  */
 
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, RefreshCw, User, Bot, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -243,19 +243,15 @@ const TranscriptionContainer: React.FC<{
               const isLastMessage = index === messages.length - 1;
               const shouldType = isLastMessage && isTyping && msg.isNew;
 
-              // v5.0.0: Usar Karaoke quando há words e está tocando
-              const useKaraoke =
-                isLastMessage &&
-                msg.words &&
-                msg.words.length > 0 &&
-                karaokeState &&
-                karaokeState.isPlaying;
+              // v5.1.0: Usar Karaoke quando há words (mesmo após terminar de tocar)
+              const hasWords = msg.words && msg.words.length > 0;
+              const useKaraoke = isLastMessage && hasWords && karaokeState;
 
               // DEBUG
-              if (isLastMessage && msg.words && msg.words.length > 0) {
+              if (isLastMessage && hasWords) {
                 console.log('[TranscriptionContainer] Last message with words:', {
                   variant,
-                  wordsCount: msg.words.length,
+                  wordsCount: msg.words?.length,
                   useKaraoke,
                   karaokeState,
                 });
@@ -414,41 +410,19 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
   }, [messages]);
 
   // Karaoke sync para ROBÔ (usa áudio real)
+  // Habilitado sempre que há words - o hook gerencia start/stop baseado no áudio
   const karaokeSyncRobot = useKaraokeSync({
     words: lastAssistantMessage?.words || [],
     getAudioElement,
-    enabled: isRobotSpeaking && !!lastAssistantMessage?.words,
+    enabled: !!lastAssistantMessage?.words && lastAssistantMessage.words.length > 0,
     simulatePlayback: false,
   });
 
-  // Karaoke sync para USUÁRIO (simula baseado nos timestamps)
-  // Ativa quando uma nova mensagem do usuário é adicionada com words
-  const [userKaraokeEnabled, setUserKaraokeEnabled] = useState(false);
-  const lastUserWordsRef = useRef<WordTiming[] | undefined>(undefined);
-
-  // Detectar quando uma nova mensagem do usuário com words chega
-  useEffect(() => {
-    const hasNewUserWords =
-      lastUserMessage?.words &&
-      lastUserMessage.words.length > 0 &&
-      lastUserMessage.words !== lastUserWordsRef.current;
-
-    if (hasNewUserWords) {
-      console.log('[VoiceAssistantPage] New user message with words, starting simulation');
-      lastUserWordsRef.current = lastUserMessage.words;
-      setUserKaraokeEnabled(true);
-
-      // Desabilitar após a duração das palavras
-      const duration = lastUserMessage.words[lastUserMessage.words.length - 1].end * 1000;
-      setTimeout(() => {
-        setUserKaraokeEnabled(false);
-      }, duration + 500);
-    }
-  }, [lastUserMessage?.words]);
-
+  // v5.2.0: Karaoke sync para USUÁRIO - simplificado
+  // Habilita automaticamente quando há words - o hook detecta novas words e inicia
   const karaokeSyncUser = useKaraokeSync({
     words: lastUserMessage?.words || [],
-    enabled: userKaraokeEnabled && !!lastUserMessage?.words,
+    enabled: !!lastUserMessage?.words && lastUserMessage.words.length > 0,
     simulatePlayback: true,
   });
 
@@ -459,10 +433,9 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
       robotWords: lastAssistantMessage?.words?.length || 0,
       robotKaraoke: karaokeSyncRobot,
       userWords: lastUserMessage?.words?.length || 0,
-      userKaraokeEnabled,
       userKaraoke: karaokeSyncUser,
     });
-  }, [isRobotSpeaking, lastAssistantMessage?.words, karaokeSyncRobot, lastUserMessage?.words, userKaraokeEnabled, karaokeSyncUser]);
+  }, [isRobotSpeaking, lastAssistantMessage?.words, karaokeSyncRobot, lastUserMessage?.words, karaokeSyncUser]);
 
   // Track de mensagens anteriores para detectar novas
   const prevMessagesCountRef = useRef({ user: 0, assistant: 0 });

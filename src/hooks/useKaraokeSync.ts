@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * useKaraokeSync Hook - v3.0.0
+ * useKaraokeSync Hook - v3.1.0
  * ============================================================
  * Sincroniza a reprodução de áudio com o índice de palavras
  * para efeito karaokê em tempo real.
@@ -11,6 +11,7 @@
  * - Compatível com Safari/iOS
  * - v2.0.0: Aceita getter function para audioElement (reativo)
  * - v3.0.0: Modo simulado para quando não há áudio (ex: transcrição do usuário)
+ * - v3.1.0: Fix race conditions - efeito único para simulação, detecção robusta de novas words
  * ============================================================
  */
 
@@ -171,10 +172,31 @@ export function useKaraokeSync({
     }
   }, [enabled, findCurrentWordIndex, getTotalDuration]);
 
+  // v3.1.0: Ref para rastrear última words do áudio
+  const lastAudioWordsIdRef = useRef<string | null>(null);
+
   // Efeito para modo ÁUDIO REAL
   useEffect(() => {
     if (simulatePlayback || !enabled || !words || words.length === 0 || !getAudioElement) {
       return;
+    }
+
+    // Gerar ID único para este conjunto de words
+    const wordsId = `${words.length}-${words[0]?.word}-${words[words.length - 1]?.end}`;
+    const isNewWords = wordsId !== lastAudioWordsIdRef.current;
+
+    if (isNewWords) {
+      console.log('[KaraokeSync] New audio words detected:', wordsId);
+      lastAudioWordsIdRef.current = wordsId;
+      lastWordIndexRef.current = -1;
+
+      // Reset state para novo áudio
+      setState({
+        currentWordIndex: -1,
+        currentTime: 0,
+        isPlaying: false,
+        progress: 0,
+      });
     }
 
     // Polling para detectar quando o audioElement está disponível e tocando
@@ -191,6 +213,17 @@ export function useKaraokeSync({
           console.log('[KaraokeSync] Starting audio sync loop, words:', wordsRef.current?.length);
           animationFrameRef.current = requestAnimationFrame(updateLoopAudio);
         }
+      } else if (audioElement && audioElement.ended) {
+        // Áudio terminou - mostrar todas as palavras como completed
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+        setState((prev) => ({
+          ...prev,
+          currentWordIndex: wordsRef.current?.length ? wordsRef.current.length - 1 : -1,
+          isPlaying: false,
+        }));
       }
     }, 50);
 
@@ -203,21 +236,56 @@ export function useKaraokeSync({
     };
   }, [simulatePlayback, enabled, words, getAudioElement, updateLoopAudio]);
 
-  // Efeito para modo SIMULADO
+  // v3.1.0: Ref para rastrear última words reference (para detectar mudança real)
+  const lastWordsIdRef = useRef<string | null>(null);
+
+  // Efeito ÚNICO para modo SIMULADO - evita race conditions
   useEffect(() => {
+    // Gerar ID único para este conjunto de words
+    const wordsId = words && words.length > 0
+      ? `${words.length}-${words[0]?.word}-${words[words.length - 1]?.end}`
+      : null;
+
+    const isNewWords = wordsId !== lastWordsIdRef.current && wordsId !== null;
+
     if (!simulatePlayback || !enabled || !words || words.length === 0) {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
       simulationStartRef.current = null;
+      // Não resetar lastWordsIdRef aqui para permitir re-enable
       return;
     }
 
-    // Iniciar simulação imediatamente
-    console.log('[KaraokeSync] Starting SIMULATION mode, words:', words.length);
-    simulationStartRef.current = performance.now();
-    animationFrameRef.current = requestAnimationFrame(updateLoopSimulation);
+    // Se é um novo conjunto de words OU se está habilitando pela primeira vez
+    if (isNewWords || !simulationStartRef.current) {
+      console.log('[KaraokeSync] Starting/Restarting SIMULATION mode:', {
+        wordsCount: words.length,
+        isNewWords,
+        wordsId,
+      });
+
+      lastWordsIdRef.current = wordsId;
+      lastWordIndexRef.current = -1;
+
+      // Reset state antes de iniciar
+      setState({
+        currentWordIndex: -1,
+        currentTime: 0,
+        isPlaying: true, // Marca como playing imediatamente
+        progress: 0,
+      });
+
+      // Cancelar animação anterior se existir
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      // Iniciar nova simulação
+      simulationStartRef.current = performance.now();
+      animationFrameRef.current = requestAnimationFrame(updateLoopSimulation);
+    }
 
     return () => {
       if (animationFrameRef.current) {
@@ -227,26 +295,6 @@ export function useKaraokeSync({
       simulationStartRef.current = null;
     };
   }, [simulatePlayback, enabled, words, updateLoopSimulation]);
-
-  // Reset quando words mudam
-  useEffect(() => {
-    lastWordIndexRef.current = -1;
-    setState({
-      currentWordIndex: -1,
-      currentTime: 0,
-      isPlaying: false,
-      progress: 0,
-    });
-
-    // Se em modo simulado e palavras mudaram, reiniciar simulação
-    if (simulatePlayback && words && words.length > 0 && enabled) {
-      console.log('[KaraokeSync] Words changed, restarting simulation');
-      simulationStartRef.current = performance.now();
-      if (!animationFrameRef.current) {
-        animationFrameRef.current = requestAnimationFrame(updateLoopSimulation);
-      }
-    }
-  }, [words, simulatePlayback, enabled, updateLoopSimulation]);
 
   return state;
 }
