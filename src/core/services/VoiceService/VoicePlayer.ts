@@ -155,15 +155,15 @@ export class VoicePlayer {
   }
 
   /**
-   * v2.0.0: Play audio from Karaoke TTS edge function
-   * Returns word timestamps for synchronized display
+   * v2.0.0: Fetch Karaoke TTS data without playing
+   * Returns word timestamps and audio URL for synchronized display
    */
-  async playFromKaraokeTTS(
+  async fetchKaraokeTTS(
     text: string,
     chatType: string = 'home',
     voice: string = 'nova'
   ): Promise<KaraokeTTSResult> {
-    console.log('[VoicePlayer] Karaoke TTS request:', { textLength: text.length, voice });
+    console.log('[VoicePlayer] Karaoke TTS fetch:', { textLength: text.length, voice });
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -204,15 +204,26 @@ export class VoicePlayer {
     const blob = new Blob([bytes], { type: data.audioMimeType || 'audio/mpeg' });
     const audioUrl = URL.createObjectURL(blob);
 
-    // Reproduzir áudio
-    await this.play(audioUrl);
-
     return {
       audioUrl,
       words: data.words || [],
       duration: data.duration,
       text: data.text || text,
     };
+  }
+
+  /**
+   * v2.0.0: Fetch and play Karaoke TTS (convenience method)
+   * Use fetchKaraokeTTS + play separately for better control of timing
+   */
+  async playFromKaraokeTTS(
+    text: string,
+    chatType: string = 'home',
+    voice: string = 'nova'
+  ): Promise<KaraokeTTSResult> {
+    const result = await this.fetchKaraokeTTS(text, chatType, voice);
+    await this.play(result.audioUrl);
+    return result;
   }
 
   /**

@@ -399,7 +399,7 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
 
   const karaokeSync = useKaraokeSync({
     words: lastAssistantMessage?.words || [],
-    audioElement: getAudioElement(),
+    getAudioElement, // v5.0.0: Passa função getter, não o elemento
     enabled: isRobotSpeaking && !!lastAssistantMessage?.words,
   });
 

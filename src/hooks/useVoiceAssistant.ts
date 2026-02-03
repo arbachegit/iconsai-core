@@ -261,6 +261,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
   // ============================================================
   // PLAY WELCOME (Estado: idle → greeting → ready)
   // v3.0.0: Usa Karaoke TTS para word timestamps
+  // v3.1.0: Busca words ANTES de tocar para sync correto
   // ============================================================
   const playWelcome = useCallback(async () => {
     if (currentStateRef.current !== 'idle') {
@@ -274,25 +275,27 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
     if (!transitionTo('greeting')) return;
 
     try {
-      // Adicionar mensagem de boas-vindas ao chat (sem words ainda)
-      addMessage('assistant', finalConfig.welcomeMessage);
-
-      // Tocar TTS com Karaoke
-      startFrequencyAnalysis('robot');
-
-      const karaokeResult = await playerRef.current?.playFromKaraokeTTS(
+      // 1. Buscar TTS com Karaoke PRIMEIRO (sem tocar ainda)
+      console.log('[VoiceAssistant] Fetching karaoke TTS for welcome...');
+      const karaokeResult = await playerRef.current?.fetchKaraokeTTS(
         finalConfig.welcomeMessage,
         'home',
         finalConfig.voice
       );
 
-      // Atualizar mensagem com words se disponíveis
-      if (karaokeResult?.words && karaokeResult.words.length > 0) {
-        updateLastMessage({
-          words: karaokeResult.words,
-          duration: karaokeResult.duration || undefined,
-          audioUrl: karaokeResult.audioUrl,
-        });
+      // 2. Adicionar mensagem JÁ com words (antes de tocar)
+      addMessage('assistant', finalConfig.welcomeMessage, {
+        words: karaokeResult?.words,
+        duration: karaokeResult?.duration || undefined,
+        audioUrl: karaokeResult?.audioUrl,
+      });
+
+      console.log('[VoiceAssistant] Message added with', karaokeResult?.words?.length || 0, 'words');
+
+      // 3. Agora tocar o áudio (words já disponíveis para sync)
+      startFrequencyAnalysis('robot');
+      if (karaokeResult?.audioUrl) {
+        await playerRef.current?.play(karaokeResult.audioUrl);
       }
 
       // onEnded callback vai transicionar para 'ready'
@@ -304,7 +307,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       }));
       forceReset();
     }
-  }, [transitionTo, addMessage, updateLastMessage, startFrequencyAnalysis, forceReset, finalConfig]);
+  }, [transitionTo, addMessage, startFrequencyAnalysis, forceReset, finalConfig]);
 
   // ============================================================
   // START RECORDING (Estado: ready → recording)
@@ -408,24 +411,27 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       // 4. Transicionar para speaking e reproduzir TTS com Karaoke
       if (!transitionTo('speaking')) return;
 
-      // Adicionar mensagem do assistente (sem words ainda)
-      addMessage('assistant', assistantText);
-
-      // Reproduzir resposta com Karaoke TTS
-      startFrequencyAnalysis('robot');
-      const karaokeResult = await playerRef.current?.playFromKaraokeTTS(
+      // 4a. Buscar TTS com Karaoke PRIMEIRO (sem tocar ainda)
+      console.log('[VoiceAssistant] Fetching karaoke TTS for response...');
+      const karaokeResult = await playerRef.current?.fetchKaraokeTTS(
         assistantText,
         'home',
         finalConfig.voice
       );
 
-      // Atualizar mensagem com words se disponíveis
-      if (karaokeResult?.words && karaokeResult.words.length > 0) {
-        updateLastMessage({
-          words: karaokeResult.words,
-          duration: karaokeResult.duration || undefined,
-          audioUrl: karaokeResult.audioUrl,
-        });
+      // 4b. Adicionar mensagem JÁ com words (antes de tocar)
+      addMessage('assistant', assistantText, {
+        words: karaokeResult?.words,
+        duration: karaokeResult?.duration || undefined,
+        audioUrl: karaokeResult?.audioUrl,
+      });
+
+      console.log('[VoiceAssistant] Response message added with', karaokeResult?.words?.length || 0, 'words');
+
+      // 4c. Agora tocar o áudio (words já disponíveis para sync)
+      startFrequencyAnalysis('robot');
+      if (karaokeResult?.audioUrl) {
+        await playerRef.current?.play(karaokeResult.audioUrl);
       }
 
       // onEnded callback vai transicionar para 'ready'
@@ -441,7 +447,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
       currentStateRef.current = 'ready';
       setState((prev) => ({ ...prev, buttonState: 'ready' }));
     }
-  }, [transitionTo, stopFrequencyAnalysis, addMessage, updateLastMessage, startFrequencyAnalysis, finalConfig]);
+  }, [transitionTo, stopFrequencyAnalysis, addMessage, startFrequencyAnalysis, finalConfig]);
 
   // ============================================================
   // HANDLER PRINCIPAL DO BOTÃO

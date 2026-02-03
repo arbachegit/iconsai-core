@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * useKaraokeSync Hook - v1.0.0
+ * useKaraokeSync Hook - v2.0.0
  * ============================================================
  * Sincroniza a reprodução de áudio com o índice de palavras
  * para efeito karaokê em tempo real.
@@ -9,6 +9,7 @@
  * - Usa requestAnimationFrame para updates suaves (60fps)
  * - Calcula currentWordIndex baseado no currentTime do áudio
  * - Compatível com Safari/iOS
+ * - v2.0.0: Aceita getter function para audioElement (reativo)
  * ============================================================
  */
 
@@ -24,13 +25,13 @@ export interface KaraokeSyncState {
 
 export interface UseKaraokeSyncOptions {
   words: WordTiming[];
-  audioElement: HTMLAudioElement | null;
+  getAudioElement: () => HTMLAudioElement | null;
   enabled?: boolean;
 }
 
 export function useKaraokeSync({
   words,
-  audioElement,
+  getAudioElement,
   enabled = true,
 }: UseKaraokeSyncOptions): KaraokeSyncState {
   const [state, setState] = useState<KaraokeSyncState>({
@@ -42,49 +43,43 @@ export function useKaraokeSync({
 
   const animationFrameRef = useRef<number | null>(null);
   const lastWordIndexRef = useRef<number>(-1);
+  const wordsRef = useRef<WordTiming[]>(words);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+
+  // Manter wordsRef atualizado
+  useEffect(() => {
+    wordsRef.current = words;
+    console.log('[KaraokeSync] Words updated:', words?.length || 0);
+  }, [words]);
 
   // Função para encontrar o índice da palavra atual baseado no tempo
-  const findCurrentWordIndex = useCallback(
-    (time: number): number => {
-      if (!words || words.length === 0) return -1;
+  const findCurrentWordIndex = useCallback((time: number): number => {
+    const currentWords = wordsRef.current;
+    if (!currentWords || currentWords.length === 0) return -1;
 
-      // Busca binária otimizada para encontrar a palavra atual
-      let low = 0;
-      let high = words.length - 1;
-      let result = -1;
-
-      while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        const word = words[mid];
-
-        if (time >= word.start && time <= word.end) {
-          return mid; // Encontrou palavra exata
-        } else if (time > word.end) {
-          result = mid; // Palavra já passou, pode ser a última válida
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
+    // Busca linear simples (mais confiável para listas pequenas)
+    for (let i = 0; i < currentWords.length; i++) {
+      const word = currentWords[i];
+      if (time >= word.start && time <= word.end) {
+        return i;
       }
-
-      // Se o tempo está entre palavras, retorna a anterior
-      if (result >= 0 && time < words[result + 1]?.start) {
-        return result;
+      // Se o tempo está antes desta palavra, retorna a anterior
+      if (time < word.start) {
+        return i > 0 ? i - 1 : -1;
       }
+    }
 
-      // Se ainda não chegou na primeira palavra
-      if (words.length > 0 && time < words[0].start) {
-        return -1;
-      }
-
-      return result;
-    },
-    [words]
-  );
+    // Se passou de todas as palavras, retorna a última
+    return currentWords.length - 1;
+  }, []);
 
   // Loop de animação para sincronização suave
-  const updateSync = useCallback(() => {
-    if (!audioElement || !enabled) return;
+  const updateLoop = useCallback(() => {
+    const audioElement = getAudioElement();
+    if (!audioElement || !enabled) {
+      animationFrameRef.current = null;
+      return;
+    }
 
     const currentTime = audioElement.currentTime;
     const duration = audioElement.duration || 0;
@@ -93,29 +88,41 @@ export function useKaraokeSync({
 
     const wordIndex = findCurrentWordIndex(currentTime);
 
-    // Só atualiza state se houve mudança significativa
-    if (
-      wordIndex !== lastWordIndexRef.current ||
-      Math.abs(currentTime - state.currentTime) > 0.05 // 50ms threshold
-    ) {
-      lastWordIndexRef.current = wordIndex;
-      setState({
-        currentWordIndex: wordIndex,
-        currentTime,
-        isPlaying,
-        progress,
-      });
-    }
+    // Atualiza state
+    setState((prev) => {
+      // Só atualiza se houve mudança significativa
+      if (
+        wordIndex !== prev.currentWordIndex ||
+        Math.abs(currentTime - prev.currentTime) > 0.03 || // 30ms threshold
+        isPlaying !== prev.isPlaying
+      ) {
+        return {
+          currentWordIndex: wordIndex,
+          currentTime,
+          isPlaying,
+          progress,
+        };
+      }
+      return prev;
+    });
+
+    lastWordIndexRef.current = wordIndex;
 
     // Continuar loop se estiver tocando
     if (isPlaying) {
-      animationFrameRef.current = requestAnimationFrame(updateSync);
+      animationFrameRef.current = requestAnimationFrame(updateLoop);
+    } else {
+      animationFrameRef.current = null;
     }
-  }, [audioElement, enabled, findCurrentWordIndex, state.currentTime]);
+  }, [getAudioElement, enabled, findCurrentWordIndex]);
 
-  // Setup e cleanup do loop de animação
+  // Iniciar/parar loop baseado no estado do áudio
   useEffect(() => {
-    if (!audioElement || !enabled || !words || words.length === 0) {
+    if (!enabled || !words || words.length === 0) {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
       setState({
         currentWordIndex: -1,
         currentTime: 0,
@@ -125,70 +132,40 @@ export function useKaraokeSync({
       return;
     }
 
-    const handlePlay = () => {
-      animationFrameRef.current = requestAnimationFrame(updateSync);
-    };
+    // Polling para detectar quando o audioElement está disponível e tocando
+    const checkInterval = setInterval(() => {
+      const audioElement = getAudioElement();
 
-    const handlePause = () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+      // Se o elemento mudou, atualizar ref e listeners
+      if (audioElement !== audioElementRef.current) {
+        console.log('[KaraokeSync] Audio element changed:', !!audioElement);
+        audioElementRef.current = audioElement;
       }
-      // Atualizar estado final
-      setState((prev) => ({
-        ...prev,
-        isPlaying: false,
-      }));
-    };
 
-    const handleEnded = () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+      if (audioElement && !audioElement.paused && !audioElement.ended) {
+        // Está tocando, iniciar loop se não estiver rodando
+        if (!animationFrameRef.current) {
+          console.log('[KaraokeSync] Starting sync loop, words:', wordsRef.current?.length);
+          animationFrameRef.current = requestAnimationFrame(updateLoop);
+        }
       }
-      setState({
-        currentWordIndex: words.length - 1, // Última palavra
-        currentTime: audioElement.duration || 0,
-        isPlaying: false,
-        progress: 1,
-      });
-    };
-
-    const handleSeeked = () => {
-      updateSync();
-    };
-
-    // Adicionar listeners
-    audioElement.addEventListener('play', handlePlay);
-    audioElement.addEventListener('pause', handlePause);
-    audioElement.addEventListener('ended', handleEnded);
-    audioElement.addEventListener('seeked', handleSeeked);
-
-    // Se já estiver tocando, iniciar loop
-    if (!audioElement.paused && !audioElement.ended) {
-      handlePlay();
-    }
+    }, 100);
 
     return () => {
+      clearInterval(checkInterval);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
-      audioElement.removeEventListener('play', handlePlay);
-      audioElement.removeEventListener('pause', handlePause);
-      audioElement.removeEventListener('ended', handleEnded);
-      audioElement.removeEventListener('seeked', handleSeeked);
     };
-  }, [audioElement, enabled, words, updateSync]);
+  }, [enabled, words, getAudioElement, updateLoop]);
 
-  // Reset quando words mudam
+  // Reset quando words mudam significativamente
   useEffect(() => {
     lastWordIndexRef.current = -1;
-    setState({
-      currentWordIndex: -1,
-      currentTime: 0,
-      isPlaying: false,
-      progress: 0,
-    });
+    if (words && words.length > 0) {
+      console.log('[KaraokeSync] Words ready for sync:', words.length, 'words');
+    }
   }, [words]);
 
   return state;
