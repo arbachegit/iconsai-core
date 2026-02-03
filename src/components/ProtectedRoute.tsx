@@ -28,10 +28,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   // Check role requirement
   if (requiredRole && !hasRole(requiredRole)) {
     // Redirect based on user's actual role
+    if (role === "superadmin") {
+      return <Navigate to="/hub" replace />;
+    }
     if (role === "admin") {
       return <Navigate to="/dashboard" replace />;
     }
-    return <Navigate to="/dashboard" replace />;
+    // Users without admin/superadmin go to voice assistant
+    return <Navigate to="/pwa" replace />;
   }
 
   return <>{children}</>;
