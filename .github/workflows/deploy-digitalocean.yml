@@ -104,6 +104,14 @@ jobs:
             ls -la $BACKUP_DIR
           ENDSSH
 
+      - name: Clean old files on server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            echo "=== Cleaning old dist files ==="
+            rm -rf /var/www/app/dist/*
+            echo "Old files removed"
+          ENDSSH
+
       - name: Deploy via rsync
         run: |
           rsync -avzr --delete \
@@ -111,11 +119,20 @@ jobs:
             dist/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ env.DEPLOY_PATH }}/dist/
 
-      - name: Set permissions
+      - name: Set permissions and verify
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
             chmod -R 755 /var/www/app/dist
-            echo "Permissions set successfully"
+            echo "=== Deployed files verification ==="
+            ls -la /var/www/app/dist/assets/ | grep VoiceAssistant
+            echo "=== Checking nginx cache ==="
+            if [ -d "/var/cache/nginx" ]; then
+              rm -rf /var/cache/nginx/*
+              echo "Nginx cache cleared"
+            fi
+            echo "=== Restarting nginx ==="
+            sudo systemctl reload nginx || sudo nginx -s reload || true
+            echo "Permissions set and nginx reloaded"
           ENDSSH
 
       - name: Cleanup SSH key
