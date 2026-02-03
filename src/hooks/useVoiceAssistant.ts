@@ -1,11 +1,12 @@
 /**
  * ============================================================
- * useVoiceAssistant Hook - v1.0.0
+ * useVoiceAssistant Hook - v2.1.0
  * ============================================================
  * Hook principal para orquestrar o assistente de voz
  * - Máquina de estados criteriosa
- * - Integração com Whisper (STT) e Nova (TTS)
+ * - Transcrição com Whisper (mais preciso)
  * - LLM: Perplexity → Gemini → ChatGPT
+ * - TTS com Nova
  * ============================================================
  */
 
@@ -301,7 +302,7 @@ export function useVoiceAssistant(config: Partial<VoiceAssistantConfig> = {}) {
         throw new Error('Gravação vazia');
       }
 
-      console.log('[VoiceAssistant] Recording stopped, processing...');
+      console.log('[VoiceAssistant] Recording stopped, processing with Whisper...');
 
       // 2. Transcrever com Whisper
       const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke(

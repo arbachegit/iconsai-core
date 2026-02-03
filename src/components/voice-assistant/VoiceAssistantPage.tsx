@@ -24,7 +24,7 @@ import { VoiceButton } from './VoiceButton';
 import { VoiceAnalyzer } from './VoiceAnalyzer';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import iconsaiLogo from '@/assets/knowyou-admin-logo.png';
+import iconsaiLogo from '@/assets/iconsai-logo.png';
 
 interface VoiceAssistantPageProps {
   welcomeMessage?: string;
