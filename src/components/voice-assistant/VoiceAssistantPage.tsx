@@ -247,16 +247,6 @@ const TranscriptionContainer: React.FC<{
               const hasWords = msg.words && msg.words.length > 0;
               const useKaraoke = isLastMessage && hasWords && karaokeState;
 
-              // DEBUG
-              if (isLastMessage && hasWords) {
-                console.log('[TranscriptionContainer] Last message with words:', {
-                  variant,
-                  wordsCount: msg.words?.length,
-                  useKaraoke,
-                  karaokeState,
-                });
-              }
-
               return (
                 <motion.div
                   key={index}
@@ -425,17 +415,6 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
     enabled: !!lastUserMessage?.words && lastUserMessage.words.length > 0,
     simulatePlayback: true,
   });
-
-  // DEBUG: Log karaoke state
-  useEffect(() => {
-    console.log('[VoiceAssistantPage] Karaoke Debug:', {
-      isRobotSpeaking,
-      robotWords: lastAssistantMessage?.words?.length || 0,
-      robotKaraoke: karaokeSyncRobot,
-      userWords: lastUserMessage?.words?.length || 0,
-      userKaraoke: karaokeSyncUser,
-    });
-  }, [isRobotSpeaking, lastAssistantMessage?.words, karaokeSyncRobot, lastUserMessage?.words, karaokeSyncUser]);
 
   // Track de mensagens anteriores para detectar novas
   const prevMessagesCountRef = useRef({ user: 0, assistant: 0 });

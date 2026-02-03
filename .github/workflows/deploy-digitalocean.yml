@@ -14,7 +14,7 @@ on:
 
 env:
   NODE_VERSION: '20'
-  DEPLOY_PATH: /var/www/app
+  DEPLOY_PATH: /var/www/core.iconsai.ai
   RETENTION_COUNT: 3  # Número de backups a manter
 
 jobs:
@@ -83,17 +83,17 @@ jobs:
       - name: Create backup on server
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            DEPLOY_PATH="/var/www/app"
-            BACKUP_DIR="$DEPLOY_PATH/backups"
+            DEPLOY_PATH="/var/www/core.iconsai.ai"
+            BACKUP_DIR="/var/www/backups"
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
             # Criar diretório de backups se não existir
             mkdir -p $BACKUP_DIR
 
-            # Fazer backup do dist atual (se existir)
-            if [ -d "$DEPLOY_PATH/dist" ]; then
+            # Fazer backup do deploy atual (se existir)
+            if [ -d "$DEPLOY_PATH/assets" ]; then
               echo "Creating backup: backup_$TIMESTAMP"
-              cp -r $DEPLOY_PATH/dist $BACKUP_DIR/backup_$TIMESTAMP
+              cp -r $DEPLOY_PATH $BACKUP_DIR/backup_$TIMESTAMP
             fi
 
             # Manter apenas os últimos 3 backups
@@ -104,32 +104,19 @@ jobs:
             ls -la $BACKUP_DIR
           ENDSSH
 
-      - name: Clean old files on server
-        run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            echo "=== Cleaning old dist files ==="
-            rm -rf /var/www/app/dist/*
-            echo "Old files removed"
-          ENDSSH
-
       - name: Deploy via rsync
         run: |
           rsync -avzr --delete \
             -e "ssh -i ~/.ssh/deploy_key" \
             dist/ \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ env.DEPLOY_PATH }}/dist/
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ env.DEPLOY_PATH }}/
 
       - name: Set permissions and verify
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            chmod -R 755 /var/www/app/dist
+            chmod -R 755 /var/www/core.iconsai.ai
             echo "=== Deployed files verification ==="
-            ls -la /var/www/app/dist/assets/ | grep VoiceAssistant
-            echo "=== Checking nginx cache ==="
-            if [ -d "/var/cache/nginx" ]; then
-              rm -rf /var/cache/nginx/*
-              echo "Nginx cache cleared"
-            fi
+            ls -la /var/www/core.iconsai.ai/assets/ | grep VoiceAssistant
             echo "=== Restarting nginx ==="
             sudo systemctl reload nginx || sudo nginx -s reload || true
             echo "Permissions set and nginx reloaded"
