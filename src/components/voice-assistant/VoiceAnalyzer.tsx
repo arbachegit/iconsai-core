@@ -1,9 +1,10 @@
 /**
  * ============================================================
- * VoiceAnalyzer.tsx - v1.0.0
+ * VoiceAnalyzer.tsx - v2.0.0
  * ============================================================
- * Visualizador de ondas de áudio que reage tanto à voz
- * do robô quanto à voz do usuário em tempo real.
+ * Visualizador de ondas de áudio BIDIRECIONAL
+ * - Barras crescem para CIMA e para BAIXO do centro
+ * - Reage à voz do robô e do usuário em tempo real
  * ============================================================
  */
 
@@ -63,7 +64,7 @@ export const VoiceAnalyzer: React.FC<VoiceAnalyzerProps> = ({
   return (
     <div
       className={cn(
-        'relative flex items-end justify-center gap-[2px] h-24 w-full',
+        'relative flex items-center justify-center gap-[2px] h-24 w-full',
         className
       )}
     >
@@ -83,37 +84,44 @@ export const VoiceAnalyzer: React.FC<VoiceAnalyzerProps> = ({
         />
       )}
 
-      {/* Barras de frequência */}
+      {/* Linha central de referência */}
+      <div className="absolute left-0 right-0 h-[1px] bg-border/30" />
+
+      {/* Barras de frequência BIDIRECIONAIS */}
       {normalizedData.map((value, index) => {
-        // Calcular altura mínima baseada na posição (forma de onda)
+        // Calcular altura mínima baseada na posição (forma de onda suave)
         const centerDistance = Math.abs(index - normalizedData.length / 2);
-        const baseHeight = Math.max(5, 15 - centerDistance / 2);
-        const height = Math.max(baseHeight, value * 0.9);
+        const baseHeight = Math.max(4, 10 - centerDistance / 3);
+
+        // Altura baseada no valor de frequência
+        const dynamicHeight = Math.max(baseHeight, value * 0.85);
 
         return (
-          <motion.div
-            key={index}
-            className="w-[4px] rounded-full origin-bottom"
-            style={{
-              background: isActive
-                ? `linear-gradient(to top, ${colors.secondary}, ${colors.primary})`
-                : colors.secondary,
-            }}
-            initial={{ height: baseHeight }}
-            animate={{
-              height: isActive ? `${height}%` : `${baseHeight}%`,
-              opacity: isActive ? 0.9 : 0.3,
-            }}
-            transition={{
-              height: {
-                type: 'spring',
-                stiffness: 300,
-                damping: 15,
-                mass: 0.5,
-              },
-              opacity: { duration: 0.2 },
-            }}
-          />
+          <div key={index} className="relative h-full flex items-center">
+            {/* Barra única que cresce para cima E para baixo */}
+            <motion.div
+              className="w-[4px] rounded-full"
+              style={{
+                background: isActive
+                  ? `linear-gradient(to bottom, ${colors.primary}, ${colors.secondary}, ${colors.primary})`
+                  : colors.secondary,
+              }}
+              initial={{ height: baseHeight * 2 }}
+              animate={{
+                height: isActive ? dynamicHeight * 2 : baseHeight * 2,
+                opacity: isActive ? 0.9 : 0.3,
+              }}
+              transition={{
+                height: {
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 20,
+                  mass: 0.3,
+                },
+                opacity: { duration: 0.2 },
+              }}
+            />
+          </div>
         );
       })}
 
