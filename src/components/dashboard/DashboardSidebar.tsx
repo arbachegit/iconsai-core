@@ -20,7 +20,6 @@ import {
   ChevronDown,
   ChevronRight,
   Settings,
-  Smartphone,
   Home,
   Route,
   Network,
@@ -32,13 +31,15 @@ import {
   Building2,
   Users,
   Activity,
-  LayoutGrid
+  LayoutGrid,
+  Mic
 } from "lucide-react";
 
 export type DashboardTabType =
   | "indicators"
   | "institutions"
   | "institution-users"
+  | "users-management"
   | "activity-logs"
   | "emotion-analytics"
   | "pwa-home-config"
@@ -66,7 +67,8 @@ interface DashboardSidebarProps {
 const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType; superAdminOnly?: boolean }[] = [
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
   { id: "institutions", label: "Instituições", icon: Building2, superAdminOnly: true },
-  { id: "institution-users", label: "Usuários", icon: Users },
+  { id: "institution-users", label: "Usuários Instituição", icon: Users },
+  { id: "users-management", label: "Gerenciar Usuários", icon: Users },
   { id: "activity-logs", label: "Logs de Atividade", icon: Activity },
   { id: "emotion-analytics", label: "Análise Emocional", icon: Heart },
   { id: "pwa-home-config", label: "PWA Home Config", icon: LayoutGrid, superAdminOnly: true },
@@ -410,33 +412,33 @@ export function DashboardSidebar({
                 </Tooltip>
               )}
 
-              {/* App link */}
+              {/* Voice Assistant link */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
-                    onClick={() => navigate("/app")}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF]/10 hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-200"
+                    onClick={() => navigate("/pwa")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-foreground" />
+                    <Mic className="w-4 h-4 text-[#00D4FF] group-hover:text-[#00D4FF]" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">App</TooltipContent>
+                <TooltipContent side="right">Assistente de Voz</TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-10 w-10 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
                     <Home className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Voltar ao Início</TooltipContent>
+                <TooltipContent side="right">Voltar ao Inicio</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -474,37 +476,37 @@ export function DashboardSidebar({
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
-                    onClick={() => navigate("/app")}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF]/10 hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-200"
+                    onClick={() => navigate("/pwa")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-foreground" />
+                    <Mic className="w-4 h-4 text-[#00D4FF] group-hover:text-[#00D4FF]" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">App</TooltipContent>
+                <TooltipContent side="top">Assistente de Voz</TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-9 w-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
                     <Home className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Voltar ao Início</TooltipContent>
+                <TooltipContent side="top">Voltar ao Inicio</TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="group h-9 w-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                     onClick={onLogout}
                   >
@@ -528,26 +530,26 @@ export function DashboardSidebar({
                 </Button>
               )}
 
-              <Button 
-                variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
-                onClick={() => navigate("/app")}
+              <Button
+                variant="ghost"
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF]/10 hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-200"
+                onClick={() => navigate("/pwa")}
               >
-                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-foreground" />
-                <span className="whitespace-nowrap">App</span>
+                <Mic className="w-4 h-4 shrink-0 text-[#00D4FF]" />
+                <span className="whitespace-nowrap text-[#00D4FF]">Assistente de Voz</span>
               </Button>
 
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/")}
               >
                 <Home className="w-4 h-4 shrink-0 group-hover:text-foreground" />
-                <span className="whitespace-nowrap">Voltar ao Início</span>
+                <span className="whitespace-nowrap">Voltar ao Inicio</span>
               </Button>
 
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                 onClick={onLogout}
               >

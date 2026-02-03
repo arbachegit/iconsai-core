@@ -1,21 +1,21 @@
 /**
  * ============================================================
- * VoiceAssistantPage.tsx - v1.0.0
+ * VoiceAssistantPage.tsx - v2.0.0
  * ============================================================
  * Página principal do assistente de voz interativo.
  * Layout:
- * - Esquerda: Botão principal + Voice Analyzer
- * - Direita: Chat Container com transcrições
+ * - Esquerda: Container de transcrição do USUÁRIO
+ * - Centro: Botão principal + Voice Analyzer
+ * - Direita: Container de transcrição do ROBÔ
  * ============================================================
  */
 
-import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, RefreshCw, User, Bot } from 'lucide-react';
 import { useVoiceAssistant } from '@/hooks/useVoiceAssistant';
 import { VoiceButton } from './VoiceButton';
 import { VoiceAnalyzer } from './VoiceAnalyzer';
-import { ChatContainer } from './ChatContainer';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import iconsaiLogo from '@/assets/knowyou-admin-logo.png';
@@ -24,6 +24,113 @@ interface VoiceAssistantPageProps {
   welcomeMessage?: string;
   voice?: 'nova' | 'marin' | 'coral' | 'sage' | 'shimmer';
 }
+
+// Componente de container de transcrição
+const TranscriptionContainer: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  messages: string[];
+  borderColor: string;
+  iconBgColor: string;
+  isActive?: boolean;
+  emptyText: string;
+}> = ({ title, icon, messages, borderColor, iconBgColor, isActive, emptyText }) => {
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-scroll para baixo quando novas mensagens chegam
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col h-full rounded-xl overflow-hidden',
+        'border-2 bg-background/50 backdrop-blur-sm',
+        borderColor
+      )}
+    >
+      {/* Header */}
+      <div className={cn('flex items-center gap-3 p-4 border-b', borderColor.replace('border-', 'border-b-'))}>
+        <motion.div
+          className={cn('w-10 h-10 rounded-full flex items-center justify-center', iconBgColor)}
+          animate={
+            isActive
+              ? {
+                  boxShadow: [
+                    '0 0 0 0 rgba(0, 212, 255, 0)',
+                    '0 0 0 8px rgba(0, 212, 255, 0.3)',
+                    '0 0 0 0 rgba(0, 212, 255, 0)',
+                  ],
+                }
+              : {}
+          }
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+          }}
+        >
+          {icon}
+        </motion.div>
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          <p className="text-xs text-muted-foreground">
+            {isActive ? 'Falando...' : messages.length > 0 ? `${messages.length} mensagens` : 'Aguardando'}
+          </p>
+        </div>
+      </div>
+
+      {/* Área de mensagens */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3 scroll-smooth"
+        style={{
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(100, 100, 100, 0.3) transparent',
+        }}
+      >
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center p-6">
+            <motion.div
+              className={cn('w-16 h-16 rounded-full flex items-center justify-center mb-4 opacity-30', iconBgColor)}
+              animate={{
+                scale: [1, 1.05, 1],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+              }}
+            >
+              {icon}
+            </motion.div>
+            <p className="text-sm text-muted-foreground">{emptyText}</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {messages.map((content, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className={cn(
+                  'p-3 rounded-lg',
+                  borderColor.includes('cyan')
+                    ? 'bg-cyan-500/10 border border-cyan-500/30'
+                    : 'bg-emerald-500/10 border border-emerald-500/30'
+                )}
+              >
+                <p className="text-sm text-foreground leading-relaxed">{content}</p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
   welcomeMessage = 'Olá! Sou o assistente de voz do IconsAI. Como posso ajudar você hoje?',
@@ -46,9 +153,22 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
     initialize();
   }, [initialize]);
 
+  // Separar mensagens por role
+  const userMessages = useMemo(
+    () => messages.filter((m) => m.role === 'user').map((m) => m.content),
+    [messages]
+  );
+
+  const assistantMessages = useMemo(
+    () => messages.filter((m) => m.role === 'assistant').map((m) => m.content),
+    [messages]
+  );
+
   // Determinar se o robô está falando
-  const isRobotSpeaking =
-    buttonState === 'greeting' || buttonState === 'speaking';
+  const isRobotSpeaking = buttonState === 'greeting' || buttonState === 'speaking';
+
+  // Determinar se o usuário está falando
+  const isUserSpeaking = buttonState === 'recording';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -57,9 +177,7 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
         <div className="flex items-center gap-4">
           <img src={iconsaiLogo} alt="IconsAI" className="h-8" />
           <div className="h-6 w-px bg-border" />
-          <h1 className="text-lg font-semibold text-foreground">
-            Assistente de Voz
-          </h1>
+          <h1 className="text-lg font-semibold text-foreground">Assistente de Voz</h1>
         </div>
 
         {/* Indicador de estado */}
@@ -110,16 +228,25 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden">
-        {/* Left Side - Button and Analyzer */}
-        <div className="w-1/2 flex flex-col items-center justify-center p-8 gap-8">
+      {/* Main Content - 3 colunas */}
+      <main className="flex-1 flex overflow-hidden p-6 gap-6">
+        {/* Left Side - User Transcription Container */}
+        <div className="w-1/4">
+          <TranscriptionContainer
+            title="Você"
+            icon={<User className="w-5 h-5 text-emerald-400" />}
+            messages={userMessages}
+            borderColor="border-emerald-500/50"
+            iconBgColor="bg-emerald-500/20"
+            isActive={isUserSpeaking}
+            emptyText="Suas perguntas aparecerão aqui"
+          />
+        </div>
+
+        {/* Center - Button and Analyzer */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-8">
           {/* Título */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
             <h2 className="text-2xl font-bold text-foreground mb-2">
               {buttonState === 'idle'
                 ? 'Bem-vindo!'
@@ -145,19 +272,11 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
           </motion.div>
 
           {/* Botão principal */}
-          <VoiceButton
-            state={buttonState}
-            onClick={handleButtonClick}
-            disabled={!isInitialized}
-          />
+          <VoiceButton state={buttonState} onClick={handleButtonClick} disabled={!isInitialized} />
 
           {/* Voice Analyzer */}
           <div className="w-full max-w-md">
-            <VoiceAnalyzer
-              frequencyData={frequencyData}
-              isActive={frequencySource !== 'none'}
-              source={frequencySource}
-            />
+            <VoiceAnalyzer frequencyData={frequencyData} isActive={frequencySource !== 'none'} source={frequencySource} />
           </div>
 
           {/* Erro */}
@@ -169,12 +288,7 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             >
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <p className="text-sm text-red-400">{error}</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={forceReset}
-                className="ml-auto text-red-400 hover:text-red-300"
-              >
+              <Button variant="ghost" size="sm" onClick={forceReset} className="ml-auto text-red-400 hover:text-red-300">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </motion.div>
@@ -185,35 +299,36 @@ export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="flex gap-4 text-xs text-muted-foreground"
+            className="flex gap-6 text-xs text-muted-foreground"
           >
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-cyan-500/50" />
-              <span>Assistente</span>
+              <div className="w-3 h-3 rounded-full bg-emerald-500/50" />
+              <span>Você (esquerda)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500/50" />
-              <span>Você</span>
+              <div className="w-3 h-3 rounded-full bg-cyan-500/50" />
+              <span>Assistente (direita)</span>
             </div>
           </motion.div>
         </div>
 
-        {/* Right Side - Chat Container */}
-        <div className="w-1/2 p-6 pl-0">
-          <ChatContainer
-            messages={messages}
-            isRobotSpeaking={isRobotSpeaking}
-            className="h-full"
+        {/* Right Side - Robot Transcription Container */}
+        <div className="w-1/4">
+          <TranscriptionContainer
+            title="Assistente IconsAI"
+            icon={<Bot className="w-5 h-5 text-cyan-400" />}
+            messages={assistantMessages}
+            borderColor="border-cyan-500/50"
+            iconBgColor="bg-cyan-500/20"
+            isActive={isRobotSpeaking}
+            emptyText="Respostas do assistente aparecerão aqui"
           />
         </div>
       </main>
 
       {/* Footer */}
       <footer className="h-12 border-t border-border bg-card/50 flex items-center justify-center text-xs text-muted-foreground">
-        <span>
-          STT: OpenAI Whisper | TTS: OpenAI Nova | LLM: Perplexity / Gemini /
-          ChatGPT
-        </span>
+        <span>STT: OpenAI Whisper | TTS: OpenAI Nova | LLM: Perplexity / Gemini / ChatGPT</span>
       </footer>
     </div>
   );

@@ -1,44 +1,30 @@
-// Build: 2026-01-25-SIMPLIFIED - Landing page removida, login como página inicial
-import React, { Suspense, lazy, useEffect, useState } from "react";
+// Build: 2026-02-03-SIMPLIFIED - Desktop focused, no device gates
+import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import { FloatingAudioPlayer } from "./components/FloatingAudioPlayer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { BannedScreen } from "./components/BannedScreen";
-import { DeviceGate } from "./components/gates";
-import { initSecurityShield, checkBanStatus, getDeviceFingerprint } from "./lib/security-shield";
-import { useDemoMode } from "./hooks/useDemoMode";
-import { useDemoCleanup } from "./hooks/useDemoCleanup";
 
-// Lazy load non-critical pages
+// Lazy load pages
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminSignup = lazy(() => import("./pages/AdminSignup"));
-// AdminResetPassword removed - using Supabase built-in password reset
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Documentation = lazy(() => import("./pages/Documentation"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Arquitetura = lazy(() => import("./pages/Arquitetura"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
-const AppPage = lazy(() => import("./pages/AppPage"));
 const Hub = lazy(() => import("./pages/Hub"));
-const PWAVoiceAssistant = lazy(() => import("./components/pwa/voice/PWAVoiceAssistant"));
+const Admin = lazy(() => import("./pages/Admin"));
+const VoiceAssistantPage = lazy(() => import("./components/voice-assistant/VoiceAssistantPage"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
 const InviteAcceptPage = lazy(() => import("./pages/InviteAcceptPage"));
-const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
-const PWARegisterPage = lazy(() => import("./pages/PWARegisterPage"));
-const PWACityPage = lazy(() => import("./pages/PWACityPage"));
-const PWAHealthPage = lazy(() => import("./pages/PWAHealthPage"));
-const CoreApp = lazy(() => import("./core/App"));
-const VoiceAssistantPage = lazy(() => import("./components/voice-assistant/VoiceAssistantPage"));
 
-// Simple loading fallback
+// Loading fallback
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
     <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -47,234 +33,71 @@ const PageLoader = () => (
 
 const queryClient = new QueryClient();
 
-// Security wrapper component
-interface BanInfo {
-  reason: string;
-  deviceId: string;
-  bannedAt?: string;
-}
-
-const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
-  const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
-  const [isChecking, setIsChecking] = useState(true);
-  const cleanupRef = React.useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    // Initialize security shield (now async)
-    const initShield = async () => {
-      const cleanup = await initSecurityShield();
-      if (isMounted) {
-        cleanupRef.current = cleanup;
-      }
-    };
-    initShield();
-
-    // Check ban status on load
-    const checkBan = async () => {
-      try {
-        const status = await checkBanStatus();
-        if (status.isBanned && isMounted) {
-          setBanInfo({
-            reason: status.reason || status.violationType || "Violação de segurança",
-            deviceId: status.deviceId || getDeviceFingerprint().substring(0, 16),
-            bannedAt: status.bannedAt,
-          });
-        }
-      } catch (error) {
-        console.error("Error checking ban status:", error);
-      } finally {
-        if (isMounted) {
-          setIsChecking(false);
-        }
-      }
-    };
-
-    checkBan();
-
-    // Listen for security ban events from the shield
-    const handleBanned = (event: CustomEvent<{ reason: string; deviceId: string }>) => {
-      setBanInfo({
-        reason: event.detail.reason,
-        deviceId: event.detail.deviceId,
-      });
-    };
-
-    window.addEventListener("security-banned", handleBanned as EventListener);
-
-    return () => {
-      isMounted = false;
-      if (cleanupRef.current) {
-        cleanupRef.current();
-      }
-      window.removeEventListener("security-banned", handleBanned as EventListener);
-    };
-  }, []);
-
-  // Show loading while checking ban status
-  if (isChecking) {
-    return <PageLoader />;
-  }
-
-  // Show ban screen if banned
-  if (banInfo) {
-    return (
-      <BannedScreen
-        reason={banInfo.reason}
-        deviceId={banInfo.deviceId}
-        bannedAt={banInfo.bannedAt}
-      />
-    );
-  }
-
-  return <>{children}</>;
-};
-
-// Demo Mode Indicator Component
-const DemoModeIndicator = () => {
-  const { isDemoMode, demoType } = useDemoMode();
-
-  if (!isDemoMode) return null;
-
-  return (
-    <div className="fixed top-4 right-4 z-50">
-      <Badge
-        variant="outline"
-        className="bg-yellow-500/20 border-yellow-500 text-yellow-700 dark:text-yellow-300 font-semibold px-3 py-1.5 text-sm shadow-lg"
-      >
-        MODO DEMONSTRACAO
-        {demoType === "clean" && " (Limpo)"}
-        {demoType === "seeded" && " (Com Historico)"}
-      </Badge>
-    </div>
-  );
-};
-
-// Demo Cleanup Wrapper
-const DemoCleanupWrapper = ({ children }: { children: React.ReactNode }) => {
-  useDemoCleanup(); // Cleanup automatico ao fechar aba
-  return <>{children}</>;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AudioPlayerProvider>
         <TooltipProvider>
-          <SecurityWrapper>
-            <DemoCleanupWrapper>
-                <Toaster />
-                <Sonner />
-                <DemoModeIndicator />
-                <BrowserRouter>
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    {/* Redirecionar "/" para login */}
-                    <Route path="/" element={<Navigate to="/admin/login" replace />} />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Redirect "/" to login */}
+                <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
-                    {/* Auth Routes */}
-                    <Route path="/admin/login" element={<AdminLogin />} />
-                    <Route path="/admin/signup" element={<AdminSignup />} />
-                    {/* reset-password route removed - using Supabase built-in reset */}
+                {/* Auth Routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/signup" element={<AdminSignup />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
-                    {/* Protected Routes - Desktop Only */}
-                    <Route path="/hub" element={
-                      <DeviceGate allowMobile={false}>
-                        <ProtectedRoute requiredRole="superadmin">
-                          <Hub />
-                        </ProtectedRoute>
-                      </DeviceGate>
-                    } />
-                    <Route path="/app" element={
-                      <DeviceGate mobileShowChat={true}>
-                        <ProtectedRoute>
-                          <AppPage />
-                        </ProtectedRoute>
-                      </DeviceGate>
-                    } />
-                    <Route path="/dashboard" element={
-                      <DeviceGate mobileShowChat={true}>
-                        <ProtectedRoute requiredRole="admin">
-                          <DashboardAdmin />
-                        </ProtectedRoute>
-                      </DeviceGate>
-                    } />
-                    <Route path="/admin/dashboard" element={
-                      <DeviceGate allowMobile={false}>
-                        <ProtectedRoute requiredRole="admin">
-                          <Dashboard />
-                        </ProtectedRoute>
-                      </DeviceGate>
-                    } />
-                    <Route path="/admin" element={
-                      <DeviceGate allowMobile={false}>
-                        <ProtectedRoute requiredRole="superadmin">
-                          <Admin />
-                        </ProtectedRoute>
-                      </DeviceGate>
-                    } />
+                {/* Protected Routes */}
+                <Route path="/hub" element={
+                  <ProtectedRoute requiredRole="superadmin">
+                    <Hub />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute requiredRole="admin">
+                    <DashboardAdmin />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/dashboard" element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute requiredRole="superadmin">
+                    <Admin />
+                  </ProtectedRoute>
+                } />
 
-                    {/* Public Routes */}
-                    <Route path="/docs" element={<Documentation />} />
-                    <Route path="/arquitetura" element={<Arquitetura />} />
+                {/* Voice Assistant */}
+                <Route path="/voice-assistant" element={
+                  <ProtectedRoute>
+                    <VoiceAssistantPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/pwa" element={
+                  <ProtectedRoute>
+                    <VoiceAssistantPage />
+                  </ProtectedRoute>
+                } />
 
-                    {/* PWA Route - Mobile Only */}
-                    <Route path="/pwa" element={
-                      <DeviceGate allowDesktop={false}>
-                        <PWAVoiceAssistant />
-                      </DeviceGate>
-                    } />
+                {/* Public Routes */}
+                <Route path="/docs" element={<Documentation />} />
 
-                    <Route path="/invite/:token" element={<InvitePage />} />
+                {/* Invite Routes */}
+                <Route path="/invite/:token" element={<InvitePage />} />
+                <Route path="/accept-invite/:token" element={<InviteAcceptPage />} />
 
-                    {/* User Invite Accept Route - New user registration flow */}
-                    <Route path="/accept-invite/:token" element={<InviteAcceptPage />} />
-
-                    {/* PWA Token Route - Mobile Only - Accepts invitation tokens */}
-                    <Route path="/pwa/:token" element={
-                      <DeviceGate allowDesktop={false}>
-                        <PWARegisterPage />
-                      </DeviceGate>
-                    } />
-
-                    {/* PWA City Route - Mobile Only (com toggle para admin/superadmin) */}
-                    <Route path="/pwacity" element={<PWACityPage />} />
-
-                    {/* PWA Health Route - Mobile Only (com toggle para admin/superadmin) */}
-                    <Route path="/pwahealth" element={<PWAHealthPage />} />
-
-                    {/* PWA Agent Platform - Voice Agents */}
-                    <Route path="/pwa/agents" element={
-                      <DeviceGate allowDesktop={false}>
-                        <CoreApp />
-                      </DeviceGate>
-                    } />
-                    <Route path="/pwa/agents/:agentName" element={
-                      <DeviceGate allowDesktop={false}>
-                        <CoreApp />
-                      </DeviceGate>
-                    } />
-
-                    {/* Voice Assistant Route - Desktop */}
-                    <Route path="/voice-assistant" element={
-                      <ProtectedRoute>
-                        <VoiceAssistantPage />
-                      </ProtectedRoute>
-                    } />
-
-                    {/* Temporary test route */}
-                    <Route path="/test/retail-diagram" element={<TestRetailDiagram />} />
-
-                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </BrowserRouter>
-              {/* Global Floating Audio Player */}
-              <FloatingAudioPlayer />
-          </DemoCleanupWrapper>
-        </SecurityWrapper>
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+          <FloatingAudioPlayer />
         </TooltipProvider>
       </AudioPlayerProvider>
     </ThemeProvider>

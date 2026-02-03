@@ -19,6 +19,7 @@ const InfrastructureArchitectureTab = lazy(() => import("@/components/admin/Infr
 const PWASimulator = lazy(() => import("@/components/admin/PWASimulator"));
 const InstitutionsTab = lazy(() => import("@/components/admin/InstitutionsTab"));
 const InstitutionUsersTab = lazy(() => import("@/components/admin/InstitutionUsersTab"));
+const UsersManagementTab = lazy(() => import("@/components/admin/UsersManagementTab"));
 const UserActivityLogsTab = lazy(() => import("@/components/admin/UserActivityLogsTab"));
 const EmotionAnalyticsTab = lazy(() => import("@/components/admin/EmotionAnalyticsTab"));
 const PWAHomeContainersTab = lazy(() => import("@/components/admin/PWAHomeContainersTab"));
@@ -94,6 +95,12 @@ const DashboardAdmin = () => {
         return (
           <div className="p-6">
             <InstitutionUsersTab />
+          </div>
+        );
+      case "users-management":
+        return (
+          <div className="p-6">
+            <UsersManagementTab />
           </div>
         );
       case "activity-logs":

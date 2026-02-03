@@ -85,12 +85,12 @@ const AdminLogin = () => {
         return;
       }
 
-      // Default user - redirect to app
+      // Default user - redirect to dashboard
       toast({
         title: "Login realizado",
-        description: "Bem-vindo ao IconsAI App.",
+        description: "Bem-vindo ao IconsAI.",
       });
-      navigate("/app");
+      navigate("/dashboard");
     } catch (error: any) {
       toast({
         title: "Erro ao fazer login",
@@ -117,13 +117,17 @@ const AdminLogin = () => {
     setIsResetting(true);
 
     try {
-      // Use Supabase built-in password reset
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/admin/login`,
+      // Use custom password reset flow
+      const { data, error } = await supabase.functions.invoke("request-password-reset", {
+        body: { email: resetEmail },
       });
 
       if (error) {
         throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Erro ao solicitar redefinição");
       }
 
       toast({
