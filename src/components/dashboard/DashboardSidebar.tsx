@@ -21,7 +21,10 @@ import {
   Activity,
   LayoutGrid,
   Mic,
-  Volume2
+  Volume2,
+  Bot,
+  Briefcase,
+  UserCog
 } from "lucide-react";
 
 export type DashboardTabType =
@@ -32,7 +35,10 @@ export type DashboardTabType =
   | "activity-logs"
   | "emotion-analytics"
   | "pwa-home-config"
-  | "voice-config";
+  | "voice-config"
+  | "assistants"
+  | "companies"
+  | "managers";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -43,6 +49,9 @@ interface DashboardSidebarProps {
 }
 
 const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType; superAdminOnly?: boolean }[] = [
+  { id: "assistants", label: "Assistentes", icon: Bot },
+  { id: "companies", label: "Empresas", icon: Briefcase },
+  { id: "managers", label: "Gestores", icon: UserCog },
   { id: "users-management", label: "Usuários", icon: Users },
   { id: "institutions", label: "Instituições", icon: Building2, superAdminOnly: true },
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
