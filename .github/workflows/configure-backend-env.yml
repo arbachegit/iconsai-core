@@ -35,6 +35,24 @@ jobs:
               echo "Added SUPABASE_SERVICE_ROLE_KEY"
             fi
 
+            # Update or add ELEVENLABS_API_KEY
+            if grep -q "ELEVENLABS_API_KEY" .env 2>/dev/null; then
+              sed -i 's/ELEVENLABS_API_KEY=.*/ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}/' .env
+              echo "Updated ELEVENLABS_API_KEY"
+            else
+              echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
+              echo "Added ELEVENLABS_API_KEY"
+            fi
+
+            # Update or add OPENAI_API_KEY
+            if grep -q "OPENAI_API_KEY" .env 2>/dev/null; then
+              sed -i 's/OPENAI_API_KEY=.*/OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}/' .env
+              echo "Updated OPENAI_API_KEY"
+            else
+              echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+              echo "Added OPENAI_API_KEY"
+            fi
+
             echo "=== Current .env (masked) ==="
             cat .env | sed 's/=.*/=***/'
 
