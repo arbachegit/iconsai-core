@@ -365,10 +365,13 @@ const HistoryModal: React.FC<{
 // ============================================================
 export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
   welcomeMessage = 'Olá! Sou o assistente de voz do IconsAI. Como posso ajudar você hoje?',
-  voice = 'nova',
+  voice: voiceProp = 'nova',
 }) => {
   const navigate = useNavigate();
   const [showHistory, setShowHistory] = useState(false);
+
+  // Ler voz configurada do localStorage (definida no dashboard)
+  const voice = localStorage.getItem('elevenlabs_voice_id') || voiceProp;
 
   const {
     buttonState,
