@@ -1,9 +1,9 @@
 /**
  * CreateUserModal - Modal para criar novo usuário
- * @version 1.0.0
- * @date 2026-01-28
+ * @version 2.0.0
+ * @date 2026-02-04
  *
- * Cria usuário no Supabase Auth e na tabela profiles
+ * Cria usuário via backend seguro (SERVICE_ROLE_KEY protegida)
  */
 
 import { useState } from "react";
@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -38,16 +37,13 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { Loader2, UserPlus, Eye, EyeOff } from "lucide-react";
+import { createUser } from "@/services/adminApi";
 
 const createUserSchema = z.object({
-  nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  sobrenome: z.string().optional(),
+  full_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
-  telefone: z.string().optional(),
-  cargo: z.string().optional(),
-  departamento: z.string().optional(),
   role: z.enum(["user", "admin", "superadmin"]),
-  senha: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
 });
 
 type CreateUserFormData = z.infer<typeof createUserSchema>;
@@ -56,16 +52,12 @@ interface CreateUserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
-  supabaseUrl: string;
-  serviceRoleKey: string;
 }
 
 export const CreateUserModal = ({
   open,
   onOpenChange,
   onSuccess,
-  supabaseUrl,
-  serviceRoleKey,
 }: CreateUserModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -73,87 +65,22 @@ export const CreateUserModal = ({
   const form = useForm<CreateUserFormData>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
-      nome: "",
-      sobrenome: "",
+      full_name: "",
       email: "",
-      telefone: "",
-      cargo: "",
-      departamento: "",
       role: "user",
-      senha: "",
+      password: "",
     },
   });
-
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-  };
 
   const onSubmit = async (data: CreateUserFormData) => {
     setIsLoading(true);
     try {
-      // 1. Criar usuário no Supabase Auth
-      const authResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.senha,
-          email_confirm: true,
-          phone: data.telefone?.replace(/\D/g, "") || undefined,
-          user_metadata: {
-            full_name: `${data.nome} ${data.sobrenome || ""}`.trim(),
-            phone: data.telefone || undefined,
-          },
-        }),
+      await createUser({
+        email: data.email,
+        password: data.password,
+        full_name: data.full_name,
+        role: data.role,
       });
-
-      const authResult = await authResponse.json();
-
-      if (!authResponse.ok) {
-        throw new Error(authResult.msg || authResult.message || "Erro ao criar usuário");
-      }
-
-      const userId = authResult.id;
-
-      // 2. Atualizar perfil na tabela profiles
-      const profileResponse = await fetch(
-        `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: serviceRoleKey,
-            Authorization: `Bearer ${serviceRoleKey}`,
-            Prefer: "return=representation",
-          },
-          body: JSON.stringify({
-            nome: data.nome,
-            sobrenome: data.sobrenome || null,
-            nome_completo: `${data.nome} ${data.sobrenome || ""}`.trim(),
-            telefone: data.telefone || null,
-            cargo: data.cargo || null,
-            departamento: data.departamento || null,
-            role: data.role,
-            status: "active",
-            email_verified: true,
-          }),
-        }
-      );
-
-      if (!profileResponse.ok) {
-        const profileError = await profileResponse.json();
-        console.error("Erro ao atualizar perfil:", profileError);
-        // Usuário foi criado, mas perfil pode não ter sido atualizado
-        // O trigger do banco deve ter criado o registro
-      }
 
       toast.success("Usuário criado com sucesso!");
       form.reset();
@@ -174,7 +101,7 @@ export const CreateUserModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -187,35 +114,20 @@ export const CreateUserModal = ({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Nome e Sobrenome */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="nome"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="João" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="sobrenome"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sobrenome</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Silva" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {/* Nome Completo */}
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Completo *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="João Silva" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Email */}
             <FormField
@@ -235,57 +147,6 @@ export const CreateUserModal = ({
                 </FormItem>
               )}
             />
-
-            {/* Telefone */}
-            <FormField
-              control={form.control}
-              name="telefone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefone</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="(11) 99999-9999"
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(formatPhone(e.target.value));
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Cargo e Departamento */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="cargo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cargo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Analista" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="departamento"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Departamento</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Financeiro" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             {/* Role */}
             <FormField
@@ -317,7 +178,7 @@ export const CreateUserModal = ({
             {/* Senha */}
             <FormField
               control={form.control}
-              name="senha"
+              name="password"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Senha *</FormLabel>

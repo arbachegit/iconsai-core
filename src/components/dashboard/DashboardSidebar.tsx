@@ -65,12 +65,10 @@ interface DashboardSidebarProps {
 }
 
 const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType; superAdminOnly?: boolean }[] = [
-  { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
+  { id: "users-management", label: "Usuários", icon: Users },
   { id: "institutions", label: "Instituições", icon: Building2, superAdminOnly: true },
-  { id: "institution-users", label: "Usuários Instituição", icon: Users },
-  { id: "users-management", label: "Gerenciar Usuários", icon: Users },
+  { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
   { id: "activity-logs", label: "Logs de Atividade", icon: Activity },
-  { id: "emotion-analytics", label: "Análise Emocional", icon: Heart },
   { id: "pwa-home-config", label: "PWA Home Config", icon: LayoutGrid, superAdminOnly: true },
 ];
 

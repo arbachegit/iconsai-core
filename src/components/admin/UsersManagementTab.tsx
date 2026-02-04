@@ -1,9 +1,10 @@
 /**
- * UsersManagementTab - Gerenciamento de Usuários (tabela profiles)
- * @version 1.0.0
- * @date 2026-01-28
+ * UsersManagementTab - Gerenciamento de Usuários
+ * @version 2.0.0
+ * @date 2026-02-04
  *
- * Componente para gerenciar usuários diretamente na tabela profiles
+ * Componente para gerenciar usuários via backend seguro.
+ * Não expõe SERVICE_ROLE_KEY no frontend.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -23,7 +24,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -43,59 +43,17 @@ import {
   Search,
   MoreVertical,
   Mail,
-  Phone,
   Shield,
   CheckCircle,
-  XCircle,
   Pause,
   Play,
   RefreshCw,
-  Briefcase,
-  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateUserModal } from "./CreateUserModal";
-
-interface Profile {
-  id: string;
-  email: string;
-  nome: string;
-  sobrenome: string | null;
-  nome_completo: string;
-  avatar_url: string | null;
-  telefone: string | null;
-  cargo: string | null;
-  departamento: string | null;
-  instituicao_id: string | null;
-  tenant_id: string | null;
-  role: "user" | "admin" | "superadmin";
-  status: "pending" | "active" | "suspended" | "inactive";
-  email_verified: boolean;
-  ultimo_acesso: string | null;
-  preferencias: Record<string, any>;
-  created_at: string;
-  updated_at: string;
-}
-
-// Configurar estas variáveis de ambiente ou passar como props
-const SUPABASE_URL = "https://tijadrwimhxlggzxuwna.supabase.co";
-const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpamFkcndpbWh4bGdnenh1d25hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODc1Njc4MSwiZXhwIjoyMDg0MzMyNzgxfQ.ustNuvtUB1sYDV8XLKqVU9YlMxtlSPTuLEvmf3DZKPg";
-
-const statusLabels: Record<string, string> = {
-  pending: "Pendente",
-  active: "Ativo",
-  suspended: "Suspenso",
-  inactive: "Inativo",
-};
-
-const statusColors: Record<string, string> = {
-  pending: "bg-yellow-500/10 text-yellow-500",
-  active: "bg-green-500/10 text-green-500",
-  suspended: "bg-red-500/10 text-red-500",
-  inactive: "bg-gray-500/10 text-gray-500",
-};
+import { listUsers, updateUser, type AdminUser } from "@/services/adminApi";
 
 const roleLabels: Record<string, string> = {
   user: "Usuário",
@@ -103,106 +61,75 @@ const roleLabels: Record<string, string> = {
   superadmin: "Super Admin",
 };
 
+const roleColors: Record<string, string> = {
+  user: "bg-blue-500/10 text-blue-500",
+  admin: "bg-purple-500/10 text-purple-500",
+  superadmin: "bg-amber-500/10 text-amber-500",
+};
+
 export default function UsersManagementTab() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
-    action: "suspend" | "activate" | "delete";
-    profile: Profile | null;
-  }>({ open: false, action: "suspend", profile: null });
+    action: "suspend" | "activate";
+    user: AdminUser | null;
+  }>({ open: false, action: "suspend", user: null });
 
-  // Fetch profiles
-  const fetchProfiles = useCallback(async () => {
+  // Fetch users
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/profiles?select=*&order=created_at.desc`,
-        {
-          headers: {
-            apikey: SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error("Erro ao carregar usuários");
-
-      const data = await response.json();
-      setProfiles(data || []);
+      const result = await listUsers();
+      setUsers(result.users || []);
     } catch (err: any) {
       console.error("[UsersManagementTab] Error:", err);
-      toast.error("Erro ao carregar usuários");
+      toast.error(err.message || "Erro ao carregar usuários");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+    fetchUsers();
+  }, [fetchUsers]);
 
-  // Update profile status
-  const updateProfileStatus = async (
-    profileId: string,
-    newStatus: "active" | "suspended" | "inactive"
-  ) => {
+  // Update user status
+  const updateUserStatus = async (userId: string, isActive: boolean) => {
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${profileId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-          },
-          body: JSON.stringify({
-            status: newStatus,
-            updated_at: new Date().toISOString(),
-          }),
-        }
-      );
-
-      if (!response.ok) throw new Error("Erro ao atualizar status");
-
+      await updateUser(userId, { is_active: isActive });
       toast.success(
-        newStatus === "active"
-          ? "Usuário ativado com sucesso"
-          : newStatus === "suspended"
-          ? "Usuário suspenso com sucesso"
-          : "Usuário desativado com sucesso"
+        isActive ? "Usuário ativado com sucesso" : "Usuário suspenso com sucesso"
       );
-      await fetchProfiles();
+      await fetchUsers();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || "Erro ao atualizar status");
     }
   };
 
   // Handle confirm action
   const handleConfirmAction = async () => {
-    if (!confirmDialog.profile) return;
+    if (!confirmDialog.user) return;
 
-    const { action, profile } = confirmDialog;
+    const { action, user } = confirmDialog;
 
     if (action === "suspend") {
-      await updateProfileStatus(profile.id, "suspended");
+      await updateUserStatus(user.id, false);
     } else if (action === "activate") {
-      await updateProfileStatus(profile.id, "active");
+      await updateUserStatus(user.id, true);
     }
 
-    setConfirmDialog({ open: false, action: "suspend", profile: null });
+    setConfirmDialog({ open: false, action: "suspend", user: null });
   };
 
-  // Filter profiles
-  const filteredProfiles = profiles.filter(
-    (profile) =>
-      profile.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.cargo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.departamento?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter users
+  const filteredUsers = users.filter(
+    (user) =>
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (isLoading) {
@@ -241,18 +168,18 @@ export default function UsersManagementTab() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, email, cargo..."
+            placeholder="Buscar por nome, email, tipo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
-        <Button variant="outline" size="icon" onClick={fetchProfiles}>
+        <Button variant="outline" size="icon" onClick={fetchUsers}>
           <RefreshCw className="h-4 w-4" />
         </Button>
-        <Badge variant="outline">{profiles.length} usuários</Badge>
+        <Badge variant="outline">{users.length} usuários</Badge>
         <Badge variant="outline" className="bg-green-500/10 text-green-500">
-          {profiles.filter((p) => p.status === "active").length} ativos
+          {users.filter((u) => u.is_active).length} ativos
         </Badge>
       </div>
 
@@ -263,8 +190,7 @@ export default function UsersManagementTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Usuário</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Cargo / Depto</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Acesso</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Cadastro</TableHead>
@@ -272,74 +198,54 @@ export default function UsersManagementTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProfiles.map((profile) => (
-                <TableRow key={profile.id}>
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{profile.nome_completo || profile.nome}</div>
+                      <div className="font-medium">{user.full_name || "-"}</div>
                       <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {profile.id}
+                        {user.id}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Mail className="h-3 w-3" />
-                        <span className="truncate max-w-[180px]">{profile.email}</span>
-                        {profile.email_verified && (
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                        )}
-                      </div>
-                      {profile.telefone && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {profile.telefone}
-                        </div>
-                      )}
+                    <div className="flex items-center gap-1 text-sm">
+                      <Mail className="h-3 w-3" />
+                      <span className="truncate max-w-[200px]">{user.email}</span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      {profile.cargo && (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Briefcase className="h-3 w-3" />
-                          {profile.cargo}
-                        </div>
-                      )}
-                      {profile.departamento && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Building2 className="h-3 w-3" />
-                          {profile.departamento}
-                        </div>
-                      )}
-                      {!profile.cargo && !profile.departamento && (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                    <Badge variant="outline" className={`flex items-center gap-1 w-fit ${roleColors[user.role] || ""}`}>
                       <Shield className="h-3 w-3" />
-                      {roleLabels[profile.role] || profile.role}
+                      {roleLabels[user.role] || user.role}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={statusColors[profile.status]}>
-                      {statusLabels[profile.status] || profile.status}
-                    </Badge>
+                    {user.is_active ? (
+                      <Badge className="bg-green-500/10 text-green-500">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Ativo
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-red-500/10 text-red-500">
+                        <Pause className="h-3 w-3 mr-1" />
+                        Suspenso
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {formatDistanceToNow(new Date(profile.created_at), {
-                        addSuffix: true,
-                        locale: ptBR,
-                      })}
+                      {user.created_at
+                        ? formatDistanceToNow(new Date(user.created_at), {
+                            addSuffix: true,
+                            locale: ptBR,
+                          })
+                        : "-"}
                     </div>
-                    {profile.ultimo_acesso && (
+                    {user.last_sign_in_at && (
                       <div className="text-xs text-muted-foreground">
                         Último acesso:{" "}
-                        {formatDistanceToNow(new Date(profile.ultimo_acesso), {
+                        {formatDistanceToNow(new Date(user.last_sign_in_at), {
                           addSuffix: true,
                           locale: ptBR,
                         })}
@@ -354,13 +260,13 @@ export default function UsersManagementTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {profile.status === "active" ? (
+                        {user.is_active ? (
                           <DropdownMenuItem
                             onClick={() =>
                               setConfirmDialog({
                                 open: true,
                                 action: "suspend",
-                                profile,
+                                user,
                               })
                             }
                           >
@@ -373,7 +279,7 @@ export default function UsersManagementTab() {
                               setConfirmDialog({
                                 open: true,
                                 action: "activate",
-                                profile,
+                                user,
                               })
                             }
                           >
@@ -386,9 +292,9 @@ export default function UsersManagementTab() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredProfiles.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     {searchTerm
                       ? "Nenhum usuário encontrado com os filtros aplicados"
                       : "Nenhum usuário cadastrado"}
@@ -404,9 +310,7 @@ export default function UsersManagementTab() {
       <CreateUserModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
-        onSuccess={fetchProfiles}
-        supabaseUrl={SUPABASE_URL}
-        serviceRoleKey={SERVICE_ROLE_KEY}
+        onSuccess={fetchUsers}
       />
 
       {/* Confirm Dialog */}
@@ -425,8 +329,8 @@ export default function UsersManagementTab() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDialog.action === "suspend"
-                ? `Tem certeza que deseja suspender o acesso de ${confirmDialog.profile?.nome_completo}? O usuário não poderá acessar o sistema até ser reativado.`
-                : `Tem certeza que deseja ativar o acesso de ${confirmDialog.profile?.nome_completo}?`}
+                ? `Tem certeza que deseja suspender o acesso de ${confirmDialog.user?.full_name || confirmDialog.user?.email}? O usuário não poderá acessar o sistema até ser reativado.`
+                : `Tem certeza que deseja ativar o acesso de ${confirmDialog.user?.full_name || confirmDialog.user?.email}?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

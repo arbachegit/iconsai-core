@@ -33,7 +33,7 @@ const TabLoader = () => (
 
 const DashboardAdmin = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<DashboardTabType>("indicators");
+  const [activeTab, setActiveTab] = useState<DashboardTabType>("users-management");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
