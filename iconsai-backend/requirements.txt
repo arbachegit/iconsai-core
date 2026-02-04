@@ -1,0 +1,33 @@
+# FastAPI and server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+websockets>=12.0
+
+# Pydantic for settings and validation
+pydantic[email]>=2.6.0
+pydantic-settings>=2.1.0
+
+# HTTP client
+httpx>=0.24.0,<0.26
+
+# Audio processing
+pydub>=0.25.1
+ffmpeg-python>=0.2.0
+
+# OpenAI SDK
+openai>=1.12.0
+
+# Real-time Speech-to-Text (Faster-Whisper)
+# Requires: pip install torch (for VAD) - install separately based on your CUDA version
+faster-whisper>=1.0.0
+# For VAD (Voice Activity Detection):
+# torch is loaded dynamically - install with: pip install torch or pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+
+# Development
+python-dotenv>=1.0.0

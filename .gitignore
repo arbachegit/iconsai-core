@@ -34,4 +34,9 @@ credenciais.md
 
 *storybook.log
 storybook-static
-iconsai-backend/
+
+# Backend - keep .env and venv ignored
+iconsai-backend/.env
+iconsai-backend/venv/
+iconsai-backend/__pycache__/
+iconsai-backend/.pytest_cache/
