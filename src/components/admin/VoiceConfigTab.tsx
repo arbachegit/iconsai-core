@@ -3,14 +3,16 @@
  * Permite selecionar e testar vozes do ElevenLabs
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Volume2, Play, Loader2, Check } from "lucide-react";
+import { Volume2, Play, Loader2, Check, Square } from "lucide-react";
 import { toast } from "sonner";
+
+const VOICE_API_URL = import.meta.env.VITE_VOICE_API_URL || "";
 
 // Vozes disponíveis no ElevenLabs
 const ELEVENLABS_VOICES = [
@@ -57,18 +59,69 @@ export function VoiceConfigTab() {
   const [selectedVoice, setSelectedVoice] = useState(ELEVENLABS_VOICES[0].id);
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleTestVoice = async (voiceId: string) => {
+    // Se já está tocando, para
+    if (isPlaying === voiceId && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setIsPlaying(null);
+      return;
+    }
+
+    // Para qualquer áudio anterior
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
     setIsPlaying(voiceId);
 
     try {
-      // Aqui você pode implementar a chamada real para testar a voz
-      // Por enquanto, simula um delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success("Teste de voz concluído");
+      const testText = "Olá! Esta é uma demonstração da minha voz. Como posso ajudar você hoje?";
+
+      const response = await fetch(`${VOICE_API_URL}/functions/v1/text-to-speech-karaoke`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: testText,
+          voice: voiceId,
+          chatType: "assistant"
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Falha ao gerar áudio");
+      }
+
+      const data = await response.json();
+
+      if (!data.audioBase64) {
+        throw new Error("Áudio não recebido");
+      }
+
+      // Criar e tocar o áudio
+      const audio = new Audio(`data:audio/mpeg;base64,${data.audioBase64}`);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsPlaying(null);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        toast.error("Erro ao reproduzir áudio");
+        setIsPlaying(null);
+        audioRef.current = null;
+      };
+
+      await audio.play();
     } catch (error) {
-      toast.error("Erro ao testar voz");
-    } finally {
+      console.error("Erro ao testar voz:", error);
+      toast.error("Erro ao testar voz. Verifique a conexão com o servidor.");
       setIsPlaying(null);
     }
   };
@@ -149,14 +202,19 @@ export function VoiceConfigTab() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleTestVoice(voice.id)}
-                  disabled={isPlaying !== null}
+                  disabled={isPlaying !== null && isPlaying !== voice.id}
                 >
                   {isPlaying === voice.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <>
+                      <Square className="h-4 w-4" />
+                      <span className="ml-2">Parar</span>
+                    </>
                   ) : (
-                    <Play className="h-4 w-4" />
+                    <>
+                      <Play className="h-4 w-4" />
+                      <span className="ml-2">Testar</span>
+                    </>
                   )}
-                  <span className="ml-2">Testar</span>
                 </Button>
               </div>
             ))}
