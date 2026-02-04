@@ -21,13 +21,13 @@ export function useAuth() {
     isLoading: true,
   });
 
-  // Fetch user role from platform_users table
+  // Fetch user role from user_roles table
   const fetchUserRole = useCallback(async (userId: string): Promise<UserRole> => {
     try {
       const { data, error } = await supabase
-        .from("platform_users")
-        .select("role, status")
-        .eq("auth_user_id", userId)
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (error) {
@@ -35,12 +35,10 @@ export function useAuth() {
         return "user";
       }
 
-      // Check if user exists and is active
-      if (data && data.status === "active") {
+      if (data?.role) {
         return data.role as UserRole;
       }
 
-      // Default to user
       return "user";
     } catch (error) {
       console.error("Error fetching user role:", error);
