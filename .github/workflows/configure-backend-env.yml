@@ -1,0 +1,56 @@
+name: Configure Backend Environment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  configure:
+    name: Configure Backend .env
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Configure Supabase environment variables
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            cd /root/iconsai-backend
+
+            # Backup current .env
+            cp .env .env.backup 2>/dev/null || true
+
+            # Check if SUPABASE vars exist, add if not
+            if ! grep -q "SUPABASE_URL" .env 2>/dev/null; then
+              echo "SUPABASE_URL=https://eefoiubkvyykalsbcoci.supabase.co" >> .env
+              echo "Added SUPABASE_URL"
+            fi
+
+            if ! grep -q "SUPABASE_SERVICE_ROLE_KEY" .env 2>/dev/null; then
+              echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+              echo "Added SUPABASE_SERVICE_ROLE_KEY"
+            fi
+
+            echo "=== Current .env (masked) ==="
+            cat .env | sed 's/=.*/=***/'
+
+            echo "=== Restarting container ==="
+            docker compose down
+            docker compose up -d
+
+            sleep 5
+
+            echo "=== Health check ==="
+            curl -s http://localhost:8000/health || echo "Health check failed"
+
+            echo "=== Container logs ==="
+            docker compose logs --tail=10
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
