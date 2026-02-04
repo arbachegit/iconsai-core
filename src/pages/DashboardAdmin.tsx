@@ -15,8 +15,6 @@ import { DashboardAnalyticsProvider } from "@/contexts/DashboardAnalyticsContext
 
 // Lazy load tab components
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
-const InfrastructureArchitectureTab = lazy(() => import("@/components/admin/InfrastructureArchitectureTab").then(m => ({ default: m.InfrastructureArchitectureTab })));
-const PWASimulator = lazy(() => import("@/components/admin/PWASimulator"));
 const InstitutionsTab = lazy(() => import("@/components/admin/InstitutionsTab"));
 const InstitutionUsersTab = lazy(() => import("@/components/admin/InstitutionUsersTab"));
 const UsersManagementTab = lazy(() => import("@/components/admin/UsersManagementTab"));
@@ -119,53 +117,6 @@ const DashboardAdmin = () => {
         return (
           <div className="p-6">
             <PWAHomeContainersTab />
-          </div>
-        );
-      case "dataflow-architecture":
-        return (
-          <div className="p-6">
-            <InfrastructureArchitectureTab />
-          </div>
-        );
-      case "dataflow-talk-app":
-        return (
-          <div className="flex flex-col items-center justify-center h-full p-6">
-            <div className="mb-6 text-center">
-              <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-                Talk APP Preview
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Preview do aplicativo de voz
-              </p>
-            </div>
-            <PWASimulator
-              showFrame={true}
-              scale={0.85}
-              showControls={false}
-              isLandscape={false}
-            />
-          </div>
-        );
-      // Tabs removidas - tabelas foram deletadas
-      case "api":
-      case "ai":
-      case "data-analysis":
-      case "analytics-uf":
-      case "chart-database":
-      case "table-database":
-      case "dataflow-retail-system":
-      case "dataflow-autocontrol":
-      case "dataflow-tutor":
-      case "dataflow-healthcare":
-        return (
-          <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-            <div className="max-w-md">
-              <h2 className="text-xl font-semibold mb-2">Tab Desabilitada</h2>
-              <p className="text-muted-foreground">
-                Esta funcionalidade foi removida ou está em manutenção.
-                As tabelas de dados foram migradas para o brasil-data-hub.
-              </p>
-            </div>
           </div>
         );
       default:
