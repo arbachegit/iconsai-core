@@ -1,10 +1,9 @@
 /**
  * UsersManagementTab - Gerenciamento de Usuários
- * @version 2.0.0
+ * @version 3.0.0
  * @date 2026-02-04
  *
- * Componente para gerenciar usuários via backend seguro.
- * Não expõe SERVICE_ROLE_KEY no frontend.
+ * Usa platform_users para gestão unificada de usuários.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -67,6 +66,20 @@ const roleColors: Record<string, string> = {
   superadmin: "bg-amber-500/10 text-amber-500",
 };
 
+const statusLabels: Record<string, string> = {
+  active: "Ativo",
+  pending: "Pendente",
+  suspended: "Suspenso",
+  inactive: "Inativo",
+};
+
+const statusColors: Record<string, string> = {
+  active: "bg-green-500/10 text-green-500",
+  pending: "bg-yellow-500/10 text-yellow-500",
+  suspended: "bg-red-500/10 text-red-500",
+  inactive: "bg-gray-500/10 text-gray-500",
+};
+
 export default function UsersManagementTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,11 +110,11 @@ export default function UsersManagementTab() {
   }, [fetchUsers]);
 
   // Update user status
-  const updateUserStatus = async (userId: string, isActive: boolean) => {
+  const updateUserStatus = async (userId: string, status: string) => {
     try {
-      await updateUser(userId, { is_active: isActive });
+      await updateUser(userId, { status });
       toast.success(
-        isActive ? "Usuário ativado com sucesso" : "Usuário suspenso com sucesso"
+        status === "active" ? "Usuário ativado com sucesso" : "Usuário suspenso com sucesso"
       );
       await fetchUsers();
     } catch (err: any) {
@@ -116,18 +129,24 @@ export default function UsersManagementTab() {
     const { action, user } = confirmDialog;
 
     if (action === "suspend") {
-      await updateUserStatus(user.id, false);
+      await updateUserStatus(user.id, "suspended");
     } else if (action === "activate") {
-      await updateUserStatus(user.id, true);
+      await updateUserStatus(user.id, "active");
     }
 
     setConfirmDialog({ open: false, action: "suspend", user: null });
   };
 
+  // Get full name
+  const getFullName = (user: AdminUser) => {
+    return [user.first_name, user.last_name].filter(Boolean).join(" ") || "-";
+  };
+
   // Filter users
   const filteredUsers = users.filter(
     (user) =>
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -158,7 +177,7 @@ export default function UsersManagementTab() {
             </Button>
           </div>
           <CardDescription>
-            Gerencie os usuários do sistema. Crie, edite e controle o acesso dos usuários.
+            Gerencie os usuários da plataforma. Crie, edite e controle o acesso.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -179,7 +198,7 @@ export default function UsersManagementTab() {
         </Button>
         <Badge variant="outline">{users.length} usuários</Badge>
         <Badge variant="outline" className="bg-green-500/10 text-green-500">
-          {users.filter((u) => u.is_active).length} ativos
+          {users.filter((u) => u.status === "active").length} ativos
         </Badge>
       </div>
 
@@ -202,7 +221,7 @@ export default function UsersManagementTab() {
                 <TableRow key={user.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{user.full_name || "-"}</div>
+                      <div className="font-medium">{getFullName(user)}</div>
                       <div className="text-xs text-muted-foreground truncate max-w-[200px]">
                         {user.id}
                       </div>
@@ -221,17 +240,11 @@ export default function UsersManagementTab() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {user.is_active ? (
-                      <Badge className="bg-green-500/10 text-green-500">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Ativo
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-red-500/10 text-red-500">
-                        <Pause className="h-3 w-3 mr-1" />
-                        Suspenso
-                      </Badge>
-                    )}
+                    <Badge className={statusColors[user.status] || ""}>
+                      {user.status === "active" && <CheckCircle className="h-3 w-3 mr-1" />}
+                      {user.status === "suspended" && <Pause className="h-3 w-3 mr-1" />}
+                      {statusLabels[user.status] || user.status}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
@@ -242,10 +255,10 @@ export default function UsersManagementTab() {
                           })
                         : "-"}
                     </div>
-                    {user.last_sign_in_at && (
+                    {user.last_login_at && (
                       <div className="text-xs text-muted-foreground">
                         Último acesso:{" "}
-                        {formatDistanceToNow(new Date(user.last_sign_in_at), {
+                        {formatDistanceToNow(new Date(user.last_login_at), {
                           addSuffix: true,
                           locale: ptBR,
                         })}
@@ -260,7 +273,7 @@ export default function UsersManagementTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {user.is_active ? (
+                        {user.status === "active" ? (
                           <DropdownMenuItem
                             onClick={() =>
                               setConfirmDialog({
@@ -329,8 +342,8 @@ export default function UsersManagementTab() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDialog.action === "suspend"
-                ? `Tem certeza que deseja suspender o acesso de ${confirmDialog.user?.full_name || confirmDialog.user?.email}? O usuário não poderá acessar o sistema até ser reativado.`
-                : `Tem certeza que deseja ativar o acesso de ${confirmDialog.user?.full_name || confirmDialog.user?.email}?`}
+                ? `Tem certeza que deseja suspender o acesso de ${confirmDialog.user ? getFullName(confirmDialog.user) : ""}? O usuário não poderá acessar o sistema até ser reativado.`
+                : `Tem certeza que deseja ativar o acesso de ${confirmDialog.user ? getFullName(confirmDialog.user) : ""}?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

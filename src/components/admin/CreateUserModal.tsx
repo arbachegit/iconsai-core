@@ -1,9 +1,10 @@
 /**
  * CreateUserModal - Modal para criar novo usuário
- * @version 2.0.0
+ * @version 3.0.0
  * @date 2026-02-04
  *
  * Cria usuário via backend seguro (SERVICE_ROLE_KEY protegida)
+ * Usa platform_users para gestão unificada.
  */
 
 import { useState } from "react";
@@ -40,7 +41,8 @@ import { Loader2, UserPlus, Eye, EyeOff } from "lucide-react";
 import { createUser } from "@/services/adminApi";
 
 const createUserSchema = z.object({
-  full_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  first_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  last_name: z.string().optional(),
   email: z.string().email("Email inválido"),
   role: z.enum(["user", "admin", "superadmin"]),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
@@ -65,7 +67,8 @@ export const CreateUserModal = ({
   const form = useForm<CreateUserFormData>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
-      full_name: "",
+      first_name: "",
+      last_name: "",
       email: "",
       role: "user",
       password: "",
@@ -78,7 +81,8 @@ export const CreateUserModal = ({
       await createUser({
         email: data.email,
         password: data.password,
-        full_name: data.full_name,
+        first_name: data.first_name,
+        last_name: data.last_name,
         role: data.role,
       });
 
@@ -114,20 +118,35 @@ export const CreateUserModal = ({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Nome Completo */}
-            <FormField
-              control={form.control}
-              name="full_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome Completo *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="João Silva" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Nome e Sobrenome */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="first_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="João" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="last_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sobrenome</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Silva" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Email */}
             <FormField

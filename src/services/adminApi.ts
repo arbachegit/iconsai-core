@@ -15,27 +15,31 @@ const API_BASE_URL = import.meta.env.VITE_VOICE_API_URL || import.meta.env.VITE_
 
 export interface AdminUser {
   id: string;
+  auth_user_id?: string;
   email: string;
-  full_name?: string;
+  first_name: string;
+  last_name?: string;
   role: string;
-  is_active: boolean;
+  status: string;
   institution_id?: string;
   created_at?: string;
-  last_sign_in_at?: string;
+  last_login_at?: string;
 }
 
 export interface CreateUserData {
   email: string;
   password: string;
-  full_name: string;
+  first_name: string;
+  last_name?: string;
   role?: string;
   institution_id?: string;
 }
 
 export interface UpdateUserData {
-  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   role?: string;
-  is_active?: boolean;
+  status?: string;
   institution_id?: string;
 }
 

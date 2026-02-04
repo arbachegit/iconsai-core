@@ -21,28 +21,24 @@ export function useAuth() {
     isLoading: true,
   });
 
-  // Fetch user role from user_roles table
+  // Fetch user role from platform_users table
   const fetchUserRole = useCallback(async (userId: string): Promise<UserRole> => {
     try {
-      // Check for superadmin first
-      const { data: superadminData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "superadmin")
+      const { data, error } = await supabase
+        .from("platform_users")
+        .select("role, status")
+        .eq("auth_user_id", userId)
         .maybeSingle();
 
-      if (superadminData) return "superadmin";
+      if (error) {
+        console.error("Error fetching user role:", error);
+        return "user";
+      }
 
-      // Check for admin
-      const { data: adminData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      if (adminData) return "admin";
+      // Check if user exists and is active
+      if (data && data.status === "active") {
+        return data.role as UserRole;
+      }
 
       // Default to user
       return "user";
