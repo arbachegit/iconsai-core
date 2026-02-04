@@ -13,13 +13,15 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Settings,
   Home,
   Building2,
   Users,
   Activity,
   LayoutGrid,
-  Mic
+  Mic,
+  Volume2
 } from "lucide-react";
 
 export type DashboardTabType =
@@ -29,7 +31,8 @@ export type DashboardTabType =
   | "users-management"
   | "activity-logs"
   | "emotion-analytics"
-  | "pwa-home-config";
+  | "pwa-home-config"
+  | "voice-config";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -45,6 +48,7 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType;
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
   { id: "activity-logs", label: "Logs de Atividade", icon: Activity },
   { id: "pwa-home-config", label: "PWA Home Config", icon: LayoutGrid, superAdminOnly: true },
+  { id: "voice-config", label: "Config. Voz", icon: Volume2 },
 ];
 
 export function DashboardSidebar({ 
