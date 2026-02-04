@@ -148,7 +148,7 @@ serve(async (req) => {
             <head><meta charset="utf-8"></head>
             <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; text-align: center;">
-                <h1>🖥️ Lembrete: IconsAI Business Plataforma</h1>
+                <h1>🖥️ Lembrete: Iconsai Voz Plataforma</h1>
               </div>
               <div style="padding: 30px; background: #f8fafc;">
                 <p>Olá <strong>${name}</strong>,</p>
@@ -176,7 +176,7 @@ serve(async (req) => {
       // SMS informativo (só se não tem APP)
       if (phone && !has_app_access) {
         try {
-          const smsMsg = `IconsAI Business: Ola ${firstName}! Reenviamos email com convite. Acesse pelo computador.`;
+          const smsMsg = `Iconsai Voz: Ola ${firstName}! Reenviamos email com convite. Acesse pelo computador.`;
           await supabase.functions.invoke("send-sms", { body: { phoneNumber: phone, message: smsMsg } });
           results.push({ channel: "sms", product: "platform_info", success: true });
           console.log("📱 SMS info: ✅ Enviado");
@@ -200,7 +200,7 @@ serve(async (req) => {
               template: "invitation",
               variables: {
                 "1": firstName,
-                "2": "Equipe IconsAI Business",
+                "2": "Equipe Iconsai Voz",
                 "3": appUrlShort, // URL JÁ ENCURTADA
               },
               channel: "sms",

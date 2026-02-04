@@ -252,7 +252,7 @@ export function usePWAAuth() {
           try {
             console.log("[PWA Auth v8.0] Enviando SMS...");
 
-            const smsMessage = `IconsAI Business: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+            const smsMessage = `Iconsai Voz: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
 
             const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
               body: {
@@ -365,7 +365,7 @@ export function usePWAAuth() {
         // Enviar mensagem de boas-vindas
         try {
           const userName = result.user_name || state.userName || "Usuário";
-          const welcomeMessage = `IconsAI Business: Ola ${userName}! Bem-vindo ao IconsAI Business. Acesse: https://fia.iconsai.ai/pwa`;
+          const welcomeMessage = `Iconsai Voz: Ola ${userName}! Bem-vindo ao Iconsai Voz. Acesse: https://fia.iconsai.ai/pwa`;
 
           await supabase.functions.invoke("send-sms", {
             body: {
@@ -445,7 +445,7 @@ export function usePWAAuth() {
         try {
           console.log("[PWA Auth v8.0] Reenviando código via SMS...");
 
-          const smsMessage = `IconsAI Business: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
+          const smsMessage = `Iconsai Voz: Seu codigo de verificacao: ${result.verification_code}. Valido por 10 minutos.`;
 
           const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
             body: {

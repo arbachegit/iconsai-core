@@ -9,7 +9,7 @@
  * Design baseado no HOME do PWA (gradiente roxo).
  *
  * Usado por:
- * - PWA Principal (IconsAI Business)
+ * - PWA Principal (Iconsai Voz)
  * - PWA City (Chat IA)
  * - PWA Health (Saúde)
  * ============================================================
@@ -162,7 +162,7 @@ export const UnifiedSplashScreen: React.FC<UnifiedSplashScreenProps> = ({
             transition={{ delay: 0.8, duration: 0.5 }}
             className="absolute bottom-8 text-white/50 text-xs"
           >
-            © 2025 IconsAI Business • Arbache AI
+            © 2025 Iconsai Voz • Arbache AI
           </motion.div>
         </motion.div>
       )}

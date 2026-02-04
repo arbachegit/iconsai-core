@@ -135,7 +135,7 @@ export const AudioMessageCard: React.FC<AudioMessageCardProps> = ({ message, use
     try {
       if (navigator.share) {
         await navigator.share({
-          title: message.title || "Mensagem IconsAI Business",
+          title: message.title || "Mensagem Iconsai Voz",
           text: textContent,
           ...(hasAudio && { url: message.audioUrl }),
         });

@@ -303,7 +303,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           </motion.div>
           <h1 className="text-2xl font-bold text-foreground mb-4">Acesse pelo celular</h1>
           <p className="text-muted-foreground mb-6">
-            O IconsAI Business Voice Assistant foi projetado para dispositivos móveis. Acesse{" "}
+            O Iconsai Voz Voice Assistant foi projetado para dispositivos móveis. Acesse{" "}
             <span className="text-primary font-medium">hmv.iconsai.app</span> pelo seu celular.
           </p>
         </motion.div>

@@ -408,7 +408,7 @@ export default function InvitePage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center pb-2">
-          <img src={knowYouLogo} alt="IconsAI Business" className="h-12 mx-auto mb-4" />
+          <img src={knowYouLogo} alt="Iconsai Voz" className="h-12 mx-auto mb-4" />
           <CardTitle className="text-2xl">
             {step === "loading" && "Carregando..."}
             {step === "form" && "Complete seu cadastro"}

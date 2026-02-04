@@ -64,7 +64,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
   const getWelcomeText = useCallback((): string => {
     // Pegar texto do config (definido no banco pwa_config)
     let text = pwaConfig.worldWelcomeText ||
-      "Olá! Eu sou seu assistente de conhecimento geral do IconsAI Business. Pode me perguntar sobre qualquer assunto. Toque no microfone para começar!";
+      "Olá! Eu sou seu assistente de conhecimento geral do Iconsai Voz. Pode me perguntar sobre qualquer assunto. Toque no microfone para começar!";
 
     // Substituir [name] pelo nome do usuário se disponível
     if (userName) {

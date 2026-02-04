@@ -95,7 +95,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     if (!text) return;
 
     const dateStr = conv.createdAt.toLocaleDateString("pt-BR");
-    const fullText = `IconsAI Business - ${dateStr}:\n\n${text}`;
+    const fullText = `Iconsai Voz - ${dateStr}:\n\n${text}`;
 
     if (navigator.share) {
       try {

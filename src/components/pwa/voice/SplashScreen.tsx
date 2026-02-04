@@ -242,7 +242,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         <CentralAIStar glow={starGlow} />
       </div>
 
-      {/* Texto "IconsAI Business" */}
+      {/* Texto "Iconsai Voz" */}
       <div
         className="absolute left-1/2 top-[65%] -translate-x-1/2 pointer-events-none"
         style={{

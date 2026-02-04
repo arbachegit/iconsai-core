@@ -364,7 +364,7 @@ const HistoryModal: React.FC<{
 // COMPONENTE PRINCIPAL
 // ============================================================
 export const VoiceAssistantPage: React.FC<VoiceAssistantPageProps> = ({
-  welcomeMessage = 'Olá! Sou o assistente de voz do IconsAI. Como posso ajudar você hoje?',
+  welcomeMessage = 'Olá! Sou o assistente de voz do Iconsai Voz. Como posso ajudar você hoje?',
   voice: voiceProp = 'nova',
 }) => {
   const navigate = useNavigate();

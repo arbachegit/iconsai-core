@@ -72,7 +72,7 @@ export const SafariPWAInstallPrompt: React.FC = () => {
             {/* Conteúdo */}
             <div className="flex-1 min-w-0 pr-6">
               <h3 className="font-semibold text-foreground mb-1">
-                Instalar IconsAI Business
+                Instalar Iconsai Voz
               </h3>
               <p className="text-sm text-muted-foreground mb-3">
                 Adicione à sua tela inicial para uma experiência melhor

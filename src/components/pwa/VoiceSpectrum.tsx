@@ -64,7 +64,7 @@ export const VoiceSpectrum: React.FC<VoiceSpectrumProps> = ({
         className="text-3xl font-bold mb-12"
         style={{ color: currentColor }}
       >
-        IconsAI Business
+        Iconsai Voz
       </motion.h1>
 
       {/* Spectrum Container */}

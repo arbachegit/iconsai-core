@@ -262,7 +262,7 @@ const DEFAULT_PHONETIC_MAP: Record<string, string> = {
   // ICONSAI
   // ============================================
   "IconsAI": "aiconseiai",
-  "IconsAI Business": "aiconseiai bíznés",
+  "Iconsai Voz": "aiconseiai bíznés",
   "iconsai": "aiconseiai",
   "ICONSAI": "aiconseiai",
   "IconsAI": "aiconseiai bíznés", // Legado - redireciona para novo nome

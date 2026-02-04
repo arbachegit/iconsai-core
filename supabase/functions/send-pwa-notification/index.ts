@@ -107,15 +107,15 @@ async function sendSms(
     case "otp":
     case "resend_code":
       // Código de verificação - SEM NOME para simplificar
-      smsText = `IconsAI Business: Seu codigo de verificacao: ${codigo}. Valido por 10 minutos.`;
+      smsText = `Iconsai Voz: Seu codigo de verificacao: ${codigo}. Valido por 10 minutos.`;
       break;
 
     case "welcome":
-      smsText = `IconsAI Business: Ola ${nome}! Bem-vindo. Acesse: ${SITE_URL}/pwa`;
+      smsText = `Iconsai Voz: Ola ${nome}! Bem-vindo. Acesse: ${SITE_URL}/pwa`;
       break;
 
     case "resend_welcome":
-      smsText = `IconsAI Business: Ola ${nome}! Acesse: ${SITE_URL}/pwa`;
+      smsText = `Iconsai Voz: Ola ${nome}! Acesse: ${SITE_URL}/pwa`;
       break;
 
     case "invitation": {
@@ -127,12 +127,12 @@ async function sendSms(
         inviteUrl = await shortenUrl(inviteUrl);
       }
 
-      smsText = `IconsAI Business: Ola ${nome}! Voce foi convidado. Acesse: ${inviteUrl}`;
+      smsText = `Iconsai Voz: Ola ${nome}! Voce foi convidado. Acesse: ${inviteUrl}`;
       break;
     }
 
     default:
-      smsText = `IconsAI Business: ${Object.values(variables).join(" ")}`;
+      smsText = `Iconsai Voz: ${Object.values(variables).join(" ")}`;
   }
 
   console.log(`[SMS] ${smsText.length} chars: ${smsText}`);
