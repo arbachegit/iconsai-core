@@ -1,0 +1,78 @@
+name: Deploy Backend to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'iconsai-backend/**'
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: 'Force rebuild Docker container'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  deploy-backend:
+    name: Deploy Python Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy backend files
+        run: |
+          rsync -avzr --delete \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='.pytest_cache' \
+            --exclude='*.pyc' \
+            --exclude='.env' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            iconsai-backend/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/root/iconsai-backend/
+
+      - name: Rebuild and restart container
+        if: ${{ github.event.inputs.rebuild != 'false' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            cd /root/iconsai-backend
+            echo "=== Rebuilding Docker container ==="
+            docker-compose down || true
+            docker-compose build --no-cache
+            docker-compose up -d
+            echo "=== Container status ==="
+            docker-compose ps
+            sleep 5
+            echo "=== Health check ==="
+            curl -s http://localhost:8000/health || echo "Health check endpoint not available"
+            echo "=== Recent logs ==="
+            docker-compose logs --tail=20
+          ENDSSH
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Deployment summary
+        run: |
+          echo "## 🐍 Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deployed by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Timestamp** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Backend deployment completed!**" >> $GITHUB_STEP_SUMMARY
