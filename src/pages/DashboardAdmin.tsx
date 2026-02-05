@@ -15,16 +15,10 @@ import { DashboardAnalyticsProvider } from "@/contexts/DashboardAnalyticsContext
 
 // Lazy load tab components
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
-const InstitutionsTab = lazy(() => import("@/components/admin/InstitutionsTab"));
-const InstitutionUsersTab = lazy(() => import("@/components/admin/InstitutionUsersTab"));
 const UsersManagementTab = lazy(() => import("@/components/admin/UsersManagementTab"));
 const UserActivityLogsTab = lazy(() => import("@/components/admin/UserActivityLogsTab"));
-const EmotionAnalyticsTab = lazy(() => import("@/components/admin/EmotionAnalyticsTab"));
 const AssistantsTab = lazy(() => import("@/components/admin/AssistantsTab"));
 const CompaniesTab = lazy(() => import("@/components/admin/CompaniesTab"));
-const ManagersTab = lazy(() => import("@/components/admin/ManagersTab"));
-const CompanyUsersTab = lazy(() => import("@/components/admin/CompanyUsersTab"));
-const CompanyAssistantsTab = lazy(() => import("@/components/admin/CompanyAssistantsTab"));
 
 // Loading fallback
 const TabLoader = () => (
@@ -87,18 +81,6 @@ const DashboardAdmin = () => {
     switch (activeTab) {
       case "indicators":
         return <DashboardTab />;
-      case "institutions":
-        return (
-          <div className="p-6">
-            <InstitutionsTab />
-          </div>
-        );
-      case "institution-users":
-        return (
-          <div className="p-6">
-            <InstitutionUsersTab />
-          </div>
-        );
       case "users-management":
         return (
           <div className="p-6">
@@ -111,12 +93,6 @@ const DashboardAdmin = () => {
             <UserActivityLogsTab />
           </div>
         );
-      case "emotion-analytics":
-        return (
-          <div className="p-6">
-            <EmotionAnalyticsTab />
-          </div>
-        );
       case "assistants":
         return (
           <div className="p-6">
@@ -127,24 +103,6 @@ const DashboardAdmin = () => {
         return (
           <div className="p-6">
             <CompaniesTab />
-          </div>
-        );
-      case "managers":
-        return (
-          <div className="p-6">
-            <ManagersTab />
-          </div>
-        );
-      case "company-users":
-        return (
-          <div className="p-6">
-            <CompanyUsersTab />
-          </div>
-        );
-      case "company-assistants":
-        return (
-          <div className="p-6">
-            <CompanyAssistantsTab />
           </div>
         );
       default:

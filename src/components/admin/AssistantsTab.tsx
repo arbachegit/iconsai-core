@@ -281,6 +281,10 @@ export default function AssistantsTab() {
   // Local TTS settings state (para edicao em tempo real)
   const [localTTSSettings, setLocalTTSSettings] = useState<Record<string, TTSSettings>>({});
 
+  // Local knowledge slugs for editing
+  const [localKnowledgeSlugs, setLocalKnowledgeSlugs] = useState<Record<string, string[]>>({});
+  const [slugInputs, setSlugInputs] = useState<Record<string, string>>({});
+
   // Load assistants
   const loadAssistants = async () => {
     setIsLoading(true);
@@ -300,12 +304,15 @@ export default function AssistantsTab() {
 
       setAssistants(data || []);
 
-      // Initialize local TTS settings
+      // Initialize local TTS settings and knowledge slugs
       const settings: Record<string, TTSSettings> = {};
+      const slugs: Record<string, string[]> = {};
       data.forEach((a) => {
         settings[a.id] = a.metadata?.tts_settings || { ...DEFAULT_TTS_SETTINGS };
+        slugs[a.id] = a.knowledge_slugs || [];
       });
       setLocalTTSSettings(settings);
+      setLocalKnowledgeSlugs(slugs);
     } catch (error: any) {
       console.error("Erro ao carregar agentes:", error);
       toast.error("Erro ao carregar agentes");
@@ -892,23 +899,78 @@ export default function AssistantsTab() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Knowledge Slugs */}
-          {assistant.knowledge_slugs && assistant.knowledge_slugs.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                <Brain className="w-4 h-4" />
-                Fontes de Conhecimento
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {assistant.knowledge_slugs.map((slug) => (
-                  <Badge key={slug} variant="outline" className="flex items-center gap-1">
+          {/* Knowledge Slugs - Editable */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              Fontes de Conhecimento (Slugs RAG/Scraping)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite o slug e pressione Enter"
+                value={slugInputs[assistant.id] || ""}
+                onChange={(e) => setSlugInputs(prev => ({ ...prev, [assistant.id]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && slugInputs[assistant.id]?.trim()) {
+                    e.preventDefault();
+                    const slug = slugInputs[assistant.id].trim().toLowerCase().replace(/\s+/g, "-");
+                    const currentSlugs = localKnowledgeSlugs[assistant.id] || [];
+                    if (!currentSlugs.includes(slug)) {
+                      const newSlugs = [...currentSlugs, slug];
+                      setLocalKnowledgeSlugs(prev => ({ ...prev, [assistant.id]: newSlugs }));
+                      handleSaveAssistant(assistant, { knowledge_slugs: newSlugs });
+                    }
+                    setSlugInputs(prev => ({ ...prev, [assistant.id]: "" }));
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (slugInputs[assistant.id]?.trim()) {
+                    const slug = slugInputs[assistant.id].trim().toLowerCase().replace(/\s+/g, "-");
+                    const currentSlugs = localKnowledgeSlugs[assistant.id] || [];
+                    if (!currentSlugs.includes(slug)) {
+                      const newSlugs = [...currentSlugs, slug];
+                      setLocalKnowledgeSlugs(prev => ({ ...prev, [assistant.id]: newSlugs }));
+                      handleSaveAssistant(assistant, { knowledge_slugs: newSlugs });
+                    }
+                    setSlugInputs(prev => ({ ...prev, [assistant.id]: "" }));
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            {(localKnowledgeSlugs[assistant.id]?.length > 0 || assistant.knowledge_slugs?.length > 0) && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {(localKnowledgeSlugs[assistant.id] || assistant.knowledge_slugs || []).map((slug) => (
+                  <Badge key={slug} variant="secondary" className="flex items-center gap-1">
                     <Database className="w-3 h-3" />
                     {slug}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentSlugs = localKnowledgeSlugs[assistant.id] || assistant.knowledge_slugs || [];
+                        const newSlugs = currentSlugs.filter(s => s !== slug);
+                        setLocalKnowledgeSlugs(prev => ({ ...prev, [assistant.id]: newSlugs }));
+                        handleSaveAssistant(assistant, { knowledge_slugs: newSlugs });
+                      }}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </Badge>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+            {(!localKnowledgeSlugs[assistant.id] || localKnowledgeSlugs[assistant.id].length === 0) &&
+             (!assistant.knowledge_slugs || assistant.knowledge_slugs.length === 0) && (
+              <p className="text-xs text-muted-foreground">Nenhum slug configurado. Adicione slugs para RAG ou Scraping.</p>
+            )}
+          </div>
 
           {/* Link de Acesso */}
           <div className="space-y-2">
