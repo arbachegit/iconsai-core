@@ -9,8 +9,6 @@ from contextlib import asynccontextmanager
 
 from src.config import get_settings
 from src.api import voice_to_text, text_to_speech, chat_router
-from src.api import intelligence
-from src.api import okr
 
 
 @asynccontextmanager
@@ -55,20 +53,6 @@ app.include_router(
     chat_router.router,
     prefix="/functions/v1",
     tags=["Chat Router"]
-)
-
-# Intelligence API
-app.include_router(
-    intelligence.router,
-    prefix="/api/intelligence",
-    tags=["Intelligence"]
-)
-
-# OKR API
-app.include_router(
-    okr.router,
-    prefix="/api/okr",
-    tags=["OKR"]
 )
 
 
