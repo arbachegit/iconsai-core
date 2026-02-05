@@ -13,15 +13,12 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
-  ChevronRight,
   Settings,
   Home,
   Building2,
   Users,
   Activity,
-  LayoutGrid,
   Mic,
-  Volume2,
   Bot,
   Briefcase,
   UserCog,
@@ -36,8 +33,6 @@ export type DashboardTabType =
   | "users-management"
   | "activity-logs"
   | "emotion-analytics"
-  | "pwa-home-config"
-  | "voice-config"
   | "assistants"
   | "companies"
   | "managers"
@@ -53,20 +48,15 @@ interface DashboardSidebarProps {
 }
 
 const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType; superAdminOnly?: boolean }[] = [
-  { id: "assistants", label: "Assistentes", icon: Bot },
+  { id: "assistants", label: "Agentes", icon: Bot },
   { id: "companies", label: "Empresas", icon: Briefcase },
-  { id: "company-assistants", label: "Assistentes x Empresas", icon: Link2 },
+  { id: "company-assistants", label: "Agentes x Empresas", icon: Link2 },
   { id: "managers", label: "Gestores", icon: UserCog },
   { id: "company-users", label: "Usuários por Empresa", icon: UsersRound },
   { id: "users-management", label: "Usuários Sistema", icon: Users },
   { id: "institutions", label: "Instituições", icon: Building2, superAdminOnly: true },
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
   { id: "activity-logs", label: "Logs de Atividade", icon: Activity },
-  { id: "pwa-home-config", label: "PWA Home Config", icon: LayoutGrid, superAdminOnly: true },
-];
-
-const voiceConfigItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
-  { id: "voice-config", label: "Voz", icon: Mic },
 ];
 
 export function DashboardSidebar({ 
@@ -79,7 +69,6 @@ export function DashboardSidebar({
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
-  const [isVoiceConfigExpanded, setIsVoiceConfigExpanded] = useState(() => activeTab === "voice-config");
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -261,87 +250,6 @@ export function DashboardSidebar({
               </Button>
             );
           })}
-
-          {/* Config. Voz Expandable Section */}
-          <div className="mt-1">
-            {isCollapsed ? (
-              <div className="flex justify-center">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "group w-full h-12 rounded-lg transition-all duration-300 ease-in-out",
-                        activeTab === "voice-config"
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105"
-                      )}
-                      onClick={() => {
-                        onToggleCollapse();
-                        setIsVoiceConfigExpanded(true);
-                      }}
-                    >
-                      <Volume2 className={cn("w-5 h-5", activeTab !== "voice-config" && "group-hover:text-black")} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
-                    Config. Voz
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            ) : (
-              <>
-                {/* Config. Voz Header */}
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "group w-full justify-between gap-3 h-11 px-3 rounded-lg transition-all duration-300 ease-in-out",
-                    activeTab === "voice-config"
-                      ? "bg-primary/20 text-primary"
-                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => setIsVoiceConfigExpanded(!isVoiceConfigExpanded)}
-                >
-                  <div className="flex items-center gap-3">
-                    <Volume2 className="h-5 w-5 shrink-0" />
-                    <span className="truncate font-medium">Config. Voz</span>
-                  </div>
-                  <ChevronRight className={cn(
-                    "h-4 w-4 shrink-0 transition-transform duration-200",
-                    isVoiceConfigExpanded && "rotate-90"
-                  )} />
-                </Button>
-
-                {/* Config. Voz Sub-items */}
-                {isVoiceConfigExpanded && (
-                  <div className="mt-1 ml-3 pl-3 border-l border-border/50 space-y-1">
-                    {voiceConfigItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = activeTab === item.id;
-
-                      return (
-                        <Button
-                          key={item.id}
-                          variant="ghost"
-                          className={cn(
-                            "group w-full justify-start gap-3 h-10 px-3 rounded-lg transition-all duration-300 ease-in-out text-sm",
-                            isActive
-                              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                              : "hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] text-muted-foreground hover:text-black"
-                          )}
-                          onClick={() => onTabChange(item.id)}
-                        >
-                          <Icon className={cn("h-4 w-4 shrink-0", !isActive && "group-hover:text-black")} />
-                          <span className="truncate">{item.label}</span>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
 
         </nav>
 

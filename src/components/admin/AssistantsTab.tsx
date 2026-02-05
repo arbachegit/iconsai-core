@@ -95,28 +95,44 @@ interface Assistant {
   updated_at: string;
 }
 
-// Vozes ElevenLabs - Formais e Informais
+// Vozes ElevenLabs - Formais, Informais e PT-BR Nativas
 const ELEVENLABS_VOICES = [
-  // Vozes Formais
+  // Vozes PT-BR Nativas (Recomendadas para Brasileiro)
+  {
+    id: "vibfi5nlk3hs8Mtvf9Oy",
+    name: "Ana",
+    description: "Voz feminina brasileira relaxada e natural. Perfeita para narracoes.",
+    gender: "Feminina",
+    style: "PT-BR",
+    recommended: true,
+  },
+  {
+    id: "7eUAxNOneHxqfyRS77mW",
+    name: "Carla",
+    description: "Voz feminina brasileira jovem e amigavel. Ideal para chat e redes sociais.",
+    gender: "Feminina",
+    style: "PT-BR",
+    recommended: true,
+  },
+  {
+    id: "nHNZWlqUWtEKPr3hhFQP",
+    name: "Daiane",
+    description: "Voz feminina brasileira jovem, suave e doce. Perfeita para entretenimento.",
+    gender: "Feminina",
+    style: "PT-BR",
+  },
+  // Vozes Formais (Inglesas com bom PT-BR)
   {
     id: "21m00Tcm4TlvDq8ikWAM",
     name: "Rachel",
-    description: "Voz feminina clara e natural. Excelente para PT-BR.",
+    description: "Voz feminina clara e natural. Excelente para PT-BR corporativo.",
     gender: "Feminina",
     style: "Formal",
-    recommended: true,
   },
   {
     id: "pNInz6obpgDQGcFmaJgB",
     name: "Adam",
     description: "Voz masculina profunda e confiante.",
-    gender: "Masculina",
-    style: "Formal",
-  },
-  {
-    id: "VR6AewLTigWG4xSOukaG",
-    name: "Arnold",
-    description: "Voz masculina forte e autoritaria.",
     gender: "Masculina",
     style: "Formal",
   },
@@ -127,7 +143,14 @@ const ELEVENLABS_VOICES = [
     gender: "Masculina",
     style: "Formal",
   },
-  // Vozes Informais
+  {
+    id: "jsCqWAovK2LkecY7zXl4",
+    name: "Callum",
+    description: "Voz masculina suave e acolhedora.",
+    gender: "Masculina",
+    style: "Formal",
+  },
+  // Vozes Informais (Descontraidas)
   {
     id: "AZnzlk1XvdvUeBnXmlld",
     name: "Domi",
@@ -148,7 +171,6 @@ const ELEVENLABS_VOICES = [
     description: "Voz masculina jovem e amigavel.",
     gender: "Masculina",
     style: "Informal",
-    recommended: true,
   },
   {
     id: "yoZ06aMxZJJ28mfd3POQ",
@@ -163,13 +185,6 @@ const ELEVENLABS_VOICES = [
     description: "Voz feminina jovem e amigavel.",
     gender: "Feminina",
     style: "Informal",
-  },
-  {
-    id: "jsCqWAovK2LkecY7zXl4",
-    name: "Callum",
-    description: "Voz masculina suave e acolhedora.",
-    gender: "Masculina",
-    style: "Formal",
   },
 ];
 
@@ -576,12 +591,13 @@ export default function AssistantsTab() {
             Voz
           </Label>
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all">Todas</TabsTrigger>
+              <TabsTrigger value="pt-br">PT-BR</TabsTrigger>
               <TabsTrigger value="formal">Formais</TabsTrigger>
               <TabsTrigger value="informal">Informais</TabsTrigger>
             </TabsList>
-            {["all", "formal", "informal"].map((tab) => (
+            {["all", "pt-br", "formal", "informal"].map((tab) => (
               <TabsContent key={tab} value={tab} className="space-y-2">
                 {ELEVENLABS_VOICES.filter(
                   (v) => tab === "all" || v.style.toLowerCase() === tab
@@ -612,7 +628,9 @@ export default function AssistantsTab() {
                           <Badge
                             variant="outline"
                             className={`text-xs ${
-                              voice.style === "Informal"
+                              voice.style === "PT-BR"
+                                ? "bg-green-500/10 text-green-500 border-green-500/30"
+                                : voice.style === "Informal"
                                 ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
                                 : "bg-blue-500/10 text-blue-500 border-blue-500/30"
                             }`}
