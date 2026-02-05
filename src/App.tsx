@@ -1,4 +1,4 @@
-// Build: 2026-02-03-SIMPLIFIED - Desktop focused, no device gates
+// Build: 2026-02-05-MULTI-TENANT - Company login + TTS config
 import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -23,6 +23,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const VoiceAssistantPage = lazy(() => import("./components/voice-assistant/VoiceAssistantPage"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
 const InviteAcceptPage = lazy(() => import("./pages/InviteAcceptPage"));
+const CompanyLoginPage = lazy(() => import("./pages/CompanyLoginPage"));
 
 // Loading fallback
 const PageLoader = () => (
@@ -91,6 +92,9 @@ const App = () => (
                 {/* Invite Routes */}
                 <Route path="/invite/:token" element={<InvitePage />} />
                 <Route path="/accept-invite/:token" element={<InviteAcceptPage />} />
+
+                {/* Company Login - core.iconsai.ai/:empresa */}
+                <Route path="/:empresa" element={<CompanyLoginPage />} />
 
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />

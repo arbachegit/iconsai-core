@@ -1,6 +1,12 @@
 /**
  * AssistantsTab - Gerenciamento de Agentes de IA
- * Agente principal "ICONSAI - SABE TUDO" + criação de novos agentes
+ * @version 2.0.0
+ *
+ * Inclui configuracao completa de TTS:
+ * - Vozes ElevenLabs (formais e informais)
+ * - Humanizacao (neutro, amigavel, expressivo)
+ * - Leitura de numeros e PT-BR
+ * - Stability, Similarity Boost, Style
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -12,8 +18,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -30,7 +38,6 @@ import {
 import {
   Bot,
   Plus,
-  Pencil,
   Trash2,
   Loader2,
   Power,
@@ -44,14 +51,28 @@ import {
   ExternalLink,
   Sparkles,
   Settings,
-  Save,
   X,
   Database,
-  Brain
+  Brain,
+  Mic,
+  Sliders,
+  Heart,
+  Type,
+  Hash,
 } from "lucide-react";
 
 const VOICE_API_URL = import.meta.env.VITE_VOICE_API_URL || "";
 const APP_URL = import.meta.env.VITE_APP_URL || "https://pwa.iconsai.ai";
+
+interface TTSSettings {
+  stability: number;
+  similarity_boost: number;
+  style: number;
+  use_speaker_boost: boolean;
+  humanization_level: "neutro" | "amigavel" | "expressivo";
+  number_reading: "extenso" | "digito" | "hibrido";
+  pt_br_enhanced: boolean;
+}
 
 interface Assistant {
   id: string;
@@ -67,63 +88,153 @@ interface Assistant {
   temperature: number;
   max_tokens: number;
   avatar_url: string | null;
+  metadata: {
+    tts_settings?: TTSSettings;
+  } | null;
   created_at: string;
   updated_at: string;
 }
 
-// Vozes disponíveis no ElevenLabs
+// Vozes ElevenLabs - Formais e Informais
 const ELEVENLABS_VOICES = [
+  // Vozes Formais
   {
     id: "21m00Tcm4TlvDq8ikWAM",
     name: "Rachel",
     description: "Voz feminina clara e natural. Excelente para PT-BR.",
     gender: "Feminina",
-    recommended: true
+    style: "Formal",
+    recommended: true,
   },
   {
     id: "pNInz6obpgDQGcFmaJgB",
     name: "Adam",
     description: "Voz masculina profunda e confiante.",
-    gender: "Masculina"
-  },
-  {
-    id: "MF3mGyEYCl7XYWbV9V6O",
-    name: "Elli",
-    description: "Voz feminina jovem e amigável.",
-    gender: "Feminina"
+    gender: "Masculina",
+    style: "Formal",
   },
   {
     id: "VR6AewLTigWG4xSOukaG",
     name: "Arnold",
-    description: "Voz masculina forte e autoritária.",
-    gender: "Masculina"
+    description: "Voz masculina forte e autoritaria.",
+    gender: "Masculina",
+    style: "Formal",
+  },
+  {
+    id: "ODq5zmih8GrVes37Dizd",
+    name: "Patrick",
+    description: "Voz masculina neutra e versatil.",
+    gender: "Masculina",
+    style: "Formal",
+  },
+  // Vozes Informais
+  {
+    id: "AZnzlk1XvdvUeBnXmlld",
+    name: "Domi",
+    description: "Voz feminina jovem e descontraida.",
+    gender: "Feminina",
+    style: "Informal",
+  },
+  {
+    id: "EXAVITQu4vr4xnSDxMaL",
+    name: "Bella",
+    description: "Voz feminina suave e acolhedora.",
+    gender: "Feminina",
+    style: "Informal",
+  },
+  {
+    id: "TxGEqnHWrfWFTfGW9XjX",
+    name: "Josh",
+    description: "Voz masculina jovem e amigavel.",
+    gender: "Masculina",
+    style: "Informal",
+    recommended: true,
+  },
+  {
+    id: "yoZ06aMxZJJ28mfd3POQ",
+    name: "Sam",
+    description: "Voz masculina casual e conversacional.",
+    gender: "Masculina",
+    style: "Informal",
+  },
+  {
+    id: "MF3mGyEYCl7XYWbV9V6O",
+    name: "Elli",
+    description: "Voz feminina jovem e amigavel.",
+    gender: "Feminina",
+    style: "Informal",
   },
   {
     id: "jsCqWAovK2LkecY7zXl4",
     name: "Callum",
     description: "Voz masculina suave e acolhedora.",
-    gender: "Masculina"
-  },
-  {
-    id: "ODq5zmih8GrVes37Dizd",
-    name: "Patrick",
-    description: "Voz masculina neutra e versátil.",
-    gender: "Masculina"
+    gender: "Masculina",
+    style: "Formal",
   },
 ];
+
+// Niveis de Humanizacao
+const HUMANIZATION_LEVELS = {
+  neutro: {
+    label: "Neutro",
+    description: "Fala clara e direta, sem emocoes extras",
+    stability: 0.7,
+    similarity_boost: 0.8,
+    style: 0.0,
+  },
+  amigavel: {
+    label: "Amigavel (Recomendado)",
+    description: "Tom acolhedor e natural, ideal para atendimento",
+    stability: 0.5,
+    similarity_boost: 0.75,
+    style: 0.3,
+  },
+  expressivo: {
+    label: "Expressivo",
+    description: "Mais emocao e variacao tonal",
+    stability: 0.3,
+    similarity_boost: 0.65,
+    style: 0.5,
+  },
+};
+
+// Modos de leitura de numeros
+const NUMBER_READING_MODES = {
+  extenso: {
+    label: "Por extenso",
+    description: "123 = 'cento e vinte e tres'",
+  },
+  digito: {
+    label: "Digito a digito",
+    description: "123 = 'um dois tres'",
+  },
+  hibrido: {
+    label: "Hibrido (Recomendado)",
+    description: "Telefones por digito, valores por extenso",
+  },
+};
 
 const AVAILABLE_MODELS = [
   { id: "gpt-4o", label: "GPT-4o (Recomendado)" },
-  { id: "gpt-4o-mini", label: "GPT-4o Mini (Mais rápido)" },
+  { id: "gpt-4o-mini", label: "GPT-4o Mini (Mais rapido)" },
   { id: "gpt-4-turbo", label: "GPT-4 Turbo" },
 ];
 
-// Agente padrão
+const DEFAULT_TTS_SETTINGS: TTSSettings = {
+  stability: 0.5,
+  similarity_boost: 0.75,
+  style: 0.3,
+  use_speaker_boost: true,
+  humanization_level: "amigavel",
+  number_reading: "hibrido",
+  pt_br_enhanced: true,
+};
+
 const DEFAULT_ASSISTANT = {
   name: "ICONSAI - SABE TUDO",
   slug: "sabe-tudo",
   description: "Assistente principal que responde sobre qualquer assunto",
-  system_prompt: "Você é o ICONSAI, um assistente de voz inteligente desenvolvido pela Arbache AI. Você é especialista em responder perguntas sobre qualquer assunto de forma clara, objetiva e amigável. Sempre responda em português brasileiro.",
+  system_prompt: "Voce e o ICONSAI, um assistente de voz inteligente desenvolvido pela Arbache AI. Voce e especialista em responder perguntas sobre qualquer assunto de forma clara, objetiva e amigavel. Sempre responda em portugues brasileiro.",
   model: "gpt-4o",
   voice_id: "21m00Tcm4TlvDq8ikWAM",
   is_default: true,
@@ -135,6 +246,7 @@ export default function AssistantsTab() {
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [expandedTTS, setExpandedTTS] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Form state para novo agente
@@ -148,7 +260,11 @@ export default function AssistantsTab() {
     voice_id: "21m00Tcm4TlvDq8ikWAM",
     knowledge_slugs: [] as string[],
     knowledge_input: "",
+    tts_settings: { ...DEFAULT_TTS_SETTINGS },
   });
+
+  // Local TTS settings state (para edicao em tempo real)
+  const [localTTSSettings, setLocalTTSSettings] = useState<Record<string, TTSSettings>>({});
 
   // Load assistants
   const loadAssistants = async () => {
@@ -162,13 +278,19 @@ export default function AssistantsTab() {
 
       if (error) throw error;
 
-      // Se não existe o agente padrão, criar
       if (!data || data.length === 0 || !data.find(a => a.is_default)) {
         await createDefaultAssistant();
         return;
       }
 
       setAssistants(data || []);
+
+      // Initialize local TTS settings
+      const settings: Record<string, TTSSettings> = {};
+      data.forEach((a) => {
+        settings[a.id] = a.metadata?.tts_settings || { ...DEFAULT_TTS_SETTINGS };
+      });
+      setLocalTTSSettings(settings);
     } catch (error: any) {
       console.error("Erro ao carregar agentes:", error);
       toast.error("Erro ao carregar agentes");
@@ -177,18 +299,18 @@ export default function AssistantsTab() {
     }
   };
 
-  // Criar agente padrão
   const createDefaultAssistant = async () => {
     try {
       const { error } = await supabase.from("assistants").insert({
         ...DEFAULT_ASSISTANT,
         is_active: true,
+        metadata: { tts_settings: DEFAULT_TTS_SETTINGS },
       });
 
       if (error && !error.message.includes("duplicate")) throw error;
       loadAssistants();
     } catch (error: any) {
-      console.error("Erro ao criar agente padrão:", error);
+      console.error("Erro ao criar agente padrao:", error);
     }
   };
 
@@ -196,7 +318,6 @@ export default function AssistantsTab() {
     loadAssistants();
   }, []);
 
-  // Gerar slug a partir do nome
   const generateSlug = (name: string) => {
     return name
       .toLowerCase()
@@ -206,7 +327,6 @@ export default function AssistantsTab() {
       .replace(/^-|-$/g, "");
   };
 
-  // Copiar link
   const handleCopyLink = async (assistant: Assistant) => {
     const link = `${APP_URL}/pwa?agent=${assistant.slug}`;
     try {
@@ -219,8 +339,7 @@ export default function AssistantsTab() {
     }
   };
 
-  // Testar voz
-  const handleTestVoice = async (voiceId: string, assistantId: string) => {
+  const handleTestVoice = async (voiceId: string, assistantId: string, ttsSettings?: TTSSettings) => {
     if (isPlaying === assistantId && audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -236,18 +355,23 @@ export default function AssistantsTab() {
     setIsPlaying(assistantId);
 
     try {
-      const testText = "Olá! Esta é uma demonstração da minha voz. Como posso ajudar você hoje?";
+      const testText = "Ola! Esta e uma demonstracao da minha voz. Como posso ajudar voce hoje?";
 
       const response = await fetch(`${VOICE_API_URL}/functions/v1/text-to-speech-karaoke`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: testText, voice: voiceId, chatType: "assistant" }),
+        body: JSON.stringify({
+          text: testText,
+          voice: voiceId,
+          chatType: "assistant",
+          tts_settings: ttsSettings,
+        }),
       });
 
-      if (!response.ok) throw new Error("Falha ao gerar áudio");
+      if (!response.ok) throw new Error("Falha ao gerar audio");
 
       const data = await response.json();
-      if (!data.audioBase64) throw new Error("Áudio não recebido");
+      if (!data.audioBase64) throw new Error("Audio nao recebido");
 
       const audio = new Audio(`data:audio/mpeg;base64,${data.audioBase64}`);
       audioRef.current = audio;
@@ -258,7 +382,7 @@ export default function AssistantsTab() {
       };
 
       audio.onerror = () => {
-        toast.error("Erro ao reproduzir áudio");
+        toast.error("Erro ao reproduzir audio");
         setIsPlaying(null);
         audioRef.current = null;
       };
@@ -271,20 +395,19 @@ export default function AssistantsTab() {
     }
   };
 
-  // Salvar configuração do agente
-  const handleSaveAssistant = async (assistant: Assistant, voiceId: string) => {
+  const handleSaveAssistant = async (assistant: Assistant, updates: Partial<Assistant>) => {
     setSavingId(assistant.id);
     try {
       const { error } = await supabase
         .from("assistants")
         .update({
-          voice_id: voiceId,
+          ...updates,
           updated_at: new Date().toISOString(),
         })
         .eq("id", assistant.id);
 
       if (error) throw error;
-      toast.success("Configuração salva!");
+      toast.success("Configuracao salva!");
       loadAssistants();
     } catch (error: any) {
       toast.error("Erro ao salvar");
@@ -293,10 +416,38 @@ export default function AssistantsTab() {
     }
   };
 
-  // Criar novo agente
+  const handleSaveTTSSettings = async (assistant: Assistant) => {
+    const settings = localTTSSettings[assistant.id];
+    if (!settings) return;
+
+    await handleSaveAssistant(assistant, {
+      metadata: { ...assistant.metadata, tts_settings: settings },
+    });
+  };
+
+  const updateLocalTTSSettings = (assistantId: string, updates: Partial<TTSSettings>) => {
+    setLocalTTSSettings((prev) => ({
+      ...prev,
+      [assistantId]: {
+        ...(prev[assistantId] || DEFAULT_TTS_SETTINGS),
+        ...updates,
+      },
+    }));
+  };
+
+  const applyHumanizationPreset = (assistantId: string, level: keyof typeof HUMANIZATION_LEVELS) => {
+    const preset = HUMANIZATION_LEVELS[level];
+    updateLocalTTSSettings(assistantId, {
+      humanization_level: level,
+      stability: preset.stability,
+      similarity_boost: preset.similarity_boost,
+      style: preset.style,
+    });
+  };
+
   const handleCreateAgent = async () => {
     if (!newAgent.name.trim()) {
-      toast.error("Nome é obrigatório");
+      toast.error("Nome e obrigatorio");
       return;
     }
 
@@ -314,6 +465,7 @@ export default function AssistantsTab() {
         knowledge_slugs: newAgent.knowledge_slugs,
         is_active: true,
         is_default: false,
+        metadata: { tts_settings: newAgent.tts_settings },
       });
 
       if (error) throw error;
@@ -328,11 +480,12 @@ export default function AssistantsTab() {
         voice_id: "21m00Tcm4TlvDq8ikWAM",
         knowledge_slugs: [],
         knowledge_input: "",
+        tts_settings: { ...DEFAULT_TTS_SETTINGS },
       });
       loadAssistants();
     } catch (error: any) {
       if (error.code === "23505") {
-        toast.error("Já existe um agente com esse slug");
+        toast.error("Ja existe um agente com esse slug");
       } else {
         toast.error(error.message || "Erro ao criar agente");
       }
@@ -341,10 +494,9 @@ export default function AssistantsTab() {
     }
   };
 
-  // Toggle ativo
   const handleToggleActive = async (assistant: Assistant) => {
     if (assistant.is_default) {
-      toast.error("Não é possível desativar o agente padrão");
+      toast.error("Nao e possivel desativar o agente padrao");
       return;
     }
 
@@ -362,10 +514,9 @@ export default function AssistantsTab() {
     }
   };
 
-  // Deletar agente
   const handleDelete = async (assistant: Assistant) => {
     if (assistant.is_default) {
-      toast.error("Não é possível excluir o agente padrão");
+      toast.error("Nao e possivel excluir o agente padrao");
       return;
     }
 
@@ -378,17 +529,295 @@ export default function AssistantsTab() {
         .eq("id", assistant.id);
 
       if (error) throw error;
-      toast.success("Agente excluído");
+      toast.success("Agente excluido");
       loadAssistants();
     } catch {
       toast.error("Erro ao excluir agente");
     }
   };
 
-  // Renderizar card do agente
+  // Render TTS Settings Panel
+  const renderTTSSettings = (assistant: Assistant) => {
+    const settings = localTTSSettings[assistant.id] || DEFAULT_TTS_SETTINGS;
+    const currentVoice = ELEVENLABS_VOICES.find((v) => v.id === assistant.voice_id);
+
+    return (
+      <div className="space-y-6 pt-4">
+        {/* Humanization Level */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2 text-base font-semibold">
+            <Heart className="w-4 h-4 text-pink-500" />
+            Nivel de Humanizacao
+          </Label>
+          <div className="grid grid-cols-3 gap-3">
+            {Object.entries(HUMANIZATION_LEVELS).map(([key, value]) => (
+              <button
+                key={key}
+                onClick={() => applyHumanizationPreset(assistant.id, key as keyof typeof HUMANIZATION_LEVELS)}
+                className={`
+                  p-3 rounded-lg border-2 text-left transition-all
+                  ${settings.humanization_level === key
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                  }
+                `}
+              >
+                <p className="font-medium text-sm">{value.label}</p>
+                <p className="text-xs text-muted-foreground mt-1">{value.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Voice Selection */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2 text-base font-semibold">
+            <Mic className="w-4 h-4 text-blue-500" />
+            Voz
+          </Label>
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="all">Todas</TabsTrigger>
+              <TabsTrigger value="formal">Formais</TabsTrigger>
+              <TabsTrigger value="informal">Informais</TabsTrigger>
+            </TabsList>
+            {["all", "formal", "informal"].map((tab) => (
+              <TabsContent key={tab} value={tab} className="space-y-2">
+                {ELEVENLABS_VOICES.filter(
+                  (v) => tab === "all" || v.style.toLowerCase() === tab
+                ).map((voice) => (
+                  <div
+                    key={voice.id}
+                    className={`
+                      flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer
+                      ${assistant.voice_id === voice.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                      }
+                    `}
+                    onClick={() => handleSaveAssistant(assistant, { voice_id: voice.id })}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          assistant.voice_id === voice.id ? "bg-primary" : "bg-muted-foreground/30"
+                        }`}
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{voice.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {voice.gender}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              voice.style === "Informal"
+                                ? "bg-purple-500/10 text-purple-500 border-purple-500/30"
+                                : "bg-blue-500/10 text-blue-500 border-blue-500/30"
+                            }`}
+                          >
+                            {voice.style}
+                          </Badge>
+                          {voice.recommended && (
+                            <Badge className="bg-green-500/10 text-green-500 text-xs">
+                              Recomendada
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{voice.description}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTestVoice(voice.id, `${assistant.id}-${voice.id}`, settings);
+                      }}
+                      disabled={isPlaying !== null && isPlaying !== `${assistant.id}-${voice.id}`}
+                    >
+                      {isPlaying === `${assistant.id}-${voice.id}` ? (
+                        <Square className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
+
+        {/* Number Reading */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2 text-base font-semibold">
+            <Hash className="w-4 h-4 text-orange-500" />
+            Leitura de Numeros
+          </Label>
+          <div className="grid grid-cols-3 gap-3">
+            {Object.entries(NUMBER_READING_MODES).map(([key, value]) => (
+              <button
+                key={key}
+                onClick={() => updateLocalTTSSettings(assistant.id, {
+                  number_reading: key as TTSSettings["number_reading"],
+                })}
+                className={`
+                  p-3 rounded-lg border-2 text-left transition-all
+                  ${settings.number_reading === key
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                  }
+                `}
+              >
+                <p className="font-medium text-sm">{value.label}</p>
+                <p className="text-xs text-muted-foreground mt-1">{value.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* PT-BR Enhanced */}
+        <div className="flex items-center justify-between p-4 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <Type className="w-5 h-5 text-green-500" />
+            <div>
+              <p className="font-medium text-sm">Leitura PT-BR Aprimorada</p>
+              <p className="text-xs text-muted-foreground">
+                Pronuncia correta de siglas, abreviacoes e expressoes brasileiras
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={settings.pt_br_enhanced}
+            onCheckedChange={(checked) =>
+              updateLocalTTSSettings(assistant.id, { pt_br_enhanced: checked })
+            }
+          />
+        </div>
+
+        {/* Advanced Settings */}
+        <Accordion type="single" collapsible>
+          <AccordionItem value="advanced" className="border rounded-lg px-4">
+            <AccordionTrigger className="hover:no-underline">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4" />
+                <span className="font-medium">Configuracoes Avancadas</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4 pb-4">
+              {/* Stability */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Estabilidade</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {Math.round(settings.stability * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  value={[settings.stability]}
+                  onValueChange={([value]) =>
+                    updateLocalTTSSettings(assistant.id, { stability: value })
+                  }
+                  max={1}
+                  step={0.05}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maior = mais consistente, Menor = mais expressivo
+                </p>
+              </div>
+
+              {/* Similarity Boost */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Fidelidade a Voz</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {Math.round(settings.similarity_boost * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  value={[settings.similarity_boost]}
+                  onValueChange={([value]) =>
+                    updateLocalTTSSettings(assistant.id, { similarity_boost: value })
+                  }
+                  max={1}
+                  step={0.05}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quao similar a voz original deve ser
+                </p>
+              </div>
+
+              {/* Style */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Exageracao de Estilo</Label>
+                  <span className="text-sm text-muted-foreground">
+                    {Math.round(settings.style * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  value={[settings.style]}
+                  onValueChange={([value]) =>
+                    updateLocalTTSSettings(assistant.id, { style: value })
+                  }
+                  max={1}
+                  step={0.05}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Intensidade das caracteristicas de estilo da voz
+                </p>
+              </div>
+
+              {/* Speaker Boost */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">Speaker Boost</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Melhora a clareza em ambientes ruidosos
+                  </p>
+                </div>
+                <Switch
+                  checked={settings.use_speaker_boost}
+                  onCheckedChange={(checked) =>
+                    updateLocalTTSSettings(assistant.id, { use_speaker_boost: checked })
+                  }
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        {/* Save Button */}
+        <Button
+          onClick={() => handleSaveTTSSettings(assistant)}
+          disabled={savingId === assistant.id}
+          className="w-full"
+        >
+          {savingId === assistant.id ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            <>
+              <Settings className="w-4 h-4 mr-2" />
+              Salvar Configuracoes TTS
+            </>
+          )}
+        </Button>
+      </div>
+    );
+  };
+
+  // Render agent card
   const renderAgentCard = (assistant: Assistant) => {
     const agentLink = `${APP_URL}/pwa?agent=${assistant.slug}`;
-    const currentVoice = ELEVENLABS_VOICES.find(v => v.id === assistant.voice_id) || ELEVENLABS_VOICES[0];
+    const isExpanded = expandedTTS === assistant.id;
 
     return (
       <Card key={assistant.id} className={assistant.is_default ? "border-primary/50 bg-primary/5" : ""}>
@@ -410,7 +839,7 @@ export default function AssistantsTab() {
                   )}
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  {assistant.description || "Sem descrição"}
+                  {assistant.description || "Sem descricao"}
                 </CardDescription>
               </div>
             </div>
@@ -475,11 +904,7 @@ export default function AssistantsTab() {
                 readOnly
                 className="font-mono text-sm bg-muted"
               />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handleCopyLink(assistant)}
-              >
+              <Button variant="outline" size="icon" onClick={() => handleCopyLink(assistant)}>
                 {copiedId === assistant.id ? (
                   <Check className="w-4 h-4 text-green-500" />
                 ) : (
@@ -498,63 +923,31 @@ export default function AssistantsTab() {
 
           <Separator />
 
-          {/* Configuração de Voz */}
+          {/* TTS Settings Toggle */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <Volume2 className="w-4 h-4" />
-              Configuração de Voz
-            </Label>
-
-            <div className="grid gap-2">
-              {ELEVENLABS_VOICES.map((voice) => (
-                <div
-                  key={voice.id}
-                  className={`
-                    flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer
-                    ${assistant.voice_id === voice.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'}
-                  `}
-                  onClick={() => handleSaveAssistant(assistant, voice.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${assistant.voice_id === voice.id ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{voice.name}</span>
-                        <Badge variant="outline" className="text-xs">{voice.gender}</Badge>
-                        {voice.recommended && (
-                          <Badge className="bg-green-500/10 text-green-500 text-xs">Recomendada</Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{voice.description}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTestVoice(voice.id, `${assistant.id}-${voice.id}`);
-                    }}
-                    disabled={isPlaying !== null && isPlaying !== `${assistant.id}-${voice.id}`}
-                  >
-                    {isPlaying === `${assistant.id}-${voice.id}` ? (
-                      <Square className="w-4 h-4" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                  </Button>
+            <button
+              onClick={() => setExpandedTTS(isExpanded ? null : assistant.id)}
+              className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Volume2 className="w-5 h-5 text-primary" />
+                <div className="text-left">
+                  <p className="font-medium">Configuracao de Voz e TTS</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ELEVENLABS_VOICES.find((v) => v.id === assistant.voice_id)?.name || "Rachel"} -{" "}
+                    {HUMANIZATION_LEVELS[
+                      (assistant.metadata?.tts_settings?.humanization_level ||
+                        "amigavel") as keyof typeof HUMANIZATION_LEVELS
+                    ]?.label || "Amigavel"}
+                  </p>
                 </div>
-              ))}
-            </div>
-
-            {savingId === assistant.id && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Salvando...
               </div>
-            )}
+              <Settings
+                className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+              />
+            </button>
+
+            {isExpanded && renderTTSSettings(assistant)}
           </div>
         </CardContent>
       </Card>
@@ -569,17 +962,15 @@ export default function AssistantsTab() {
     );
   }
 
-  const defaultAssistant = assistants.find(a => a.is_default);
-  const otherAssistants = assistants.filter(a => !a.is_default);
+  const defaultAssistant = assistants.find((a) => a.is_default);
+  const otherAssistants = assistants.filter((a) => !a.is_default);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Agentes de IA</h2>
-        <p className="text-muted-foreground">
-          Configure os agentes e suas vozes
-        </p>
+        <p className="text-muted-foreground">Configure os agentes, vozes e TTS</p>
       </div>
 
       {/* Agente Principal */}
@@ -600,9 +991,7 @@ export default function AssistantsTab() {
             <Plus className="w-5 h-5" />
             Criar Novo Agente
           </CardTitle>
-          <CardDescription>
-            Configure um novo agente de IA personalizado
-          </CardDescription>
+          <CardDescription>Configure um novo agente de IA personalizado</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -633,10 +1022,10 @@ export default function AssistantsTab() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="new-description">Descrição</Label>
+            <Label htmlFor="new-description">Descricao</Label>
             <Input
               id="new-description"
-              placeholder="Breve descrição do agente"
+              placeholder="Breve descricao do agente"
               value={newAgent.description}
               onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
             />
@@ -646,14 +1035,14 @@ export default function AssistantsTab() {
             <Label htmlFor="new-prompt">Prompt do Sistema</Label>
             <Textarea
               id="new-prompt"
-              placeholder="Instruções de comportamento para o agente..."
+              placeholder="Instrucoes de comportamento para o agente..."
               rows={4}
               value={newAgent.system_prompt}
               onChange={(e) => setNewAgent({ ...newAgent, system_prompt: e.target.value })}
             />
           </div>
 
-          {/* Knowledge Slugs - Integração RAG/Scraping */}
+          {/* Knowledge Slugs */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Brain className="w-4 h-4" />
@@ -706,10 +1095,12 @@ export default function AssistantsTab() {
                     {slug}
                     <button
                       type="button"
-                      onClick={() => setNewAgent({
-                        ...newAgent,
-                        knowledge_slugs: newAgent.knowledge_slugs.filter((s) => s !== slug),
-                      })}
+                      onClick={() =>
+                        setNewAgent({
+                          ...newAgent,
+                          knowledge_slugs: newAgent.knowledge_slugs.filter((s) => s !== slug),
+                        })
+                      }
                       className="ml-1 hover:text-destructive"
                     >
                       <X className="w-3 h-3" />
@@ -718,9 +1109,6 @@ export default function AssistantsTab() {
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Slugs das APIs de RAG/Scraping que alimentam este agente com conhecimento
-            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -755,11 +1143,47 @@ export default function AssistantsTab() {
                 <SelectContent>
                   {ELEVENLABS_VOICES.map((voice) => (
                     <SelectItem key={voice.id} value={voice.id}>
-                      {voice.name} ({voice.gender})
+                      {voice.name} ({voice.gender} - {voice.style})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Humanization Level for new agent */}
+          <div className="space-y-2">
+            <Label>Nivel de Humanizacao</Label>
+            <div className="grid grid-cols-3 gap-3">
+              {Object.entries(HUMANIZATION_LEVELS).map(([key, value]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    setNewAgent({
+                      ...newAgent,
+                      tts_settings: {
+                        ...newAgent.tts_settings,
+                        humanization_level: key as TTSSettings["humanization_level"],
+                        stability: value.stability,
+                        similarity_boost: value.similarity_boost,
+                        style: value.style,
+                      },
+                    })
+                  }
+                  className={`
+                    p-3 rounded-lg border-2 text-left transition-all
+                    ${
+                      newAgent.tts_settings.humanization_level === key
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    }
+                  `}
+                >
+                  <p className="font-medium text-sm">{value.label}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{value.description}</p>
+                </button>
+              ))}
             </div>
           </div>
 
