@@ -44,7 +44,10 @@ import {
   ExternalLink,
   Sparkles,
   Settings,
-  Save
+  Save,
+  X,
+  Database,
+  Brain
 } from "lucide-react";
 
 const VOICE_API_URL = import.meta.env.VITE_VOICE_API_URL || "";
@@ -60,6 +63,10 @@ interface Assistant {
   voice_id: string | null;
   is_active: boolean;
   is_default: boolean;
+  knowledge_slugs: string[];
+  temperature: number;
+  max_tokens: number;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -139,6 +146,8 @@ export default function AssistantsTab() {
     system_prompt: "",
     model: "gpt-4o",
     voice_id: "21m00Tcm4TlvDq8ikWAM",
+    knowledge_slugs: [] as string[],
+    knowledge_input: "",
   });
 
   // Load assistants
@@ -302,6 +311,7 @@ export default function AssistantsTab() {
         system_prompt: newAgent.system_prompt.trim() || null,
         model: newAgent.model,
         voice_id: newAgent.voice_id,
+        knowledge_slugs: newAgent.knowledge_slugs,
         is_active: true,
         is_default: false,
       });
@@ -316,6 +326,8 @@ export default function AssistantsTab() {
         system_prompt: "",
         model: "gpt-4o",
         voice_id: "21m00Tcm4TlvDq8ikWAM",
+        knowledge_slugs: [],
+        knowledge_input: "",
       });
       loadAssistants();
     } catch (error: any) {
@@ -433,6 +445,24 @@ export default function AssistantsTab() {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Knowledge Slugs */}
+          {assistant.knowledge_slugs && assistant.knowledge_slugs.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Brain className="w-4 h-4" />
+                Fontes de Conhecimento
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {assistant.knowledge_slugs.map((slug) => (
+                  <Badge key={slug} variant="outline" className="flex items-center gap-1">
+                    <Database className="w-3 h-3" />
+                    {slug}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Link de Acesso */}
           <div className="space-y-2">
             <Label className="text-sm font-medium flex items-center gap-2">
@@ -621,6 +651,76 @@ export default function AssistantsTab() {
               value={newAgent.system_prompt}
               onChange={(e) => setNewAgent({ ...newAgent, system_prompt: e.target.value })}
             />
+          </div>
+
+          {/* Knowledge Slugs - Integração RAG/Scraping */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              Fontes de Conhecimento (Slugs RAG/Scraping)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite o slug e pressione Enter"
+                value={newAgent.knowledge_input}
+                onChange={(e) => setNewAgent({ ...newAgent, knowledge_input: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newAgent.knowledge_input.trim()) {
+                    e.preventDefault();
+                    const slug = newAgent.knowledge_input.trim().toLowerCase().replace(/\s+/g, "-");
+                    if (!newAgent.knowledge_slugs.includes(slug)) {
+                      setNewAgent({
+                        ...newAgent,
+                        knowledge_slugs: [...newAgent.knowledge_slugs, slug],
+                        knowledge_input: "",
+                      });
+                    }
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (newAgent.knowledge_input.trim()) {
+                    const slug = newAgent.knowledge_input.trim().toLowerCase().replace(/\s+/g, "-");
+                    if (!newAgent.knowledge_slugs.includes(slug)) {
+                      setNewAgent({
+                        ...newAgent,
+                        knowledge_slugs: [...newAgent.knowledge_slugs, slug],
+                        knowledge_input: "",
+                      });
+                    }
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            {newAgent.knowledge_slugs.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {newAgent.knowledge_slugs.map((slug) => (
+                  <Badge key={slug} variant="secondary" className="flex items-center gap-1">
+                    <Database className="w-3 h-3" />
+                    {slug}
+                    <button
+                      type="button"
+                      onClick={() => setNewAgent({
+                        ...newAgent,
+                        knowledge_slugs: newAgent.knowledge_slugs.filter((s) => s !== slug),
+                      })}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Slugs das APIs de RAG/Scraping que alimentam este agente com conhecimento
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

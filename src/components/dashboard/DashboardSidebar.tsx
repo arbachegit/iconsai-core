@@ -24,7 +24,9 @@ import {
   Volume2,
   Bot,
   Briefcase,
-  UserCog
+  UserCog,
+  UsersRound,
+  Link2
 } from "lucide-react";
 
 export type DashboardTabType =
@@ -38,7 +40,9 @@ export type DashboardTabType =
   | "voice-config"
   | "assistants"
   | "companies"
-  | "managers";
+  | "managers"
+  | "company-users"
+  | "company-assistants";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -51,8 +55,10 @@ interface DashboardSidebarProps {
 const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType; superAdminOnly?: boolean }[] = [
   { id: "assistants", label: "Assistentes", icon: Bot },
   { id: "companies", label: "Empresas", icon: Briefcase },
+  { id: "company-assistants", label: "Assistentes x Empresas", icon: Link2 },
   { id: "managers", label: "Gestores", icon: UserCog },
-  { id: "users-management", label: "Usuários", icon: Users },
+  { id: "company-users", label: "Usuários por Empresa", icon: UsersRound },
+  { id: "users-management", label: "Usuários Sistema", icon: Users },
   { id: "institutions", label: "Instituições", icon: Building2, superAdminOnly: true },
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
   { id: "activity-logs", label: "Logs de Atividade", icon: Activity },

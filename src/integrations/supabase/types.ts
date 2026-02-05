@@ -1,7 +1,7 @@
 // ============================================
-// ICONSAI - Supabase Types v2.0.0
-// 12 tabelas da nova arquitetura
-// Gerado: 2026-01-27
+// ICONSAI - Supabase Types v3.0.0
+// 18 tabelas + 2 views - Multi-Tenant Agents
+// Gerado: 2026-02-05
 // ============================================
 
 export type Json =
@@ -962,9 +962,452 @@ export type Database = {
         }
         Relationships: []
       }
+
+      // =============================================
+      // 13. ASSISTANTS (Assistentes de IA)
+      // =============================================
+      assistants: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          system_prompt: string | null
+          model: string
+          voice_id: string
+          is_active: boolean
+          is_default: boolean
+          knowledge_slugs: string[]
+          temperature: number
+          max_tokens: number
+          avatar_url: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          description?: string | null
+          system_prompt?: string | null
+          model?: string
+          voice_id?: string
+          is_active?: boolean
+          is_default?: boolean
+          knowledge_slugs?: string[]
+          temperature?: number
+          max_tokens?: number
+          avatar_url?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          description?: string | null
+          system_prompt?: string | null
+          model?: string
+          voice_id?: string
+          is_active?: boolean
+          is_default?: boolean
+          knowledge_slugs?: string[]
+          temperature?: number
+          max_tokens?: number
+          avatar_url?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // =============================================
+      // 14. COMPANIES (Empresas)
+      // =============================================
+      companies: {
+        Row: {
+          id: string
+          name: string
+          slug: string | null
+          cnpj: string | null
+          email: string | null
+          phone: string | null
+          address: string | null
+          logo_url: string | null
+          primary_color: string
+          settings: Json
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug?: string | null
+          cnpj?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          logo_url?: string | null
+          primary_color?: string
+          settings?: Json
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string | null
+          cnpj?: string | null
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          logo_url?: string | null
+          primary_color?: string
+          settings?: Json
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // =============================================
+      // 15. MANAGERS (Gestores)
+      // =============================================
+      managers: {
+        Row: {
+          id: string
+          user_id: string | null
+          name: string
+          email: string
+          phone: string | null
+          company_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          name: string
+          email: string
+          phone?: string | null
+          company_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          name?: string
+          email?: string
+          phone?: string | null
+          company_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "managers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "managers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
+      // =============================================
+      // 16. COMPANY_ASSISTANTS (Relacao N:N)
+      // =============================================
+      company_assistants: {
+        Row: {
+          id: string
+          company_id: string
+          assistant_id: string
+          is_active: boolean
+          is_default: boolean
+          position: number
+          custom_system_prompt: string | null
+          custom_settings: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          assistant_id: string
+          is_active?: boolean
+          is_default?: boolean
+          position?: number
+          custom_system_prompt?: string | null
+          custom_settings?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          assistant_id?: string
+          is_active?: boolean
+          is_default?: boolean
+          position?: number
+          custom_system_prompt?: string | null
+          custom_settings?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_assistants_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_assistants_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
+      // =============================================
+      // 17. COMPANY_USERS (Usuarios das Empresas)
+      // =============================================
+      company_users: {
+        Row: {
+          id: string
+          auth_user_id: string | null
+          company_id: string
+          name: string
+          email: string
+          phone: string | null
+          role: string
+          is_active: boolean
+          last_login_at: string | null
+          login_count: number
+          avatar_url: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          auth_user_id?: string | null
+          company_id: string
+          name: string
+          email: string
+          phone?: string | null
+          role?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          avatar_url?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          auth_user_id?: string | null
+          company_id?: string
+          name?: string
+          email?: string
+          phone?: string | null
+          role?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          avatar_url?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_users_auth_user_id_fkey"
+            columns: ["auth_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_users_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
+      // =============================================
+      // 18. CONVERSATION_FACTS (Analytics)
+      // =============================================
+      conversation_facts: {
+        Row: {
+          id: string
+          company_id: string
+          user_id: string
+          assistant_id: string
+          conversation_date: string
+          conversation_hour: number | null
+          day_of_week: number | null
+          message_count: number
+          user_messages: number
+          assistant_messages: number
+          total_tokens: number
+          total_duration_seconds: number
+          avg_response_time_ms: number
+          positive_messages: number
+          negative_messages: number
+          neutral_messages: number
+          total_audio_duration_seconds: number
+          voice_messages: number
+          session_count: number
+          first_message_at: string | null
+          last_message_at: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          user_id: string
+          assistant_id: string
+          conversation_date?: string
+          conversation_hour?: number | null
+          day_of_week?: number | null
+          message_count?: number
+          user_messages?: number
+          assistant_messages?: number
+          total_tokens?: number
+          total_duration_seconds?: number
+          avg_response_time_ms?: number
+          positive_messages?: number
+          negative_messages?: number
+          neutral_messages?: number
+          total_audio_duration_seconds?: number
+          voice_messages?: number
+          session_count?: number
+          first_message_at?: string | null
+          last_message_at?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          user_id?: string
+          assistant_id?: string
+          conversation_date?: string
+          conversation_hour?: number | null
+          day_of_week?: number | null
+          message_count?: number
+          user_messages?: number
+          assistant_messages?: number
+          total_tokens?: number
+          total_duration_seconds?: number
+          avg_response_time_ms?: number
+          positive_messages?: number
+          negative_messages?: number
+          neutral_messages?: number
+          total_audio_duration_seconds?: number
+          voice_messages?: number
+          session_count?: number
+          first_message_at?: string | null
+          last_message_at?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_facts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_facts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "company_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_facts_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      // =============================================
+      // VIEWS: Resumos de uso
+      // =============================================
+      company_usage_summary: {
+        Row: {
+          company_id: string | null
+          company_name: string | null
+          company_slug: string | null
+          total_users: number | null
+          total_assistants: number | null
+          total_messages: number | null
+          total_sessions: number | null
+          last_activity_at: string | null
+        }
+        Relationships: []
+      }
+      assistant_usage_summary: {
+        Row: {
+          assistant_id: string | null
+          assistant_name: string | null
+          assistant_slug: string | null
+          companies_using: number | null
+          unique_users: number | null
+          total_messages: number | null
+          avg_response_time_ms: number | null
+          positive_messages: number | null
+          negative_messages: number | null
+          last_activity_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
