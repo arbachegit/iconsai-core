@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # API Keys
     openai_api_key: str = ""
     elevenlabs_api_key: str = ""
+    anthropic_api_key: str = ""
+    perplexity_api_key: str = ""
+    proxycurl_api_key: str = ""
 
     # ElevenLabs Config
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel - default
@@ -28,6 +31,9 @@ class Settings(BaseSettings):
 
     # Whisper Config
     whisper_model: str = "whisper-1"
+
+    # Intelligence Config
+    claude_model: str = "claude-sonnet-4-20250514"
 
     class Config:
         env_file = ".env"

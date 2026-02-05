@@ -1,0 +1,1 @@
+# Intelligence Module - Competitive Analysis
