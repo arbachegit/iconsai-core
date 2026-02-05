@@ -5,22 +5,26 @@
 
 -- ============================================================
 -- TABELA: assistants
--- Armazena assistentes de IA personalizados
+-- Armazena assistentes/agentes de IA personalizados
 -- ============================================================
 CREATE TABLE IF NOT EXISTS assistants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  slug VARCHAR(100) UNIQUE NOT NULL,
   description TEXT,
   system_prompt TEXT,
   model VARCHAR(50) NOT NULL DEFAULT 'gpt-4o',
-  voice_id VARCHAR(100),
+  voice_id VARCHAR(100) DEFAULT '21m00Tcm4TlvDq8ikWAM',
   is_active BOOLEAN NOT NULL DEFAULT true,
+  is_default BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Indices
 CREATE INDEX IF NOT EXISTS idx_assistants_is_active ON assistants(is_active);
+CREATE INDEX IF NOT EXISTS idx_assistants_slug ON assistants(slug);
+CREATE INDEX IF NOT EXISTS idx_assistants_is_default ON assistants(is_default);
 CREATE INDEX IF NOT EXISTS idx_assistants_created_at ON assistants(created_at DESC);
 
 -- RLS

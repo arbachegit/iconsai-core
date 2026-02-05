@@ -21,7 +21,6 @@ const UsersManagementTab = lazy(() => import("@/components/admin/UsersManagement
 const UserActivityLogsTab = lazy(() => import("@/components/admin/UserActivityLogsTab"));
 const EmotionAnalyticsTab = lazy(() => import("@/components/admin/EmotionAnalyticsTab"));
 const PWAHomeContainersTab = lazy(() => import("@/components/admin/PWAHomeContainersTab"));
-const VoiceConfigTab = lazy(() => import("@/components/admin/VoiceConfigTab"));
 const AssistantsTab = lazy(() => import("@/components/admin/AssistantsTab"));
 const CompaniesTab = lazy(() => import("@/components/admin/CompaniesTab"));
 const ManagersTab = lazy(() => import("@/components/admin/ManagersTab"));
@@ -121,12 +120,6 @@ const DashboardAdmin = () => {
         return (
           <div className="p-6">
             <PWAHomeContainersTab />
-          </div>
-        );
-      case "voice-config":
-        return (
-          <div className="p-6">
-            <VoiceConfigTab />
           </div>
         );
       case "assistants":
