@@ -46,7 +46,7 @@ interface Company {
   user_count?: number;
 }
 
-const APP_URL = import.meta.env.VITE_APP_URL || "https://pwa.iconsai.ai";
+const APP_URL = import.meta.env.VITE_COMPANY_APP_URL || "https://core.iconsai.ai";
 
 // Formatar CNPJ
 const formatCNPJ = (value: string) => {

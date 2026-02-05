@@ -27,7 +27,7 @@ COMMENT ON COLUMN assistants.metadata IS 'Metadados extras em JSON';
 
 -- ============================================================
 -- ALTERACAO: companies
--- Adiciona slug para URLs personalizadas (pwa.iconsai.ai/[slug])
+-- Adiciona slug para URLs personalizadas (core.iconsai.ai/[slug])
 -- ============================================================
 ALTER TABLE companies
 ADD COLUMN IF NOT EXISTS slug VARCHAR(100) UNIQUE,
@@ -38,7 +38,7 @@ ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}';
 -- Indice para busca por slug
 CREATE INDEX IF NOT EXISTS idx_companies_slug ON companies(slug) WHERE slug IS NOT NULL;
 
-COMMENT ON COLUMN companies.slug IS 'Slug unico para URL da empresa (pwa.iconsai.ai/[slug])';
+COMMENT ON COLUMN companies.slug IS 'Slug unico para URL da empresa (core.iconsai.ai/[slug])';
 COMMENT ON COLUMN companies.logo_url IS 'URL do logo da empresa';
 COMMENT ON COLUMN companies.primary_color IS 'Cor primaria da marca (hex)';
 COMMENT ON COLUMN companies.settings IS 'Configuracoes personalizadas da empresa';
