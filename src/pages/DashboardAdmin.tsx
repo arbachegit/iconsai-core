@@ -24,6 +24,7 @@ const PWAHomeContainersTab = lazy(() => import("@/components/admin/PWAHomeContai
 const AssistantsTab = lazy(() => import("@/components/admin/AssistantsTab"));
 const CompaniesTab = lazy(() => import("@/components/admin/CompaniesTab"));
 const ManagersTab = lazy(() => import("@/components/admin/ManagersTab"));
+const VoiceConfigTab = lazy(() => import("@/components/admin/VoiceConfigTab"));
 
 // Loading fallback
 const TabLoader = () => (
@@ -138,6 +139,12 @@ const DashboardAdmin = () => {
         return (
           <div className="p-6">
             <ManagersTab />
+          </div>
+        );
+      case "voice-config":
+        return (
+          <div className="p-6">
+            <VoiceConfigTab />
           </div>
         );
       default:
