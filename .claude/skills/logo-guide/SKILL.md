@@ -33,7 +33,7 @@ O logo Iconsai e composto por:
 
 ### Paleta de Cores
 
-```css
+\`\`\`css
 /* Cores principais do logo */
 --logo-gray: #D1D5DB;      /* Cinza claro - "icons" */
 --logo-red: #EF4444;       /* Vermelho - ".ai" */
@@ -43,27 +43,33 @@ O logo Iconsai e composto por:
 --logo-gray-hsl: 220 13% 84%;
 --logo-red-hsl: 0 84% 60%;
 --logo-orange-hsl: 25 95% 53%;
-```
+\`\`\`
 
 ---
 
 ## Arquivos do Logo
 
-### Localizacao
+### Localizacao Fonte
 
-```
+\`\`\`
 /Users/fernandoarbache/Downloads/Logo/Iconsai/
 ├── iconsai_no_bg copy.png    # Logo completo sem fundo (PRINCIPAL)
 ├── cropped_iconsai NO_BG.png # Logo cropped "i.ai" para favicon
 └── [outras variacoes]
-```
+\`\`\`
 
-### Arquivo Principal no Projeto
+### Arquivos no Projeto iconsai-core
 
-```
-public/images/
-└── iconsai-logo.png          # Logo principal (2.2MB, alta resolucao)
-```
+\`\`\`
+src/assets/
+├── knowyou-logo.png          # Logo principal
+├── knowyou-admin-logo.png    # Logo para admin dashboard
+└── iconsai-logo.png          # Logo Iconsai (se existir)
+
+public/
+├── favicon.ico               # Favicon
+└── apple-touch-icon.png      # Apple Touch Icon
+\`\`\`
 
 ---
 
@@ -82,10 +88,10 @@ public/images/
 
 | Uso | Largura | Altura | Classe CSS |
 |-----|---------|--------|------------|
-| Header/Login | 280px | auto | `h-16 w-auto` |
-| Sidebar | 160px | auto | `h-10 w-auto` |
-| Footer | 120px | auto | `h-8 w-auto` |
-| Mobile | 200px | auto | `h-12 w-auto` |
+| Header/Login | 280px | auto | \`h-16 w-auto\` |
+| Sidebar | 160px | auto | \`h-10 w-auto\` |
+| Footer | 120px | auto | \`h-8 w-auto\` |
+| Mobile | 200px | auto | \`h-12 w-auto\` |
 
 ---
 
@@ -96,46 +102,53 @@ public/images/
 > **O logo DEVE sempre ser exibido com fundo transparente.**
 > **NAO adicionar bordas, sombras ou contornos ao redor do logo.**
 
-### Implementacao Correta
+### Implementacao Correta (React/Vite)
 
-```tsx
+\`\`\`tsx
 // CORRETO - Sem fundo, sem contorno
-<Image
-  src="/images/iconsai-logo.png"
+<img
+  src={iconsaiLogo}
   alt="Iconsai"
-  width={280}
-  height={80}
+  className="h-16 w-auto"
+/>
+
+// CORRETO - Importando o asset
+import iconsaiLogo from "@/assets/iconsai-logo.png";
+
+<img
+  src={iconsaiLogo}
+  alt="Iconsai"
   className="h-16 w-auto"
 />
 
 // CORRETO - Sem classes de background
 <div className="flex justify-center">
-  <Image src="/images/iconsai-logo.png" ... />
+  <img src={iconsaiLogo} alt="Iconsai" className="h-16 w-auto" />
 </div>
-```
+\`\`\`
 
 ### Implementacao INCORRETA
 
-```tsx
+\`\`\`tsx
 // ERRADO - Fundo branco
 <div className="bg-white p-4">
-  <Image src="/images/iconsai-logo.png" ... />
+  <img src={iconsaiLogo} alt="Iconsai" className="h-16 w-auto" />
 </div>
 
 // ERRADO - Borda ao redor
-<Image
-  src="/images/iconsai-logo.png"
-  className="border border-gray-200 rounded-lg"
-  ...
+<img
+  src={iconsaiLogo}
+  alt="Iconsai"
+  className="border border-gray-200 rounded-lg h-16 w-auto"
 />
 
 // ERRADO - Sombra que cria "caixa"
-<Image
-  src="/images/iconsai-logo.png"
-  className="shadow-lg"
-  ...
+<img
+  src={iconsaiLogo}
+  alt="Iconsai"
+  className="shadow-lg h-16 w-auto"
 />
-```
+\`\`\`
 
 ---
 
@@ -143,51 +156,65 @@ public/images/
 
 ### 1. Tela de Login
 
-```tsx
+\`\`\`tsx
+import iconsaiLogo from "@/assets/iconsai-logo.png";
+
 <div className="text-center">
   <div className="flex justify-center mb-6">
-    <Image
-      src="/images/iconsai-logo.png"
+    <img
+      src={iconsaiLogo}
       alt="Iconsai"
-      width={280}
-      height={80}
-      priority
       className="h-16 w-auto"
     />
   </div>
-  <h1 className="text-2xl font-bold">OKR System</h1>
+  <h1 className="text-2xl font-bold">Iconsai Voice</h1>
 </div>
-```
+\`\`\`
 
 ### 2. Sidebar Header
 
-```tsx
+\`\`\`tsx
+import iconsaiLogo from "@/assets/iconsai-logo.png";
+
 <div className="flex items-center gap-3 px-4 py-3">
-  <Image
-    src="/images/iconsai-logo.png"
+  <img
+    src={iconsaiLogo}
     alt="Iconsai"
-    width={160}
-    height={45}
     className="h-10 w-auto"
   />
 </div>
-```
+\`\`\`
 
-### 3. Footer
+### 3. Dashboard Header
 
-```tsx
+\`\`\`tsx
+import iconsaiAdminLogo from "@/assets/knowyou-admin-logo.png";
+
+<header className="h-14 border-b border-border">
+  <div className="flex items-center gap-3">
+    <img
+      src={iconsaiAdminLogo}
+      alt="Iconsai Admin"
+      className="h-8 w-auto"
+    />
+    <span className="font-semibold text-sm">Dashboard</span>
+  </div>
+</header>
+\`\`\`
+
+### 4. Footer
+
+\`\`\`tsx
 <footer className="border-t border-border py-4">
   <div className="flex justify-center">
-    <Image
-      src="/images/iconsai-logo.png"
+    <img
+      src={iconsaiLogo}
       alt="Iconsai"
-      width={120}
-      height={34}
       className="h-8 w-auto opacity-60"
     />
   </div>
 </footer>
-```
+\`\`\`
 
 ---
 
@@ -195,14 +222,14 @@ public/images/
 
 O logo deve ter espaco livre ao redor equivalente a altura da letra "i":
 
-```
+\`\`\`
     ┌─────────────────────────────────┐
     │                                 │
     │    [  icons.ai  ]               │
     │                                 │
     └─────────────────────────────────┘
          ↑ Espaco minimo = altura do "i"
-```
+\`\`\`
 
 ---
 
@@ -212,24 +239,25 @@ O logo deve ter espaco livre ao redor equivalente a altura da letra "i":
 
 O logo foi projetado para fundos escuros:
 
-```css
+\`\`\`css
 /* Fundos ideais */
 background: #0a0e1a;  /* Azul escuro */
 background: #0f1629;  /* Azul muito escuro */
 background: #1a1a2e;  /* Roxo escuro */
-```
+background: #0B1120;  /* Sidebar background */
+\`\`\`
 
 ### Fundos Claros
 
 Em fundos claros, considerar usar versao com cores invertidas ou adicionar overlay:
 
-```tsx
+\`\`\`tsx
 // Overlay escuro para fundos claros
 <div className="relative">
   <div className="absolute inset-0 bg-black/5 rounded-lg" />
-  <Image src="/images/iconsai-logo.png" ... />
+  <img src={iconsaiLogo} alt="Iconsai" className="h-16 w-auto" />
 </div>
-```
+\`\`\`
 
 ---
 
@@ -237,90 +265,90 @@ Em fundos claros, considerar usar versao com cores invertidas ou adicionar overl
 
 ### Fade In na Carga
 
-```tsx
-<Image
-  src="/images/iconsai-logo.png"
+\`\`\`tsx
+<img
+  src={iconsaiLogo}
+  alt="Iconsai"
   className="h-16 w-auto animate-fade-in"
-  ...
 />
 
-// CSS
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+// Em tailwind.config.ts, adicionar:
+animation: {
+  'fade-in': 'fade-in 0.5s ease-out',
 }
-.animate-fade-in {
-  animation: fade-in 0.5s ease-out;
+keyframes: {
+  'fade-in': {
+    from: { opacity: '0', transform: 'translateY(-10px)' },
+    to: { opacity: '1', transform: 'translateY(0)' },
+  }
 }
-```
+\`\`\`
 
 ### Hover Sutil (apenas em contextos interativos)
 
-```tsx
-<Link href="/">
-  <Image
-    src="/images/iconsai-logo.png"
+\`\`\`tsx
+<Link to="/">
+  <img
+    src={iconsaiLogo}
+    alt="Iconsai"
     className="h-16 w-auto transition-opacity hover:opacity-80"
-    ...
   />
 </Link>
-```
+\`\`\`
 
 ---
 
 ## Otimizacao de Performance
 
-### Next.js Image Component
+### Import Direto (Recomendado para Vite)
 
-Sempre usar o componente `Image` do Next.js:
+\`\`\`tsx
+// Importar como modulo - Vite otimiza automaticamente
+import iconsaiLogo from "@/assets/iconsai-logo.png";
 
-```tsx
-import Image from 'next/image'
-
-<Image
-  src="/images/iconsai-logo.png"
+<img
+  src={iconsaiLogo}
   alt="Iconsai"
-  width={280}      // Largura intrinseca
-  height={80}      // Altura intrinseca
-  priority         // Para logos above-the-fold
-  className="..."  // Dimensoes via CSS
+  loading="eager"  // Para logos above-the-fold
+  className="h-16 w-auto"
 />
-```
+\`\`\`
 
 ### Propriedades Importantes
 
 | Prop | Uso | Quando |
 |------|-----|--------|
-| `priority` | Pre-carrega a imagem | Logos no header/login |
-| `loading="lazy"` | Carrega sob demanda | Logos no footer |
-| `placeholder="blur"` | Mostra blur durante carga | Imagens grandes |
+| \`loading="eager"\` | Carrega imediatamente | Logos no header/login |
+| \`loading="lazy"\` | Carrega sob demanda | Logos no footer |
+| \`decoding="async"\` | Decodifica em background | Sempre recomendado |
 
 ---
 
 ## Checklist de Implementacao
 
 - [x] Usar arquivo PNG com fundo transparente
-- [x] Implementar com `next/image` para otimizacao
-- [x] Adicionar `alt="Iconsai"` para acessibilidade
-- [x] Usar `priority` para logos above-the-fold
-- [x] Definir dimensoes via `className` (h-XX w-auto)
+- [x] Importar via \`@/assets/\` para otimizacao do Vite
+- [x] Adicionar \`alt="Iconsai"\` para acessibilidade
+- [x] Usar \`loading="eager"\` para logos above-the-fold
+- [x] Definir dimensoes via \`className\` (h-XX w-auto)
 - [ ] Verificar contraste com fundo
 - [ ] Testar em mobile
 - [ ] Verificar que nao ha borda/contorno visivel
 
 ---
 
-## Arquivos Relacionados
+## Arquivos Relacionados no iconsai-core
 
 | Arquivo | Uso |
 |---------|-----|
-| `public/images/iconsai-logo.png` | Logo principal |
-| `src/app/icon.png` | Favicon (cropped "i.ai") |
-| `src/app/apple-icon.png` | Apple Touch Icon |
+| \`src/assets/knowyou-logo.png\` | Logo principal |
+| \`src/assets/knowyou-admin-logo.png\` | Logo admin dashboard |
+| \`public/favicon.ico\` | Favicon |
+| \`public/apple-touch-icon.png\` | Apple Touch Icon |
 
 ---
 
 ## Referencias
 
-- Arquivo fonte: `/Users/fernandoarbache/Downloads/Logo/Iconsai/iconsai_no_bg copy.png`
-- Skill relacionada: `favicon-guide` (para icone da aba)
+- Arquivo fonte: \`/Users/fernandoarbache/Downloads/Logo/Iconsai/iconsai_no_bg copy.png\`
+- Projeto: iconsai-core (React + Vite + TailwindCSS)
