@@ -1,0 +1,13 @@
+{
+  "name": "iconsai-rag-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server para RAG API - Busca em bases de conhecimento",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
