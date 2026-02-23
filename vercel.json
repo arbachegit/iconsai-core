@@ -1,8 +1,6 @@
 {
-  "framework": "vite",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "framework": "nextjs",
+  "buildCommand": "cd apps/web && npm ci && npm run build",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "cd apps/web && npm ci"
 }

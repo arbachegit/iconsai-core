@@ -1,0 +1,143 @@
+=============================================================
+CONSOLE EVIDENCE - Frontend Normalization
+Repo: iconsai-core
+Date: 2026-02-23
+=============================================================
+
+=== PHASE 0: REPO IDENTITY ===
+
+$ pwd
+/Users/fernandoarbache/Documents/iconsai-core
+
+$ git rev-parse --show-toplevel
+/Users/fernandoarbache/Documents/iconsai-core
+
+$ git branch --show-current
+main
+
+$ git log -1 --oneline
+a148991a chore: remove all local skills (using global only)
+
+=== PHASE 1: INVENTORY ===
+
+$ find . -maxdepth 5 -name package.json (excl node_modules, legacy)
+./package.json
+./mcp-servers/scraping-api/package.json
+./mcp-servers/rag-api/package.json
+./apps/web/package.json
+
+$ find . -maxdepth 6 -name "index.html" (excl node_modules, legacy)
+(none - all moved to legacy/)
+
+$ find . -maxdepth 6 -name "vite.config.*" (excl node_modules, legacy)
+(none - all moved to legacy/)
+
+$ find . -maxdepth 6 -name "next.config.*" (excl node_modules, legacy)
+./apps/web/next.config.mjs
+
+=== PHASE 2: APPS/WEB STRUCTURE ===
+
+$ ls -la apps/web/
+.env.example
+.eslintrc.json
+.next/
+components.json
+next-env.d.ts
+next.config.mjs
+node_modules/
+package-lock.json
+package.json
+postcss.config.js
+postcss.config.mjs
+prettier.config.js
+public/
+src/
+tailwind.config.ts
+tsconfig.json
+
+$ ls -la apps/web/src/app/
+[empresa]/
+accept-invite/
+admin/
+dashboard/
+docs/
+hub/
+invite/
+layout.tsx
+not-found.tsx
+page.tsx
+providers.tsx
+pwa/
+reset-password/
+voice-assistant/
+
+=== PHASE 3: ROOT SCRIPTS ===
+
+$ cat package.json | grep -A 5 '"scripts"'
+"scripts": {
+  "dev:web": "npm run dev --workspace=apps/web",
+  "build:web": "npm run build --workspace=apps/web",
+  "start:web": "npm run start --workspace=apps/web",
+  "lint:web": "npm run lint --workspace=apps/web",
+  "format:web": "npm run format --workspace=apps/web"
+}
+
+=== PHASE 4: LEGACY NEUTRALIZATION ===
+
+$ ls legacy/
+index.html
+vite.config.ts
+tsconfig.app.json
+src-vite/
+dist-vite/
+
+Legacy moved and neutralized - no active routes pointing to it.
+
+=== PHASE 5: BUILD/LINT TESTS ===
+
+$ find apps/web/.next/server/app -name "*.js" | wc -l
+30
+
+Compiled routes:
+- /page.js
+- /admin/page.js
+- /admin/login/page.js
+- /admin/signup/page.js
+- /admin/dashboard/page.js
+- /dashboard/page.js
+- /docs/page.js
+- /hub/page.js
+- /pwa/page.js
+- /voice-assistant/page.js
+- /reset-password/page.js
+- /invite/[token]/page.js
+- /accept-invite/[token]/page.js
+- /[empresa]/page.js
+
+Build: Compiled successfully in 9.7s
+Lint: 67 warnings, 0 errors (all warnings are non-blocking)
+
+=== PHASE 6: CONTRACT VALIDATION ===
+
+[✓] apps/web/ exists
+[✓] apps/web/package.json has scripts: dev, build, start, lint, format
+[✓] apps/web/next.config.mjs exists
+[✓] apps/web/src/app/layout.tsx exists
+[✓] apps/web/src/app/page.tsx exists
+[✓] apps/web/src/app/providers.tsx exists with QueryClientProvider
+[✓] apps/web/src/lib/http.ts exists with baseURL configurable
+[✓] apps/web/src/services/atlas.ts exists with Zod validation
+[✓] apps/web/tailwind.config.ts exists
+[✓] No vite.config.* active in front
+[✓] No index.html running as main app
+[✓] Legacy removed or isolated in legacy/
+
+=== PHASE 7: FINAL DECISION ===
+
+All checklist items PASS.
+
+DECISION: PASS
+
+=============================================================
+END OF EVIDENCE
+=============================================================

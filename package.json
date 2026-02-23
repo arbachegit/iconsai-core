@@ -13,7 +13,12 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "pre-deploy": "node scripts/pre-deploy-check.mjs",
-    "validate": "npm run lint && npm run pre-deploy && npm run build"
+    "validate": "npm run lint && npm run pre-deploy && npm run build",
+    "dev:web": "cd apps/web && npm run dev",
+    "build:web": "cd apps/web && npm run build",
+    "start:web": "cd apps/web && npm run start",
+    "lint:web": "cd apps/web && npm run lint",
+    "format:web": "cd apps/web && npm run format"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

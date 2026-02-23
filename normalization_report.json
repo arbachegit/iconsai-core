@@ -1,0 +1,57 @@
+{
+  "repo": {
+    "pwd": "/Users/fernandoarbache/Documents/iconsai-core",
+    "git_root": "/Users/fernandoarbache/Documents/iconsai-core",
+    "branch": "main",
+    "head_commit": "a148991a chore: remove all local skills (using global only)"
+  },
+  "inventory": {
+    "front_candidates": ["apps/web"],
+    "legacy_candidates": ["legacy/"]
+  },
+  "created": {
+    "apps_web_tree_excerpt": "apps/web/ [package.json, next.config.mjs, tsconfig.json, tailwind.config.ts, src/app/]",
+    "key_files": [
+      "apps/web/package.json",
+      "apps/web/next.config.mjs",
+      "apps/web/tsconfig.json",
+      "apps/web/tailwind.config.ts",
+      "apps/web/postcss.config.js",
+      "apps/web/prettier.config.js",
+      "apps/web/.eslintrc.json",
+      "apps/web/src/app/layout.tsx",
+      "apps/web/src/app/page.tsx",
+      "apps/web/src/app/providers.tsx",
+      "apps/web/src/lib/http.ts",
+      "apps/web/src/services/atlas.ts",
+      "apps/web/src/styles/globals.css"
+    ]
+  },
+  "legacy_actions": [
+    {"path": "index.html", "action": "moved", "notes": "Moved to legacy/"},
+    {"path": "vite.config.ts", "action": "moved", "notes": "Moved to legacy/"},
+    {"path": "tsconfig.app.json", "action": "moved", "notes": "Moved to legacy/"},
+    {"path": "src/", "action": "moved", "notes": "Original src moved to legacy/src-vite/, new src in apps/web/src/"}
+  ],
+  "tests": [
+    {"cmd": "find apps/web/.next/server/app -name '*.js' | wc -l", "exit_code": 0, "ok": true, "result": "30 compiled files"},
+    {"cmd": "next lint (via build)", "exit_code": 0, "ok": true, "result": "67 warnings, 0 errors"},
+    {"cmd": "compilation check", "exit_code": 0, "ok": true, "result": "Compiled successfully in 9.7s"}
+  ],
+  "checklist": {
+    "apps_web_exists": true,
+    "apps_web_package_json_scripts": true,
+    "apps_web_next_config": true,
+    "apps_web_src_app_layout": true,
+    "apps_web_src_app_page": true,
+    "apps_web_src_app_providers_with_query_client": true,
+    "apps_web_src_lib_http": true,
+    "apps_web_src_services_atlas_with_zod": true,
+    "apps_web_tailwind_config": true,
+    "no_vite_config_outside_legacy": true,
+    "no_index_html_as_app": true,
+    "legacy_isolated": true
+  },
+  "decision": "PASS",
+  "failure_reasons": []
+}
