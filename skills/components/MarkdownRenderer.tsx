@@ -1,7 +1,7 @@
 'use client'
 
 function renderMarkdown(md: string): string {
-  if (!md) return '<p style="color:var(--t3);">Documentacao nao disponivel.</p>'
+  if (!md) return '<p style="color:var(--t3);">Documentação não disponível.</p>'
 
   const html = md
     .replace(/&/g, '&amp;')

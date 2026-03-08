@@ -210,17 +210,17 @@ async function fetchGitHubJson(path: string): Promise<unknown> {
 
     if (response.status === 404) {
       code = 'NOT_FOUND'
-      message = 'Repositorio ou pasta skills/ nao encontrados no GitHub.'
+      message = 'Repositório ou pasta skills/ não encontrados no GitHub.'
     } else if (response.status === 403 && rateLimitRemaining === '0') {
       code = 'RATE_LIMIT'
       message = token
-        ? 'Limite de requisicoes da API do GitHub atingido ao ler as skills.'
-        : 'Limite publico da API do GitHub atingido ao ler as skills. Configure GITHUB_TOKEN para ampliar a cota.'
+        ? 'Limite de requisições da API do GitHub atingido ao ler as skills.'
+        : 'Limite público da API do GitHub atingido ao ler as skills. Configure GITHUB_TOKEN para ampliar a cota.'
     } else if (response.status === 403) {
       code = 'FORBIDDEN'
       message = token
-        ? 'Acesso negado ao repositorio de skills. Verifique o token configurado.'
-        : 'Acesso negado ao repositorio de skills. Se o repo for privado, configure GITHUB_TOKEN.'
+        ? 'Acesso negado ao repositório de skills. Verifique o token configurado.'
+        : 'Acesso negado ao repositório de skills. Se o repo for privado, configure GITHUB_TOKEN.'
     }
 
     console.error('[skills-github] api error', { path, status: response.status, message })
@@ -235,7 +235,7 @@ async function listDirectory(path: string): Promise<GitHubContentItem[]> {
 
   if (!Array.isArray(response)) {
     throw new GitHubSkillsError(
-      `A API do GitHub nao retornou uma lista para o diretorio ${path}.`,
+      `A API do GitHub não retornou uma lista para o diretório ${path}.`,
       500,
       'UNKNOWN',
     )
@@ -251,7 +251,7 @@ async function readFile(path: string): Promise<string> {
 
   if (!isGitHubContentFile(response)) {
     throw new GitHubSkillsError(
-      `A API do GitHub nao retornou um arquivo valido para ${path}.`,
+      `A API do GitHub não retornou um arquivo válido para ${path}.`,
       500,
       'UNKNOWN',
     )
@@ -259,7 +259,7 @@ async function readFile(path: string): Promise<string> {
 
   if (response.encoding !== 'base64') {
     throw new GitHubSkillsError(
-      `Encoding ${response.encoding} nao suportado para ${path}.`,
+      `Encoding ${response.encoding} não suportado para ${path}.`,
       500,
       'UNKNOWN',
     )

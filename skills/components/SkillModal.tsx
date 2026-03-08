@@ -208,12 +208,12 @@ export default function SkillModal({ skills, skillId, onClose }: SkillModalProps
           {loading ? (
             <div className="flex items-center gap-3 py-8 justify-center text-[var(--t3)]">
               <span className="w-4 h-4 border-2 border-[var(--cy)] border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm">Carregando documentacao completa...</span>
+              <span className="text-sm">Carregando documentação completa...</span>
             </div>
           ) : fullDoc ? (
             <div className="mt-6 pt-5 border-t border-[var(--brd)]">
               <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--t3)] mb-3">
-                Documentacao (SKILL.md)
+                Documentação (SKILL.md)
               </h3>
               <MarkdownRenderer content={fullDoc} className="md-content" />
             </div>

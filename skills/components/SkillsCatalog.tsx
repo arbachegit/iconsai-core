@@ -7,6 +7,7 @@ import PhaseNav from '@/components/PhaseNav'
 import SkillModal from '@/components/SkillModal'
 import SkillsTable from '@/components/SkillsTable'
 import { PHASES } from '@/data/phases'
+import { useNewSkillsPolling } from '@/hooks/use-new-skills-polling'
 import type { Skill } from '@/lib/github/types'
 
 interface SkillsCatalogProps {
@@ -40,6 +41,7 @@ export default function SkillsCatalog({ skills = [], dataSource = 'fallback' }: 
   const [showTable, setShowTable] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const { hasNewSkills, remoteCount, dismiss, refresh } = useNewSkillsPolling(skills.length)
 
   const allSections = groupByPhase(skills)
 
@@ -100,11 +102,41 @@ export default function SkillsCatalog({ skills = [], dataSource = 'fallback' }: 
   return (
     <>
       <main className={styles.page}>
+        {hasNewSkills && (
+          <div className="sticky top-0 z-50 flex items-center justify-center gap-3 px-4 py-2.5 text-sm font-mono bg-gradient-to-r from-[rgba(34,211,238,0.12)] to-[rgba(59,130,246,0.12)] border-b border-[rgba(34,211,238,0.25)] backdrop-blur-md">
+            <svg className="w-4 h-4 text-[var(--cy)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span className="text-[var(--t2)]">
+              {remoteCount !== null
+                ? `${Math.abs(remoteCount - skills.length)} nova(s) skill(s) detectada(s) no GitHub (${remoteCount} total)`
+                : 'Novas skills detectadas no GitHub'}
+            </span>
+            <button
+              onClick={refresh}
+              className="px-3 py-1 rounded-full text-xs font-bold bg-[rgba(34,211,238,0.15)] border border-[rgba(34,211,238,0.3)] text-[var(--cy)] hover:bg-[rgba(34,211,238,0.25)] transition-colors cursor-pointer"
+            >
+              Atualizar
+            </button>
+            <button
+              onClick={dismiss}
+              className="ml-1 p-1 rounded-full text-[var(--t3)] hover:text-[var(--t1)] transition-colors cursor-pointer"
+              aria-label="Dispensar"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        )}
         <div className={styles.shell}>
           <section className={styles.hero}>
             {/* Top row: logo */}
             <div className="flex justify-between items-start">
-              <p className={styles.eyebrow}>Repositorio fonte: iconsaiConfig</p>
+              <p className={styles.eyebrow}>Repositório fonte: iconsaiConfig</p>
               <img
                 src="/skills/logo.png"
                 alt="IconsAI"
@@ -113,10 +145,10 @@ export default function SkillsCatalog({ skills = [], dataSource = 'fallback' }: 
             </div>
 
             {/* Title & description */}
-            <h1 className={styles.title}>Catalogo de Skills</h1>
+            <h1 className={styles.title}>Catálogo de Skills</h1>
             <p className={styles.description}>
-              A pagina publica em <code>/skills</code> e atualizada por webhook sempre que o
-              repositorio fonte recebe alteracoes em YAML.
+              A página pública em <code>/skills</code> é atualizada por webhook sempre que o
+              repositório fonte recebe alterações em YAML.
               {dataSource === 'fallback' && (
                 <span className="ml-2 text-xs text-[var(--yl)]">(offline — dados em cache)</span>
               )}
@@ -130,12 +162,12 @@ export default function SkillsCatalog({ skills = [], dataSource = 'fallback' }: 
                     {isFiltering ? filteredSkills.length : skills.length}
                   </span>
                   <span className={styles.metricLabel}>
-                    {isFiltering ? 'encontradas' : 'skills validas'}
+                    {isFiltering ? 'encontradas' : 'skills válidas'}
                   </span>
                 </div>
                 <div className={styles.metric}>
                   <span className={styles.metricValue}>{sections.length}</span>
-                  <span className={styles.metricLabel}>secoes</span>
+                  <span className={styles.metricLabel}>seções</span>
                 </div>
               </div>
 
@@ -230,7 +262,7 @@ function WebhookCheckButton({ renderedCount }: { renderedCount: number }) {
       }
     } catch {
       setStatus('error')
-      setTooltip('Endpoint inacessivel')
+      setTooltip('Endpoint inacessível')
     }
     setTimeout(() => {
       setStatus('idle')

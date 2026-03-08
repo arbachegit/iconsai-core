@@ -116,7 +116,7 @@ export default function SkillsMobileCatalog({ skills, dataSource }: SkillsMobile
           className={`${s.tab} ${activeTab === 'catalog' ? s.tabActive : ''}`}
           onClick={() => setActiveTab('catalog')}
         >
-          Catalogo
+          Catálogo
         </button>
       </div>
 
@@ -181,7 +181,7 @@ export default function SkillsMobileCatalog({ skills, dataSource }: SkillsMobile
         <>
           <section className={s.hero}>
             <h1 className={s.heroTitle}>
-              Catalogo de <span className={s.gradient}>Skills</span>
+              Catálogo de <span className={s.gradient}>Skills</span>
             </h1>
             <p className={s.heroDesc}>
               Todas as skills organizadas por fase. Use a busca para encontrar a skill ideal.
@@ -413,11 +413,11 @@ function MobileSkillModal({ skill, onClose }: { skill: Skill; onClose: () => voi
       {loading ? (
         <div className={s.modalLoading}>
           <span className={s.modalSpinner} />
-          <span>Carregando documentacao completa...</span>
+          <span>Carregando documentação completa...</span>
         </div>
       ) : fullDoc ? (
         <div className={s.modalDocSection}>
-          <div className={s.modalSectionTitle}>Documentacao (SKILL.md)</div>
+          <div className={s.modalSectionTitle}>Documentação (SKILL.md)</div>
           <MarkdownRenderer content={fullDoc} className={s.mdContent} />
         </div>
       ) : null}

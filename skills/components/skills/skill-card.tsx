@@ -39,7 +39,7 @@ export default function SkillCard({ skill, glowing, onOpenModal }: SkillCardProp
       </div>
 
       <p className={styles.cardDescription}>
-        {skill.description || 'Sem descricao informada para esta skill.'}
+        {skill.description || 'Sem descrição informada para esta skill.'}
       </p>
 
       <div className={styles.cardMeta}>
