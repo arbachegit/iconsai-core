@@ -105,8 +105,8 @@ export const buscarMunicipio: ToolHandler<
   console.log('[buscarMunicipio] Fallback to local municipios table');
 
   if (/^\d{7}$/.test(termo)) {
-    const { data, error } = await (supabase
-      .from('municipios') as any)
+    const { data, error } = await (supabase as any)
+      .from('municipios')
       .select('*')
       .eq('codigo_ibge', parseInt(termo))
       .single();
@@ -118,8 +118,8 @@ export const buscarMunicipio: ToolHandler<
     return data ? [data] : null;
   }
 
-  let query = (supabase
-    .from('municipios') as any)
+  let query = (supabase as any)
+    .from('municipios')
     .select('*')
     .ilike('nome', `%${termo}%`);
 
