@@ -284,7 +284,7 @@ export const buscarEstabelecimentoSaude: ToolHandler<
   }
 
   // Buscar estabelecimentos
-  let query = supabase
+  let query = (supabase as any)
     .from('estabelecimentos_saude')
     .select('cnes, nome_fantasia, tipo_estabelecimento, endereco, bairro, telefone, atendimento_urgencia')
     .eq('codigo_ibge', mun.codigo_ibge);
