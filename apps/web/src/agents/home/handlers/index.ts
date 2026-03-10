@@ -217,7 +217,7 @@ export const buscarPopulacao: ToolHandler<
   }
 
   // Fallback to local table
-  let query = supabase
+  let query = (supabase as any)
     .from('municipios')
     .select('codigo_ibge, nome, uf, populacao_2022, regiao, lat, lng, pib_2021_milhoes');
 
@@ -272,7 +272,7 @@ export const buscarEstabelecimentoSaude: ToolHandler<
   const { municipio, tipo = 'TODOS', limite = 10 } = input;
 
   // Primeiro, encontrar o município
-  const { data: mun } = await supabase
+  const { data: mun } = await (supabase as any)
     .from('municipios')
     .select('codigo_ibge, nome')
     .ilike('nome', `%${municipio}%`)
@@ -323,7 +323,7 @@ export const buscarEscola: ToolHandler<
   const { municipio, tipo = 'TODOS', limite = 10 } = input;
 
   // Primeiro, encontrar o município
-  const { data: mun } = await supabase
+  const { data: mun } = await (supabase as any)
     .from('municipios')
     .select('codigo_ibge, nome')
     .ilike('nome', `%${municipio}%`)
@@ -335,7 +335,7 @@ export const buscarEscola: ToolHandler<
   }
 
   // Buscar escolas
-  let query = supabase
+  let query = (supabase as any)
     .from('escolas')
     .select('codigo_inep, nome, dependencia_administrativa, endereco, bairro, telefone, etapas_ensino')
     .eq('codigo_ibge', mun.codigo_ibge);
